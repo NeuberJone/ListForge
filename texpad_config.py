@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -16,9 +17,9 @@ BACKUP_DIR = APP_DIR / "backups"
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_CONFIG = {
-    "show_json_tab": True,
-    "show_generate_json_button": True,
-    "show_copy_json_button": True,
+    "show_json_tab": False,
+    "show_generate_json_button": False,
+    "show_copy_json_button": False,
     "use_default_output_dir": False,
     "output_dir": "",
     "use_default_list_name": False,
@@ -35,10 +36,10 @@ def load_config() -> dict:
         return dict(DEFAULT_CONFIG)
 
     try:
-        raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-        if not isinstance(raw, dict):
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
             return dict(DEFAULT_CONFIG)
-        return {**DEFAULT_CONFIG, **raw}
+        return {**DEFAULT_CONFIG, **data}
     except Exception:
         return dict(DEFAULT_CONFIG)
 
@@ -66,5 +67,5 @@ def create_backup(source_file: str | Path) -> Path:
     backup_name = f"{source.stem}_{timestamp}{source.suffix}"
     backup_path = BACKUP_DIR / backup_name
 
-    backup_path.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    shutil.copy2(source, backup_path)
     return backup_path

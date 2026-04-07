@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ui.shell import run_app
+from ui import run_app
 
 
 def main() -> None:

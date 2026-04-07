@@ -8,35 +8,26 @@ from tkinter import ttk
 @dataclass(frozen=True)
 class ThemePalette:
     name: str
-
     app_bg: str
     sidebar_bg: str
     sidebar_active: str
     sidebar_hover: str
     sidebar_border: str
-
     topbar_bg: str
-
     panel_bg: str
     panel_alt: str
     panel_hover: str
-
     border: str
-
     text: str
     text_muted: str
-
     primary: str
     primary_hover: str
-
     success: str
     warning: str
     danger: str
-
     editor_bg: str
     editor_alt: str
     selection: str
-
     alert_bg: str
     alert_border: str
     alert_text: str
@@ -305,7 +296,6 @@ def apply_ttk_theme(style: ttk.Style | None = None, theme_name: str | None = Non
         borderwidth=0,
         tabmargins=(0, 0, 0, 0),
     )
-
     style.configure(
         "TNotebook.Tab",
         background=current.panel_alt,
@@ -317,21 +307,17 @@ def apply_ttk_theme(style: ttk.Style | None = None, theme_name: str | None = Non
         padding=(14, 6),
         font=(FONT_FAMILY, 10),
     )
-
     style.map(
         "TNotebook.Tab",
         background=[
             ("selected", current.panel_bg),
             ("active", current.panel_hover),
+            ("!selected", current.panel_alt),
         ],
         foreground=[
             ("selected", current.text),
             ("active", current.text),
-        ],
-        padding=[
-            ("selected", (18, 10)),
-            ("active", (16, 8)),
-            ("!selected", (12, 5)),
+            ("!selected", current.text_muted),
         ],
     )
 

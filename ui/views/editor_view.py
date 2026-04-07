@@ -10,10 +10,8 @@ from ui.widgets import create_text_area, make_card
 class CollapsiblePanel(tk.Frame):
     def __init__(self, parent: tk.Misc, title: str, *, starts_open: bool = False) -> None:
         super().__init__(parent, bg=theme.active_theme().app_bg)
-
         self.title = title
         self.is_open = starts_open
-
         self._build()
 
     def _build(self) -> None:
@@ -83,7 +81,7 @@ class EditorView(tk.Frame):
         self._build_footer_actions()
 
     # ------------------------------------------------------------------
-    # Top bar
+    # Barra superior do editor
     # ------------------------------------------------------------------
     def _build_file_bar(self) -> None:
         t = theme.active_theme()
@@ -189,7 +187,7 @@ class EditorView(tk.Frame):
         ).pack(side="right")
 
     # ------------------------------------------------------------------
-    # Collapsible panels
+    # Painéis retráteis
     # ------------------------------------------------------------------
     def _build_prepare_panel(self) -> None:
         self.prepare_panel = CollapsiblePanel(self, "Preparação da lista", starts_open=False)
@@ -260,7 +258,7 @@ class EditorView(tk.Frame):
         )
 
     # ------------------------------------------------------------------
-    # Main editor body
+    # Corpo principal
     # ------------------------------------------------------------------
     def _build_editor_body(self) -> None:
         t = theme.active_theme()
@@ -290,8 +288,8 @@ class EditorView(tk.Frame):
             anchor="w",
         ).grid(row=0, column=0, sticky="ew", padx=14, pady=(14, 8))
 
-        input_holder, self.txt_in = create_text_area(left, background=t.editor_bg)
-        input_holder.grid(row=1, column=0, sticky="nsew", padx=14, pady=(0, 14))
+        self.input_editor, self.txt_in = create_text_area(left, background=t.editor_bg)
+        self.input_editor.grid(row=1, column=0, sticky="nsew", padx=14, pady=(0, 14))
 
         tk.Label(
             right,
@@ -311,11 +309,11 @@ class EditorView(tk.Frame):
         self.outputs_nb.add(self.tab_list, text="Lista organizada")
         self.outputs_nb.add(self.tab_json, text="Prévia JSON")
 
-        output_holder, self.txt_out = create_text_area(self.tab_list, background=t.editor_alt)
-        output_holder.pack(fill="both", expand=True)
+        self.output_editor, self.txt_out = create_text_area(self.tab_list, background=t.editor_alt)
+        self.output_editor.pack(fill="both", expand=True)
 
-        json_holder, self.txt_json = create_text_area(self.tab_json, background=t.editor_alt)
-        json_holder.pack(fill="both", expand=True)
+        self.json_editor, self.txt_json = create_text_area(self.tab_json, background=t.editor_alt)
+        self.json_editor.pack(fill="both", expand=True)
 
         self.controller.bind_editor_widgets(
             txt_in=self.txt_in,
@@ -329,7 +327,7 @@ class EditorView(tk.Frame):
         )
 
     # ------------------------------------------------------------------
-    # Bottom actions
+    # Rodapé de ações
     # ------------------------------------------------------------------
     def _build_footer_actions(self) -> None:
         t = theme.active_theme()
@@ -367,7 +365,7 @@ class EditorView(tk.Frame):
         self.btn_process.pack(side="right", padx=(0, 6))
 
     # ------------------------------------------------------------------
-    # Runtime toggles
+    # Preferências em runtime
     # ------------------------------------------------------------------
     def apply_runtime_preferences(self) -> None:
         json_widget = str(self.tab_json)

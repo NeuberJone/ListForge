@@ -88,7 +88,7 @@ class TexpadController:
         self.status_var = tk.StringVar(value="Pronto.")
         self.page_title_var = tk.StringVar(value="Home")
         self.clock_var = tk.StringVar(value="")
-        self.top_action_var = tk.StringVar(value="Abrir Lista")
+        self.top_action_var = tk.StringVar(value="")
         self.size_summary_var = tk.StringVar(value="")
 
         self.find_var = tk.StringVar(value="")
@@ -100,14 +100,18 @@ class TexpadController:
             value=CASE_VALUE_TO_LABEL.get(self.cfg.get("default_case_mode", "original"), "Original")
         )
 
-        self.show_json_tab_var = tk.BooleanVar(value=bool(self.cfg.get("show_json_tab", True)))
-        self.show_generate_json_button_var = tk.BooleanVar(value=bool(self.cfg.get("show_generate_json_button", True)))
-        self.show_copy_json_button_var = tk.BooleanVar(value=bool(self.cfg.get("show_copy_json_button", True)))
+        self.show_json_tab_var = tk.BooleanVar(value=bool(self.cfg.get("show_json_tab", False)))
+        self.show_generate_json_button_var = tk.BooleanVar(
+            value=bool(self.cfg.get("show_generate_json_button", False))
+        )
+        self.show_copy_json_button_var = tk.BooleanVar(
+            value=bool(self.cfg.get("show_copy_json_button", False))
+        )
 
-        self.use_default_output_dir_var = tk.BooleanVar(value=bool(self.cfg.get("use_default_output_dir", True)))
+        self.use_default_output_dir_var = tk.BooleanVar(value=bool(self.cfg.get("use_default_output_dir", False)))
         self.output_dir_var = tk.StringVar(value=str(self.cfg.get("output_dir", "")))
 
-        self.use_default_list_name_var = tk.BooleanVar(value=bool(self.cfg.get("use_default_list_name", True)))
+        self.use_default_list_name_var = tk.BooleanVar(value=bool(self.cfg.get("use_default_list_name", False)))
         self.default_list_name_var = tk.StringVar(value=str(self.cfg.get("default_list_name", "lista")))
 
         self.default_case_label_var = tk.StringVar(
@@ -115,23 +119,16 @@ class TexpadController:
         )
         self.default_input_separator_var = tk.StringVar(value=self.cfg.get("default_input_separator", ","))
 
-        self.theme_name_var = tk.StringVar(
-            value=self.cfg.get("theme_name", theme.DEFAULT_THEME_NAME)
-        )
+        self.theme_name_var = tk.StringVar(value=self.cfg.get("theme_name", theme.DEFAULT_THEME_NAME))
 
         self.home_input_lines_var = tk.StringVar(value="0")
         self.home_output_lines_var = tk.StringVar(value="0")
         self.home_sizes_total_var = tk.StringVar(value="0")
-        self.home_json_status_var = tk.StringVar(value="Desativado")
+        self.home_json_status_var = tk.StringVar(value="Oculto")
         self.home_current_file_var = tk.StringVar(value="Nenhum arquivo aberto")
         self.home_mode_var = tk.StringVar(value="Original")
         self.home_separator_var = tk.StringVar(value=",")
-        self.home_output_policy_var = tk.StringVar(value="Pasta padrão")
-        self.home_alert_var = tk.StringVar(value="Tudo pronto para começar.")
-        self.home_recent_a_var = tk.StringVar(value="Arquivo atual")
-        self.home_recent_b_var = tk.StringVar(value="Saída")
-        self.home_recent_c_var = tk.StringVar(value="JSON")
-        self.home_recent_d_var = tk.StringVar(value="Backups")
+        self.home_output_policy_var = tk.StringVar(value="Escolher ao salvar")
 
         self.size_group_vars: dict[str, dict[str, tk.StringVar]] = {}
         self._init_size_group_vars()
@@ -140,6 +137,9 @@ class TexpadController:
 
         theme.set_active_theme(self.theme_name_var.get())
 
+    # ------------------------------------------------------------------
+    # Public helpers
+    # ------------------------------------------------------------------
     @property
     def case_labels(self) -> list[str]:
         return list(CASE_LABEL_TO_VALUE.keys())
@@ -216,16 +216,14 @@ class TexpadController:
         if selected not in theme.THEMES:
             selected = theme.DEFAULT_THEME_NAME
 
-        current = self.theme_name_var.get()
-        same_theme = current == selected
-
+        current = self.cfg.get("theme_name", theme.DEFAULT_THEME_NAME)
         self.theme_name_var.set(selected)
 
         if persist:
             self.cfg["theme_name"] = selected
             save_config(self.cfg)
 
-        if same_theme and not persist:
+        if current == selected and not persist:
             return
 
         self._theme_switch_in_progress = True
@@ -240,36 +238,31 @@ class TexpadController:
 
             if self.shell is not None and hasattr(self.shell, "rebuild_theme"):
                 self.shell.rebuild_theme()
+
+            self.cfg["theme_name"] = selected
         finally:
             self._theme_switch_in_progress = False
 
-    def apply_theme_if_changed(self, theme_name: str) -> None:
-        if theme_name != self.theme_name_var.get():
-            self.apply_theme(theme_name, persist=False)
-
-    def update_top_action_for_screen(self, key: str) -> None:
-        if key == "home":
-            self.top_action_var.set("Abrir Lista")
-            self.page_title_var.set("Home")
-        elif key == "editor":
-            self.top_action_var.set("Processar Lista")
-            self.page_title_var.set("Editor")
-        else:
-            self.top_action_var.set("Salvar Configurações")
-            self.page_title_var.set("Configurações")
-
-    def run_primary_action(self, current_screen_key: str) -> None:
-        if current_screen_key == "home":
-            self.open_input_file()
-        elif current_screen_key == "editor":
-            self.process_and_preview()
-        else:
-            self.save_settings_from_ui()
-
+    # ------------------------------------------------------------------
+    # Navigation / page context
+    # ------------------------------------------------------------------
     def show_screen(self, key: str) -> None:
         if self.shell is not None:
             self.shell.show_screen(key)
 
+    def update_top_action_for_screen(self, key: str) -> None:
+        self.top_action_var.set("")
+        titles = {
+            "home": "Home",
+            "editor": "Editor",
+            "settings": "Configurações",
+            "manual": "Manual",
+        }
+        self.page_title_var.set(titles.get(key, APP_NAME))
+
+    # ------------------------------------------------------------------
+    # Init helpers
+    # ------------------------------------------------------------------
     def _init_size_group_vars(self) -> None:
         self.size_group_vars = {}
         for group_key in (GROUP_MALE, GROUP_FEMALE, GROUP_CHILD):
@@ -293,6 +286,9 @@ class TexpadController:
             self.current_file = Path(last_opened)
             self.current_file_var.set(f"Arquivo atual: {self.current_file}")
 
+    # ------------------------------------------------------------------
+    # Generic helpers
+    # ------------------------------------------------------------------
     def _set_status(self, text: str) -> None:
         self.status_var.set(text)
         self.refresh_home_dashboard()
@@ -305,6 +301,36 @@ class TexpadController:
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
         self.root.update()
+
+    def _focus_input_editor(self) -> None:
+        if self.txt_in is not None:
+            self.txt_in.focus_set()
+
+    def _goto_input_line_if_present(self, message: str) -> None:
+        if self.txt_in is None:
+            return
+
+        match = re.search(r"linha\s+(\d+)", message, flags=re.IGNORECASE)
+        if not match:
+            return
+
+        try:
+            line_no = int(match.group(1))
+            idx = f"{line_no}.0"
+            self.txt_in.mark_set("insert", idx)
+            self.txt_in.see(idx)
+            self.txt_in.tag_remove("sel", "1.0", "end")
+            self.txt_in.tag_add("sel", idx, f"{idx} lineend")
+        except Exception:
+            pass
+
+    def _handle_processing_error(self, exc: Exception) -> None:
+        message = str(exc)
+        self.show_screen("editor")
+        self._goto_input_line_if_present(message)
+        self._focus_input_editor()
+        self._set_status(f"Erro: {message}")
+        messagebox.showerror(APP_NAME, message)
 
     def _open_path(self, path: Path) -> None:
         try:
@@ -320,6 +346,9 @@ class TexpadController:
     def _default_case_mode(self) -> str:
         return CASE_LABEL_TO_VALUE.get(self.default_case_label_var.get(), "original")
 
+    # ------------------------------------------------------------------
+    # Home / summary
+    # ------------------------------------------------------------------
     def _refresh_size_summary(self) -> None:
         male_sizes = build_group_sizes(self.size_cfg["groups"][GROUP_MALE])
         female_sizes = build_group_sizes(self.size_cfg["groups"][GROUP_FEMALE])
@@ -349,15 +378,8 @@ class TexpadController:
         if self.txt_out is not None:
             output_lines = len([ln for ln in self.txt_out.get("1.0", "end-1c").splitlines() if ln.strip()])
 
-        seen: set[str] = set()
-        for group_key in (GROUP_MALE, GROUP_FEMALE, GROUP_CHILD):
-            for size in build_group_sizes(self.size_cfg["groups"][group_key]):
-                if size not in seen:
-                    seen.add(size)
-
         self.home_input_lines_var.set(str(input_lines))
         self.home_output_lines_var.set(str(output_lines))
-        self.home_sizes_total_var.set(str(len(seen)))
         self.home_json_status_var.set("Ativo" if self.show_json_tab_var.get() else "Oculto")
         self.home_current_file_var.set(self.current_file.name if self.current_file else "Nenhum arquivo aberto")
         self.home_mode_var.set(self.editor_case_label_var.get())
@@ -366,26 +388,9 @@ class TexpadController:
             "Pasta padrão" if self.use_default_output_dir_var.get() else "Escolher ao salvar"
         )
 
-        if not self.current_file and input_lines == 0:
-            self.home_alert_var.set("Nenhuma lista carregada ainda.")
-        elif not self.show_json_tab_var.get():
-            self.home_alert_var.set("A visualização JSON está oculta nas configurações.")
-        elif not self.use_default_output_dir_var.get():
-            self.home_alert_var.set("A saída pedirá pasta manual a cada salvamento.")
-        else:
-            self.home_alert_var.set("Tudo pronto para editar e processar.")
-
-        self.home_recent_a_var.set(self.current_file.name if self.current_file else "Nova lista")
-        self.home_recent_b_var.set(f"{output_lines} linha(s) organizadas")
-        self.home_recent_c_var.set("Prévia pronta" if self._last_json.strip() else "Aguardando processamento")
-        self.home_recent_d_var.set(str(BACKUP_DIR))
-
-        if self.home_view is not None and hasattr(self.home_view, "refresh"):
-            try:
-                self.home_view.refresh()
-            except Exception:
-                pass
-
+    # ------------------------------------------------------------------
+    # Editor widget events / search
+    # ------------------------------------------------------------------
     def _configure_tags(self) -> None:
         if self.txt_in is None:
             return
@@ -462,7 +467,6 @@ class TexpadController:
             pos = self.txt_in.search(pattern, start, stopindex="end-1c", nocase=nocase)
             if not pos:
                 break
-
             end = f"{pos}+{len(pattern)}c"
             matches.append(pos)
             self.txt_in.tag_add(self.SEARCH_TAG, pos, end)
@@ -474,9 +478,7 @@ class TexpadController:
         return matches
 
     def _ensure_search_matches(self) -> list[str]:
-        if self._search_dirty:
-            return self._build_search_matches()
-        return self._search_matches
+        return self._build_search_matches() if self._search_dirty else self._search_matches
 
     def _set_current_match(self, idx: int) -> None:
         if self.txt_in is None or not self._search_matches:
@@ -512,7 +514,6 @@ class TexpadController:
             if self.txt_in.compare(pos, ">=", cursor):
                 chosen = i
                 break
-
         self._set_current_match(chosen)
 
     def find_next(self, _event=None):
@@ -557,7 +558,6 @@ class TexpadController:
 
         pos = self._search_matches[self._search_current_idx]
         end = f"{pos}+{len(pattern)}c"
-
         self.txt_in.delete(pos, end)
         self.txt_in.insert(pos, self.replace_var.get())
 
@@ -601,6 +601,9 @@ class TexpadController:
         self._build_search_matches()
         self._set_status(f"Substituir tudo concluído: {count} ocorrência(s) alterada(s).")
 
+    # ------------------------------------------------------------------
+    # File actions
+    # ------------------------------------------------------------------
     def open_input_file(self) -> None:
         if self.txt_in is None:
             return
@@ -635,6 +638,7 @@ class TexpadController:
 
         self._set_status(f"Lista carregada: {path.name}")
         self.show_screen("editor")
+        self._focus_input_editor()
 
     def save_input_file(self) -> None:
         if self.txt_in is None:
@@ -711,6 +715,9 @@ class TexpadController:
     def _write_text_file(self, path: Path, text: str) -> None:
         path.write_text(text, encoding="utf-8", newline="\n")
 
+    # ------------------------------------------------------------------
+    # Editor actions
+    # ------------------------------------------------------------------
     def undo_last_change(self) -> None:
         if self.txt_in is None:
             return
@@ -766,13 +773,19 @@ class TexpadController:
         self.current_file_var.set("Arquivo atual: (nova lista)")
         self.clear_search_highlight(keep_status=True)
         self._set_status("Campos limpos.")
+        self._focus_input_editor()
 
+    # ------------------------------------------------------------------
+    # Processing / exporting
+    # ------------------------------------------------------------------
     def process_and_preview(self) -> None:
         if self.txt_in is None or self.txt_out is None or self.txt_json is None:
             return
 
         raw = self.txt_in.get("1.0", "end-1c")
         if not raw.strip():
+            self.show_screen("editor")
+            self._focus_input_editor()
             messagebox.showwarning(APP_NAME, "Cole ou abra uma lista na entrada.")
             return
 
@@ -783,6 +796,8 @@ class TexpadController:
                 size_config=self.size_cfg,
             )
             if not rows:
+                self.show_screen("editor")
+                self._focus_input_editor()
                 messagebox.showwarning(APP_NAME, "Nenhuma linha válida encontrada.")
                 return
 
@@ -821,8 +836,7 @@ class TexpadController:
                 f"Processado: {len(rows)} linha(s) | Separador: {separator_label(self.editor_separator_var.get())!r}."
             )
         except Exception as exc:
-            messagebox.showerror(APP_NAME, str(exc))
-            self._set_status(f"Erro: {exc}")
+            self._handle_processing_error(exc)
 
     def copy_output(self) -> None:
         if self.txt_out is None:
@@ -934,6 +948,9 @@ class TexpadController:
             return None
         return base
 
+    # ------------------------------------------------------------------
+    # Settings
+    # ------------------------------------------------------------------
     def pick_default_output_folder(self) -> None:
         folder = filedialog.askdirectory(title=f"{APP_NAME} - Escolha a pasta padrão de saída")
         if folder:
@@ -1066,6 +1083,9 @@ class TexpadController:
         self.refresh_home_dashboard()
         self._set_status("Tamanhos restaurados para o padrão.")
 
+    # ------------------------------------------------------------------
+    # Runtime preferences
+    # ------------------------------------------------------------------
     def _apply_runtime_preferences(self) -> None:
         if self.editor_view is not None and hasattr(self.editor_view, "apply_runtime_preferences"):
             self.editor_view.apply_runtime_preferences()

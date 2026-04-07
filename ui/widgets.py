@@ -232,6 +232,136 @@ def build_info_row(parent: tk.Misc, *, label: str, value_var: tk.StringVar) -> t
     return row
 
 
+class TextLineNumbers(tk.Canvas):
+    def __init__(self, parent: tk.Misc, text_widget: tk.Text, *, background: str, foreground: str) -> None:
+        super().__init__(
+            parent,
+            bg=background,
+            bd=0,
+            highlightthickness=0,
+            width=48,
+        )
+        self.text_widget = text_widget
+        self.foreground = foreground
+        self._last_line_count = -1
+
+    def redraw(self) -> None:
+        self.delete("all")
+
+        i = self.text_widget.index("@0,0")
+        while True:
+            dline = self.text_widget.dlineinfo(i)
+            if dline is None:
+                break
+
+            y = dline[1]
+            line_number = str(i).split(".")[0]
+
+            self.create_text(
+                40,
+                y,
+                anchor="ne",
+                text=line_number,
+                fill=self.foreground,
+                font=(theme.FONT_MONO, 9),
+            )
+            i = self.text_widget.index(f"{i}+1line")
+
+    def schedule_redraw(self) -> None:
+        self.after_idle(self.redraw)
+
+
+class LineNumberedText(tk.Frame):
+    def __init__(
+        self,
+        parent: tk.Misc,
+        *,
+        background: str | None = None,
+        foreground: str | None = None,
+        readonly: bool = False,
+        wrap: str = "none",
+    ) -> None:
+        t = theme.active_theme()
+        bg = background or t.editor_bg
+        fg = foreground or t.text
+
+        super().__init__(parent, bg=bg, bd=0, highlightthickness=0)
+
+        self.text = tk.Text(
+            self,
+            wrap=wrap,
+            font=(theme.FONT_MONO, 10),
+            undo=True,
+            maxundo=-1,
+            autoseparators=True,
+            bg=bg,
+            fg=fg,
+            insertbackground=t.text,
+            selectbackground=t.selection,
+            selectforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            padx=8,
+            pady=8,
+        )
+
+        self.line_numbers = TextLineNumbers(
+            self,
+            self.text,
+            background=t.panel_alt,
+            foreground=t.text_muted,
+        )
+
+        self.yscroll = ttk.Scrollbar(self, orient="vertical", command=self._on_vertical_scroll)
+        self.xscroll = ttk.Scrollbar(self, orient="horizontal", command=self.text.xview)
+
+        self.text.configure(
+            yscrollcommand=self._on_text_yview,
+            xscrollcommand=self.xscroll.set,
+        )
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+
+        self.line_numbers.grid(row=0, column=0, sticky="ns")
+        self.text.grid(row=0, column=1, sticky="nsew")
+        self.yscroll.grid(row=0, column=2, sticky="ns")
+        self.xscroll.grid(row=1, column=1, sticky="ew")
+
+        self.text.bind("<KeyRelease>", self._on_text_changed, add="+")
+        self.text.bind("<MouseWheel>", self._on_text_changed, add="+")
+        self.text.bind("<Button-1>", self._on_text_changed, add="+")
+        self.text.bind("<Configure>", self._on_text_changed, add="+")
+        self.text.bind("<<Modified>>", self._on_modified, add="+")
+
+        if readonly:
+            self.set_readonly(True)
+
+        self.line_numbers.schedule_redraw()
+
+    def _on_vertical_scroll(self, *args) -> None:
+        self.text.yview(*args)
+        self.line_numbers.redraw()
+
+    def _on_text_yview(self, first: str, last: str) -> None:
+        self.yscroll.set(first, last)
+        self.line_numbers.redraw()
+
+    def _on_text_changed(self, _event=None) -> None:
+        self.line_numbers.schedule_redraw()
+
+    def _on_modified(self, _event=None) -> None:
+        try:
+            if self.text.edit_modified():
+                self.text.edit_modified(False)
+        except tk.TclError:
+            pass
+        self.line_numbers.schedule_redraw()
+
+    def set_readonly(self, readonly: bool) -> None:
+        self.text.configure(state=("disabled" if readonly else "normal"))
+
+
 def build_alert_box(parent: tk.Misc, *, textvariable: tk.StringVar) -> tk.Frame:
     t = theme.active_theme()
     alert_box = tk.Frame(
@@ -257,39 +387,5 @@ def build_alert_box(parent: tk.Misc, *, textvariable: tk.StringVar) -> tk.Frame:
 
 
 def create_text_area(parent: tk.Misc, *, background: str | None = None) -> tuple[tk.Frame, tk.Text]:
-    t = theme.active_theme()
-    bg = background or t.editor_bg
-
-    holder = tk.Frame(parent, bg=bg, bd=0, highlightthickness=0)
-
-    text = tk.Text(
-        holder,
-        wrap="none",
-        font=(theme.FONT_MONO, 10),
-        undo=True,
-        maxundo=-1,
-        autoseparators=True,
-        bg=bg,
-        fg=t.text,
-        insertbackground=t.text,
-        selectbackground=t.selection,
-        selectforeground="#FFFFFF",
-        relief="flat",
-        bd=0,
-        padx=8,
-        pady=8,
-    )
-
-    yscroll = ttk.Scrollbar(holder, orient="vertical", command=text.yview)
-    xscroll = ttk.Scrollbar(holder, orient="horizontal", command=text.xview)
-
-    text.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
-
-    holder.rowconfigure(0, weight=1)
-    holder.columnconfigure(0, weight=1)
-
-    text.grid(row=0, column=0, sticky="nsew")
-    yscroll.grid(row=0, column=1, sticky="ns")
-    xscroll.grid(row=1, column=0, sticky="ew")
-
-    return holder, text
+    editor = LineNumberedText(parent, background=background)
+    return editor, editor.text

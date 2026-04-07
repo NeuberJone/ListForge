@@ -1,0 +1,54 @@
+{
+  "groups": {
+    "male": {
+      "label": "Masculino",
+      "base_sizes": [
+        "PP",
+        "P",
+        "M",
+        "G",
+        "GG",
+        "XG",
+        "XGG",
+        "XXGG",
+        "XLGG"
+      ],
+      "prefixes": [],
+      "suffixes": []
+    },
+    "female": {
+      "label": "Feminino",
+      "base_sizes": [
+        "PP",
+        "P",
+        "M",
+        "G",
+        "GG",
+        "XG",
+        "XGG",
+        "XXGG"
+      ],
+      "prefixes": [
+        "BL"
+      ],
+      "suffixes": []
+    },
+    "child": {
+      "label": "Infantil",
+      "base_sizes": [
+        "2",
+        "4",
+        "6",
+        "8",
+        "10",
+        "12",
+        "14",
+        "16"
+      ],
+      "prefixes": [],
+      "suffixes": [
+        "A"
+      ]
+    }
+  }
+}

@@ -60,6 +60,13 @@ class SettingsView(tk.Frame):
             command=self.controller.restore_default_size_settings,
         ).pack(side="left", padx=(6, 0))
 
+        ttk.Button(
+            actions,
+            text="Salvar configurações",
+            style="Accent.TButton",
+            command=self.controller.save_settings_from_ui,
+        ).pack(side="right")
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -196,7 +203,6 @@ class SettingsView(tk.Frame):
         t = theme.active_theme()
         container = tk.Frame(self.tab_sizes, bg=t.app_bg)
         container.pack(fill="both", expand=True)
-        container.pack_propagate(False)
 
         outer, outer_inner = self._make_section(container, "Cadastro de tamanhos")
         outer_inner.pack_forget()
@@ -301,14 +307,12 @@ class SettingsView(tk.Frame):
         self.cmb_theme.grid(row=0, column=1, sticky="w")
         self.cmb_theme.bind(
             "<<ComboboxSelected>>",
-            lambda _e: self.controller.apply_theme(self.controller.theme_name_var.get(), persist=False),
+            lambda _e: self.controller.apply_theme(self.cmb_theme.get(), persist=False),
         )
 
         tk.Label(
             inner_appearance,
-            text=(
-                "Você pode manter o tema atual do Texpad ou usar um tema inspirado na interface do SisBolt."
-            ),
+            text="Você pode manter o tema atual do Texpad ou usar um tema inspirado na interface do SisBolt.",
             bg=theme.active_theme().panel_bg,
             fg=theme.active_theme().text_muted,
             justify="left",

@@ -6,11 +6,44 @@ from ui import theme
 from ui.controller import TexpadController
 from ui.views.editor_view import EditorView
 from ui.views.home_view import HomeView
+from ui.views.manual_view import ManualView
 from ui.views.settings_view import SettingsView
-from ui.widgets import make_primary_button, make_sidebar_button, set_sidebar_button_active
+from ui.widgets import set_sidebar_button_active
+
+
+class SidebarNavButton(tk.Button):
+    def __init__(self, parent: tk.Misc, *, icon: str, text: str, command) -> None:
+        self.icon = icon
+        self.full_text = f"{icon}  {text}"
+        super().__init__(
+            parent,
+            text=self.full_text,
+            command=command,
+            bg=theme.active_theme().sidebar_bg,
+            fg=theme.active_theme().text_muted,
+            activebackground=theme.active_theme().sidebar_hover,
+            activeforeground=theme.active_theme().text,
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
+            anchor="w",
+            cursor="hand2",
+            font=(theme.FONT_FAMILY, 10),
+            padx=12,
+            pady=10,
+        )
+
+    def apply_collapsed_state(self, collapsed: bool) -> None:
+        if collapsed:
+            self.configure(text=self.icon, anchor="center", padx=0)
+        else:
+            self.configure(text=self.full_text, anchor="w", padx=12)
 
 
 class TexpadShell(tk.Frame):
+    EXPANDED_WIDTH = 180
+    COLLAPSED_WIDTH = 58
+
     def __init__(self, parent: tk.Misc) -> None:
         super().__init__(parent, bg=theme.active_theme().app_bg)
 
@@ -18,9 +51,10 @@ class TexpadShell(tk.Frame):
         self.controller = TexpadController(parent)
 
         self.current_screen_key = "home"
-        self.nav_buttons: dict[str, tk.Button] = {}
+        self.nav_buttons: dict[str, SidebarNavButton] = {}
         self.screens: dict[str, tk.Frame] = {}
         self._is_rebuilding = False
+        self.sidebar_collapsed = False
 
         self.grid(row=0, column=0, sticky="nsew")
         self.grid_rowconfigure(0, weight=1)
@@ -31,11 +65,11 @@ class TexpadShell(tk.Frame):
         self._build_shell()
         self._build_views()
 
-        self.show_screen("home")
+        self._show_screen_internal("home")
         self._tick_clock()
 
     # ------------------------------------------------------------------
-    # Full rebuild for runtime theme change
+    # Theme rebuild
     # ------------------------------------------------------------------
     def rebuild_theme(self) -> None:
         if self._is_rebuilding:
@@ -43,26 +77,31 @@ class TexpadShell(tk.Frame):
 
         self._is_rebuilding = True
         current_screen = self.current_screen_key
+        collapsed_state = self.sidebar_collapsed
 
         try:
             for child in self.winfo_children():
                 child.destroy()
 
-            t = theme.active_theme()
-            self.configure(bg=t.app_bg)
+            self.configure(bg=theme.active_theme().app_bg)
 
             self.nav_buttons = {}
             self.screens = {}
 
             self._build_shell()
             self._build_views()
-            self.show_screen(current_screen)
-            self.update_idletasks()
+
+            self.sidebar_collapsed = collapsed_state
+            self._apply_sidebar_state()
+
         finally:
             self._is_rebuilding = False
 
+        self._show_screen_internal(current_screen)
+        self.update_idletasks()
+
     # ------------------------------------------------------------------
-    # Shell layout
+    # Layout
     # ------------------------------------------------------------------
     def _build_shell(self) -> None:
         t = theme.active_theme()
@@ -70,7 +109,7 @@ class TexpadShell(tk.Frame):
         self.sidebar = tk.Frame(
             self,
             bg=t.sidebar_bg,
-            width=180,
+            width=self.EXPANDED_WIDTH,
             highlightbackground=t.sidebar_border,
             highlightthickness=1,
             bd=0,
@@ -95,15 +134,35 @@ class TexpadShell(tk.Frame):
         brand = tk.Frame(self.sidebar, bg=t.sidebar_bg, height=58)
         brand.grid(row=0, column=0, sticky="ew")
         brand.grid_propagate(False)
+        brand.grid_columnconfigure(1, weight=1)
 
-        tk.Label(
+        self.btn_toggle_sidebar = tk.Button(
             brand,
-            text="✎  Texpad",
+            text="☰",
+            command=self.toggle_sidebar,
             bg=t.sidebar_bg,
             fg=t.text,
-            font=(theme.FONT_FAMILY, 14, "bold"),
+            activebackground=t.sidebar_hover,
+            activeforeground=t.text,
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
+            cursor="hand2",
+            font=(theme.FONT_FAMILY, 12, "bold"),
+            padx=10,
+            pady=10,
+        )
+        self.btn_toggle_sidebar.grid(row=0, column=0, sticky="w", padx=(4, 0), pady=4)
+
+        self.lbl_brand = tk.Label(
+            brand,
+            text="Texpad",
+            bg=t.sidebar_bg,
+            fg=t.text,
+            font=(theme.FONT_FAMILY, 13, "bold"),
             anchor="w",
-        ).pack(fill="both", padx=16, pady=14)
+        )
+        self.lbl_brand.grid(row=0, column=1, sticky="w", padx=(4, 8))
 
         divider = tk.Frame(self.sidebar, bg=t.sidebar_border, height=1)
         divider.place(relx=0, rely=0, relwidth=1, y=58)
@@ -113,19 +172,23 @@ class TexpadShell(tk.Frame):
         nav.grid_columnconfigure(0, weight=1)
 
         items = [
-            ("home", "⌂  Home"),
-            ("editor", "✎  Editor"),
-            ("settings", "⚙  Configurações"),
+            ("home", "⌂", "Home"),
+            ("editor", "✎", "Editor"),
+            ("settings", "⚙", "Configurações"),
+            ("manual", "📘", "Manual"),
         ]
 
-        for idx, (key, label) in enumerate(items):
-            btn = make_sidebar_button(
+        for idx, (key, icon, label) in enumerate(items):
+            btn = SidebarNavButton(
                 nav,
+                icon=icon,
                 text=label,
                 command=lambda k=key: self.show_screen(k),
             )
             btn.grid(row=idx, column=0, sticky="ew", pady=(0, 8))
             self.nav_buttons[key] = btn
+
+        self._apply_sidebar_state()
 
     def _build_topbar(self) -> None:
         t = theme.active_theme()
@@ -162,15 +225,7 @@ class TexpadShell(tk.Frame):
             bg=t.topbar_bg,
             fg=t.text_muted,
             font=(theme.FONT_FAMILY, 9),
-        ).pack(side="left", padx=(0, 14), pady=14)
-
-        self.top_action_button = make_primary_button(
-            right,
-            text=self.controller.top_action_var.get(),
-            command=lambda: self.controller.run_primary_action(self.current_screen_key),
-        )
-        self.top_action_button.configure(textvariable=self.controller.top_action_var)
-        self.top_action_button.pack(side="left", pady=10)
+        ).pack(side="left", pady=14)
 
     def _build_content_host(self) -> None:
         t = theme.active_theme()
@@ -209,16 +264,39 @@ class TexpadShell(tk.Frame):
         ).pack(fill="both", padx=14)
 
     # ------------------------------------------------------------------
+    # Sidebar state
+    # ------------------------------------------------------------------
+    def toggle_sidebar(self) -> None:
+        self.sidebar_collapsed = not self.sidebar_collapsed
+        self._apply_sidebar_state()
+
+    def _apply_sidebar_state(self) -> None:
+        width = self.COLLAPSED_WIDTH if self.sidebar_collapsed else self.EXPANDED_WIDTH
+        self.sidebar.configure(width=width)
+
+        if self.sidebar_collapsed:
+            self.lbl_brand.grid_remove()
+        else:
+            self.lbl_brand.grid()
+
+        for btn in self.nav_buttons.values():
+            btn.apply_collapsed_state(self.sidebar_collapsed)
+
+        self.update_idletasks()
+
+    # ------------------------------------------------------------------
     # Views
     # ------------------------------------------------------------------
     def _build_views(self) -> None:
         home_view = HomeView(self.content_host, self.controller)
         editor_view = EditorView(self.content_host, self.controller)
         settings_view = SettingsView(self.content_host, self.controller)
+        manual_view = ManualView(self.content_host, self.controller)
 
         home_view.grid(row=0, column=0, sticky="nsew")
         editor_view.grid(row=0, column=0, sticky="nsew")
         settings_view.grid(row=0, column=0, sticky="nsew")
+        manual_view.grid(row=0, column=0, sticky="nsew")
 
         settings_view.bind_runtime_widgets()
 
@@ -226,6 +304,7 @@ class TexpadShell(tk.Frame):
             "home": home_view,
             "editor": editor_view,
             "settings": settings_view,
+            "manual": manual_view,
         }
 
         self.controller.attach_views(
@@ -238,9 +317,11 @@ class TexpadShell(tk.Frame):
     # Navigation
     # ------------------------------------------------------------------
     def show_screen(self, key: str) -> None:
-        if key not in self.screens or self._is_rebuilding:
+        if key not in self.screens:
             return
+        self._show_screen_internal(key)
 
+    def _show_screen_internal(self, key: str) -> None:
         for screen in self.screens.values():
             screen.grid_remove()
 
