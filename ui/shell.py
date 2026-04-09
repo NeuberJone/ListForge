@@ -4,7 +4,6 @@ import tkinter as tk
 
 from ui import theme
 from ui.views.editor_view import EditorView
-from ui.views.home_view import HomeView
 from ui.views.manual_view import ManualView
 from ui.views.settings_view import SettingsView
 from ui.widgets import make_sidebar_button, set_sidebar_button_active
@@ -16,7 +15,7 @@ class TexpadShell(tk.Frame):
         self.controller = controller
         self.controller.shell = self
 
-        self.current_screen = "home"
+        self.current_screen = "editor"
         self.screens: dict[str, tk.Frame] = {}
         self.sidebar_buttons: dict[str, tk.Button] = {}
 
@@ -27,7 +26,7 @@ class TexpadShell(tk.Frame):
         self._build_sidebar()
         self._build_topbar()
         self._build_views()
-        self.show_screen("home")
+        self.show_screen("editor")
 
     # ------------------------------------------------------------------
     # Estrutura principal
@@ -95,7 +94,6 @@ class TexpadShell(tk.Frame):
         nav.pack(fill="x", padx=10)
 
         items = [
-            ("home", "Início"),
             ("editor", "Editor"),
             ("settings", "Configurações"),
             ("manual", "Manual"),
@@ -145,7 +143,7 @@ class TexpadShell(tk.Frame):
         self.topbar_right = tk.Frame(self.topbar, bg=t.topbar_bg)
         self.topbar_right.pack(side="right", fill="y", padx=14)
 
-        self.title_var = tk.StringVar(value="Início")
+        self.title_var = tk.StringVar(value="Editor")
 
         tk.Label(
             self.topbar_left,
@@ -168,31 +166,22 @@ class TexpadShell(tk.Frame):
     # ------------------------------------------------------------------
     # Views
     # ------------------------------------------------------------------
-    def _destroy_views(self) -> None:
-        for child in self.content_host.winfo_children():
-            child.destroy()
-        self.screens.clear()
-
     def _build_views(self) -> None:
-        home_view = HomeView(self.content_host, self.controller)
         editor_view = EditorView(self.content_host, self.controller)
         settings_view = SettingsView(self.content_host, self.controller)
         manual_view = ManualView(self.content_host, self.controller)
 
-        home_view.grid(row=0, column=0, sticky="nsew")
         editor_view.grid(row=0, column=0, sticky="nsew")
         settings_view.grid(row=0, column=0, sticky="nsew")
         manual_view.grid(row=0, column=0, sticky="nsew")
 
         self.screens = {
-            "home": home_view,
             "editor": editor_view,
             "settings": settings_view,
             "manual": manual_view,
         }
 
         self.controller.attach_views(
-            home_view=home_view,
             editor_view=editor_view,
             settings_view=settings_view,
         )
@@ -200,7 +189,6 @@ class TexpadShell(tk.Frame):
         settings_view.bind_runtime_widgets()
         editor_view.apply_runtime_preferences()
         self.controller.update_settings_field_states()
-        self.controller.refresh_home_dashboard()
 
     # ------------------------------------------------------------------
     # Navegação
@@ -213,7 +201,6 @@ class TexpadShell(tk.Frame):
         self.screens[screen_key].tkraise()
 
         titles = {
-            "home": "Início",
             "editor": "Editor",
             "settings": "Configurações",
             "manual": "Manual",
@@ -244,7 +231,7 @@ class TexpadShell(tk.Frame):
         if current_screen in self.screens:
             self.show_screen(current_screen)
         else:
-            self.show_screen("home")
+            self.show_screen("editor")
 
 
 def run_app() -> tuple[tk.Tk, TexpadShell]:

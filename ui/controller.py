@@ -83,6 +83,9 @@ class TexpadController:
         self.tab_json = None
         self.ent_find: ttk.Entry | None = None
         self.ent_replace: ttk.Entry | None = None
+        self.ent_output_dir: ttk.Entry | None = None
+        self.btn_pick_output_dir: ttk.Button | None = None
+        self.ent_default_name: ttk.Entry | None = None
 
         self.current_file_var = tk.StringVar(value="Arquivo atual: (nova lista)")
         self.status_var = tk.StringVar(value="Pronto.")
@@ -137,6 +140,7 @@ class TexpadController:
 
         theme.set_active_theme(self.theme_name_var.get())
 
+
     # ------------------------------------------------------------------
     # Public helpers
     # ------------------------------------------------------------------
@@ -154,24 +158,22 @@ class TexpadController:
     def attach_views(self, *, home_view=None, editor_view=None, settings_view=None) -> None:
         if home_view is not None:
             self.home_view = home_view
-
         if editor_view is not None:
             self.editor_view = editor_view
-
         if settings_view is not None:
             self.settings_view = settings_view
 
     def bind_editor_widgets(
         self,
         *,
-        txt_in,
-        txt_out,
-        txt_json,
-        notebook,
+        txt_in: tk.Text,
+        txt_out: tk.Text,
+        txt_json: tk.Text,
+        notebook: ttk.Notebook,
         tab_list,
         tab_json,
-        ent_find=None,
-        ent_replace=None,
+        ent_find: ttk.Entry | None = None,
+        ent_replace: ttk.Entry | None = None,
     ) -> None:
         self.txt_in = txt_in
         self.txt_out = txt_out
@@ -213,32 +215,35 @@ class TexpadController:
     # ------------------------------------------------------------------
     # Theme
     # ------------------------------------------------------------------
-    def apply_theme(self, theme_name: str, *, persist: bool = True) -> None:
-        self.theme_name_var.set(theme_name)
+    def apply_theme(self, theme_name: str | None = None, *, persist: bool = False) -> None:
+        selected = theme_name or self.theme_name_var.get()
+        self.theme_name_var.set(selected)
+        theme.set_active_theme(selected)
 
         if persist:
-            self.config.theme_name = theme_name
-            self.config.save()
+            self.cfg["theme_name"] = selected
+            save_config(self.cfg)
 
-        if getattr(self, "shell", None):
+        if self.shell is not None:
             self.shell.rebuild_theme()
+        self.theme_runtime.apply_theme(theme_name or self.theme_name_var.get(), persist=persist)
 
-        # ------------------------------------------------------------------
-        # Navigation / page context
-        # ------------------------------------------------------------------
-        def show_screen(self, key: str) -> None:
-            if self.shell is not None:
-                self.shell.show_screen(key)
+    # ------------------------------------------------------------------
+    # Navigation / page context
+    # ------------------------------------------------------------------
+    def show_screen(self, key: str) -> None:
+        if self.shell is not None:
+            self.shell.show_screen(key)
 
-        def update_top_action_for_screen(self, key: str) -> None:
-            self.top_action_var.set("")
-            titles = {
-                "home": "Home",
-                "editor": "Editor",
-                "settings": "Configurações",
-                "manual": "Manual",
-            }
-            self.page_title_var.set(titles.get(key, APP_NAME))
+    def update_top_action_for_screen(self, key: str) -> None:
+        self.top_action_var.set("")
+        titles = {
+            "home": "Home",
+            "editor": "Editor",
+            "settings": "Configurações",
+            "manual": "Manual",
+        }
+        self.page_title_var.set(titles.get(key, APP_NAME))
 
     # ------------------------------------------------------------------
     # Init helpers
@@ -418,14 +423,13 @@ class TexpadController:
         self.clear_search_highlight(keep_status=True)
 
     def clear_search_highlight(self, keep_status: bool = False) -> None:
-        if self.txt_in is None:
-            return
-        self.txt_in.tag_remove(self.SEARCH_TAG, "1.0", "end")
-        self.txt_in.tag_remove(self.SEARCH_CURRENT_TAG, "1.0", "end")
+        if self.txt_in is not None:
+            self.txt_in.tag_remove(self.SEARCH_TAG, "1.0", "end")
+            self.txt_in.tag_remove(self.SEARCH_CURRENT_TAG, "1.0", "end")
         self._search_matches = []
         self._search_current_idx = -1
         if not keep_status:
-            self._set_status("Destaques de busca limpos.")
+            self._set_status("Destaque da busca removido.")
 
     def _build_search_matches(self) -> list[str]:
         if self.txt_in is None:
@@ -482,19 +486,20 @@ class TexpadController:
         if self.txt_in is None:
             return
 
-        matches = self._build_search_matches()
+        matches = self._ensure_search_matches()
         if not matches:
             messagebox.showinfo(APP_NAME, "Texto não encontrado.")
             self._set_status("Texto não encontrado.")
             return
 
-        cursor = self.txt_in.index("insert")
-        chosen = 0
-        for i, pos in enumerate(matches):
-            if self.txt_in.compare(pos, ">=", cursor):
-                chosen = i
+        insert_index = self.txt_in.index("insert")
+        target_idx = 0
+        for idx, pos in enumerate(matches):
+            if self.txt_in.compare(pos, ">=", insert_index):
+                target_idx = idx
                 break
-        self._set_current_match(chosen)
+
+        self._set_current_match(target_idx)
 
     def find_next(self, _event=None):
         matches = self._ensure_search_matches()
@@ -522,31 +527,25 @@ class TexpadController:
         if self.txt_in is None:
             return
 
-        pattern = self.find_var.get()
-        if not pattern:
-            messagebox.showwarning(APP_NAME, "Informe o texto que deseja localizar.")
-            return
-
         matches = self._ensure_search_matches()
         if not matches:
-            messagebox.showinfo(APP_NAME, "Texto não encontrado.")
-            self._set_status("Texto não encontrado.")
-            return
+            self.find_next_from_cursor()
+            matches = self._ensure_search_matches()
+            if not matches:
+                return
 
         if self._search_current_idx < 0:
             self._set_current_match(0)
 
         pos = self._search_matches[self._search_current_idx]
+        pattern = self.find_var.get()
+        replacement = self.replace_var.get()
         end = f"{pos}+{len(pattern)}c"
-        self.txt_in.delete(pos, end)
-        self.txt_in.insert(pos, self.replace_var.get())
 
+        self.txt_in.delete(pos, end)
+        self.txt_in.insert(pos, replacement)
         self._search_dirty = True
-        new_matches = self._build_search_matches()
-        if new_matches:
-            self._set_current_match(min(self._search_current_idx, len(new_matches) - 1))
-        else:
-            self._set_status("Substituição concluída. Não restaram ocorrências.")
+        self.find_next_from_cursor()
 
     def replace_all(self) -> None:
         if self.txt_in is None:
@@ -554,32 +553,22 @@ class TexpadController:
 
         pattern = self.find_var.get()
         if not pattern:
-            messagebox.showwarning(APP_NAME, "Informe o texto que deseja localizar.")
             return
 
-        source = self.txt_in.get("1.0", "end-1c")
         replacement = self.replace_var.get()
-
-        if self.search_match_case_var.get():
-            count = source.count(pattern)
-            if count == 0:
-                messagebox.showinfo(APP_NAME, "Texto não encontrado.")
-                self._set_status("Texto não encontrado.")
-                return
-            result = source.replace(pattern, replacement)
-        else:
-            regex = re.compile(re.escape(pattern), re.IGNORECASE)
-            result, count = regex.subn(replacement, source)
-            if count == 0:
-                messagebox.showinfo(APP_NAME, "Texto não encontrado.")
-                self._set_status("Texto não encontrado.")
-                return
+        content = self.txt_in.get("1.0", "end-1c")
+        flags = 0 if self.search_match_case_var.get() else re.IGNORECASE
+        new_content, count = re.subn(re.escape(pattern), replacement, content, flags=flags)
+        if count == 0:
+            messagebox.showinfo(APP_NAME, "Texto não encontrado.")
+            self._set_status("Texto não encontrado.")
+            return
 
         self.txt_in.delete("1.0", "end")
-        self.txt_in.insert("1.0", result)
+        self.txt_in.insert("1.0", new_content)
         self._search_dirty = True
-        self._build_search_matches()
-        self._set_status(f"Substituir tudo concluído: {count} ocorrência(s) alterada(s).")
+        self.clear_search_highlight(keep_status=True)
+        self._set_status(f"{count} ocorrência(s) substituída(s).")
 
     # ------------------------------------------------------------------
     # File actions
@@ -937,16 +926,16 @@ class TexpadController:
             self.output_dir_var.set(folder)
 
     def update_settings_field_states(self) -> None:
-        ent_output_dir = getattr(self, "ent_output_dir", None)
-        btn_pick_output_dir = getattr(self, "btn_pick_output_dir", None)
-        ent_default_name = getattr(self, "ent_default_name", None)
+        output_locked = self.use_default_output_dir_var.get()
+        list_name_locked = self.use_default_list_name_var.get()
 
-        if ent_output_dir is not None:
-            ent_output_dir.configure(state=("normal" if self.use_default_output_dir_var.get() else "disabled"))
-        if btn_pick_output_dir is not None:
-            btn_pick_output_dir.configure(state=("normal" if self.use_default_output_dir_var.get() else "disabled"))
-        if ent_default_name is not None:
-            ent_default_name.configure(state=("normal" if self.use_default_list_name_var.get() else "disabled"))
+        if self.ent_output_dir is not None:
+            self.ent_output_dir.configure(state=("disabled" if output_locked else "normal"))
+        if self.btn_pick_output_dir is not None:
+            self.btn_pick_output_dir.configure(state=("disabled" if output_locked else "normal"))
+        if self.ent_default_name is not None:
+            self.ent_default_name.configure(state=("disabled" if list_name_locked else "normal"))
+
 
     def _build_size_config_from_ui(self) -> dict:
         cfg = load_size_config()
@@ -1023,7 +1012,7 @@ class TexpadController:
         if old_theme != selected_theme:
             self.apply_theme(selected_theme, persist=False)
         else:
-            #self._apply_runtime_preferences()
+            self._apply_runtime_preferences()
             self._refresh_size_summary()
             self.refresh_home_dashboard()
 
@@ -1067,8 +1056,7 @@ class TexpadController:
     # Runtime preferences
     # ------------------------------------------------------------------
     def _apply_runtime_preferences(self) -> None:
-        if getattr(self, "editor_view", None):
+        if self.editor_view is not None:
             self.editor_view.apply_runtime_preferences()
-
-        if getattr(self, "settings_view", None):
-            self.update_settings_field_states()
+        self.update_settings_field_states()
+        self.refresh_home_dashboard()
