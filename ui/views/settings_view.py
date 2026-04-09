@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from ui import theme
+from ui.widgets import SegmentedControl
 
 
 class SettingsView(tk.Frame):
@@ -14,16 +15,11 @@ class SettingsView(tk.Frame):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.nb = None
-        self.sizes_nb = None
+        self.main_sections: dict[str, tk.Frame] = {}
+        self.size_sections: dict[str, tk.Frame] = {}
 
-        self.main_selector_buttons: dict[str, tk.Label] = {}
-        self.main_selector_panels: dict[str, tk.Frame] = {}
-        self.current_main_section: str = "general"
-
-        self.size_selector_buttons: dict[str, tk.Label] = {}
-        self.size_selector_panels: dict[str, tk.Frame] = {}
-        self.current_size_group: str = "male"
+        self.current_main_section = "general"
+        self.current_size_section = "male"
 
         self._build()
 
@@ -35,34 +31,32 @@ class SettingsView(tk.Frame):
         wrap.grid_rowconfigure(1, weight=1)
         wrap.grid_columnconfigure(0, weight=1)
 
-        selector_wrap = tk.Frame(wrap, bg=t.app_bg)
-        selector_wrap.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        for col in range(5):
-            selector_wrap.grid_columnconfigure(col, weight=1)
+        self.main_selector = SegmentedControl(
+            wrap,
+            items=[
+                ("general", "Geral"),
+                ("output", "Saída"),
+                ("json", "JSON"),
+                ("sizes", "Tamanhos"),
+                ("appearance", "Aparência"),
+            ],
+            command=self._select_main_section,
+            selected_key="general",
+        )
+        self.main_selector.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
-        sections = [
-            ("general", "Geral"),
-            ("output", "Saída"),
-            ("json", "JSON"),
-            ("sizes", "Tamanhos"),
-            ("appearance", "Aparência"),
-        ]
+        self.content_host = tk.Frame(wrap, bg=t.app_bg)
+        self.content_host.grid(row=1, column=0, sticky="nsew")
+        self.content_host.grid_rowconfigure(0, weight=1)
+        self.content_host.grid_columnconfigure(0, weight=1)
 
-        for col, (section_key, title) in enumerate(sections):
-            self._create_main_selector_button(selector_wrap, section_key, title, col)
+        self.tab_general = tk.Frame(self.content_host, bg=t.app_bg)
+        self.tab_output = tk.Frame(self.content_host, bg=t.app_bg)
+        self.tab_json = tk.Frame(self.content_host, bg=t.app_bg)
+        self.tab_sizes = tk.Frame(self.content_host, bg=t.app_bg)
+        self.tab_appearance = tk.Frame(self.content_host, bg=t.app_bg)
 
-        content_wrap = tk.Frame(wrap, bg=t.app_bg)
-        content_wrap.grid(row=1, column=0, sticky="nsew")
-        content_wrap.grid_rowconfigure(0, weight=1)
-        content_wrap.grid_columnconfigure(0, weight=1)
-
-        self.tab_general = tk.Frame(content_wrap, bg=t.app_bg)
-        self.tab_output = tk.Frame(content_wrap, bg=t.app_bg)
-        self.tab_json = tk.Frame(content_wrap, bg=t.app_bg)
-        self.tab_sizes = tk.Frame(content_wrap, bg=t.app_bg)
-        self.tab_appearance = tk.Frame(content_wrap, bg=t.app_bg)
-
-        self.main_selector_panels = {
+        self.main_sections = {
             "general": self.tab_general,
             "output": self.tab_output,
             "json": self.tab_json,
@@ -98,7 +92,7 @@ class SettingsView(tk.Frame):
             command=self.controller.save_settings_from_ui,
         ).pack(side="right")
 
-        self._select_main_section("general")
+        self._show_main_section("general")
 
     # ------------------------------------------------------------------
     # Helpers
@@ -111,126 +105,30 @@ class SettingsView(tk.Frame):
         inner.pack(fill="both", expand=True, padx=12, pady=12)
         return box, inner
 
-    def _create_main_selector_button(
-        self,
-        parent: tk.Misc,
-        section_key: str,
-        title: str,
-        column: int,
-    ) -> None:
-        t = theme.active_theme()
-
-        btn = tk.Label(
-            parent,
-            text=title,
-            bg=t.panel_alt,
-            fg=t.text_muted,
-            bd=1,
-            relief="solid",
-            cursor="hand2",
-            font=(theme.FONT_FAMILY, 10),
-            padx=12,
-            pady=8,
-        )
-        btn.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else 6, 0))
-
-        btn.bind("<Button-1>", lambda _e, key=section_key: self._select_main_section(key))
-        btn.bind("<Enter>", lambda _e, key=section_key: self._hover_main_section(key, True))
-        btn.bind("<Leave>", lambda _e, key=section_key: self._hover_main_section(key, False))
-
-        self.main_selector_buttons[section_key] = btn
-
     def _select_main_section(self, section_key: str) -> None:
-        t = theme.active_theme()
         self.current_main_section = section_key
+        self._show_main_section(section_key)
 
-        for key, btn in self.main_selector_buttons.items():
-            selected = key == section_key
-            btn.configure(
-                bg=t.primary if selected else t.panel_alt,
-                fg="#FFFFFF" if selected else t.text_muted,
-                relief="solid",
-                bd=1,
-            )
-
-        for key, panel in self.main_selector_panels.items():
+    def _show_main_section(self, section_key: str) -> None:
+        for panel in self.main_sections.values():
             panel.grid_forget()
-            if key == section_key:
-                panel.grid(row=0, column=0, sticky="nsew")
 
-    def _hover_main_section(self, section_key: str, hovering: bool) -> None:
-        t = theme.active_theme()
+        panel = self.main_sections[section_key]
+        panel.grid(row=0, column=0, sticky="nsew")
 
-        if section_key == self.current_main_section:
-            return
+    def _select_size_section(self, section_key: str) -> None:
+        self.current_size_section = section_key
+        self._show_size_section(section_key)
 
-        btn = self.main_selector_buttons[section_key]
-        btn.configure(
-            bg=t.panel_hover if hovering else t.panel_alt,
-            fg=t.text if hovering else t.text_muted,
-        )
-
-    def _create_size_selector_button(
-        self,
-        parent: tk.Misc,
-        group_key: str,
-        title: str,
-        column: int,
-    ) -> None:
-        t = theme.active_theme()
-
-        btn = tk.Label(
-            parent,
-            text=title,
-            bg=t.panel_alt,
-            fg=t.text_muted,
-            bd=1,
-            relief="solid",
-            cursor="hand2",
-            font=(theme.FONT_FAMILY, 10),
-            padx=12,
-            pady=8,
-        )
-        btn.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else 6, 0))
-
-        btn.bind("<Button-1>", lambda _e, key=group_key: self._select_size_group(key))
-        btn.bind("<Enter>", lambda _e, key=group_key: self._hover_size_group(key, True))
-        btn.bind("<Leave>", lambda _e, key=group_key: self._hover_size_group(key, False))
-
-        self.size_selector_buttons[group_key] = btn
-
-    def _select_size_group(self, group_key: str) -> None:
-        t = theme.active_theme()
-        self.current_size_group = group_key
-
-        for key, btn in self.size_selector_buttons.items():
-            selected = key == group_key
-            btn.configure(
-                bg=t.primary if selected else t.panel_alt,
-                fg="#FFFFFF" if selected else t.text_muted,
-                relief="solid",
-                bd=1,
-            )
-
-        for key, panel in self.size_selector_panels.items():
+    def _show_size_section(self, section_key: str) -> None:
+        for panel in self.size_sections.values():
             panel.pack_forget()
-            if key == group_key:
-                panel.pack(fill="both", expand=True)
 
-    def _hover_size_group(self, group_key: str, hovering: bool) -> None:
-        t = theme.active_theme()
-
-        if group_key == self.current_size_group:
-            return
-
-        btn = self.size_selector_buttons[group_key]
-        btn.configure(
-            bg=t.panel_hover if hovering else t.panel_alt,
-            fg=t.text if hovering else t.text_muted,
-        )
+        panel = self.size_sections[section_key]
+        panel.pack(fill="both", expand=True)
 
     # ------------------------------------------------------------------
-    # Tabs / Sections
+    # Geral
     # ------------------------------------------------------------------
     def _build_general_tab(self) -> None:
         t = theme.active_theme()
@@ -252,7 +150,11 @@ class SettingsView(tk.Frame):
         self.cmb_default_case.grid(row=0, column=1, sticky="w")
 
         ttk.Label(inner_text, text="Separador padrão da entrada").grid(
-            row=1, column=0, sticky="w", padx=(0, 6), pady=(10, 0)
+            row=1,
+            column=0,
+            sticky="w",
+            padx=(0, 6),
+            pady=(10, 0),
         )
         self.ent_default_separator = ttk.Entry(
             inner_text,
@@ -262,7 +164,11 @@ class SettingsView(tk.Frame):
         self.ent_default_separator.grid(row=1, column=1, sticky="w", pady=(10, 0))
 
         ttk.Label(inner_text, text='Use "\\t" para tab').grid(
-            row=1, column=2, sticky="w", padx=(8, 0), pady=(10, 0)
+            row=1,
+            column=2,
+            sticky="w",
+            padx=(8, 0),
+            pady=(10, 0),
         )
 
         _, inner_notes = self._make_section(container, "Observações")
@@ -274,13 +180,16 @@ class SettingsView(tk.Frame):
                 "• Campos de tamanho continuam sempre em maiúsculas.\n"
                 "• O separador padrão afeta a leitura da entrada."
             ),
-            bg=theme.active_theme().panel_bg,
-            fg=theme.active_theme().text_muted,
+            bg=t.panel_bg,
+            fg=t.text_muted,
             justify="left",
             anchor="w",
             font=(theme.FONT_FAMILY, 10),
         ).pack(anchor="w")
 
+    # ------------------------------------------------------------------
+    # Saída
+    # ------------------------------------------------------------------
     def _build_output_tab(self) -> None:
         t = theme.active_theme()
         container = tk.Frame(self.tab_output, bg=t.app_bg)
@@ -296,7 +205,12 @@ class SettingsView(tk.Frame):
             command=self.controller.update_settings_field_states,
         ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
-        ttk.Label(inner_output, text="Pasta padrão").grid(row=1, column=0, sticky="w", padx=(0, 6))
+        ttk.Label(inner_output, text="Pasta padrão").grid(
+            row=1,
+            column=0,
+            sticky="w",
+            padx=(0, 6),
+        )
         self.ent_output_dir = ttk.Entry(
             inner_output,
             textvariable=self.controller.output_dir_var,
@@ -318,7 +232,12 @@ class SettingsView(tk.Frame):
             command=self.controller.update_settings_field_states,
         ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(12, 8))
 
-        ttk.Label(inner_output, text="Nome padrão").grid(row=3, column=0, sticky="w", padx=(0, 6))
+        ttk.Label(inner_output, text="Nome padrão").grid(
+            row=3,
+            column=0,
+            sticky="w",
+            padx=(0, 6),
+        )
         self.ent_default_name = ttk.Entry(
             inner_output,
             textvariable=self.controller.default_list_name_var,
@@ -326,6 +245,9 @@ class SettingsView(tk.Frame):
         )
         self.ent_default_name.grid(row=3, column=1, sticky="w")
 
+    # ------------------------------------------------------------------
+    # JSON
+    # ------------------------------------------------------------------
     def _build_json_tab(self) -> None:
         t = theme.active_theme()
         container = tk.Frame(self.tab_json, bg=t.app_bg)
@@ -335,7 +257,7 @@ class SettingsView(tk.Frame):
 
         ttk.Checkbutton(
             inner_json,
-            text="Mostrar aba de JSON",
+            text="Mostrar área de JSON",
             variable=self.controller.show_json_tab_var,
         ).pack(anchor="w", pady=(0, 4))
 
@@ -351,46 +273,50 @@ class SettingsView(tk.Frame):
             variable=self.controller.show_copy_json_button_var,
         ).pack(anchor="w", pady=(4, 0))
 
+    # ------------------------------------------------------------------
+    # Tamanhos
+    # ------------------------------------------------------------------
     def _build_sizes_tab(self) -> None:
         t = theme.active_theme()
-
         container = tk.Frame(self.tab_sizes, bg=t.app_bg)
         container.pack(fill="both", expand=True)
 
         outer, outer_inner = self._make_section(container, "Cadastro de tamanhos")
         outer_inner.pack_forget()
 
-        selector_wrap = tk.Frame(outer, bg=t.panel_bg)
-        selector_wrap.pack(fill="x", padx=12, pady=(12, 0))
-
-        selector_wrap.grid_columnconfigure(0, weight=1)
-        selector_wrap.grid_columnconfigure(1, weight=1)
-        selector_wrap.grid_columnconfigure(2, weight=1)
-
-        self.size_selector_buttons = {}
-        self.size_selector_panels = {}
-
-        options = [
-            ("male", "Masculino"),
-            ("female", "Feminino"),
-            ("child", "Infantil"),
-        ]
-
-        for col, (group_key, title) in enumerate(options):
-            self._create_size_selector_button(selector_wrap, group_key, title, col)
+        self.size_selector = SegmentedControl(
+            outer,
+            items=[
+                ("male", "Masculino"),
+                ("female", "Feminino"),
+                ("child", "Infantil"),
+            ],
+            command=self._select_size_section,
+            selected_key="male",
+        )
+        self.size_selector.pack(fill="x", padx=12, pady=(12, 0))
 
         content_wrap = tk.Frame(outer, bg=t.panel_bg)
         content_wrap.pack(fill="both", expand=True, padx=12, pady=12)
 
-        for group_key, title in options:
-            panel = tk.Frame(content_wrap, bg=t.panel_bg)
-            self.size_selector_panels[group_key] = panel
-            self._build_single_size_tab(panel, group_key)
+        self.size_male = tk.Frame(content_wrap, bg=t.panel_bg)
+        self.size_female = tk.Frame(content_wrap, bg=t.panel_bg)
+        self.size_child = tk.Frame(content_wrap, bg=t.panel_bg)
 
-        self._select_size_group("male")
+        self.size_sections = {
+            "male": self.size_male,
+            "female": self.size_female,
+            "child": self.size_child,
+        }
+
+        self._build_single_size_tab(self.size_male, "male")
+        self._build_single_size_tab(self.size_female, "female")
+        self._build_single_size_tab(self.size_child, "child")
+
+        self._show_size_section("male")
 
         notes = tk.Frame(container, bg=t.app_bg)
-        notes.pack(fill="both", expand=True, pady=(10, 0))
+        notes.pack(fill="x", pady=(10, 0))
 
         _, inner_notes = self._make_section(notes, "Observações")
 
@@ -402,8 +328,8 @@ class SettingsView(tk.Frame):
                 "Suffixes = sufixos\n"
                 "Os campos de tamanho permanecem sempre em maiúsculas."
             ),
-            bg=theme.active_theme().panel_bg,
-            fg=theme.active_theme().text_muted,
+            bg=t.panel_bg,
+            fg=t.text_muted,
             justify="left",
             anchor="w",
             font=(theme.FONT_FAMILY, 10),
@@ -412,8 +338,8 @@ class SettingsView(tk.Frame):
         tk.Label(
             inner_notes,
             textvariable=self.controller.size_summary_var,
-            bg=theme.active_theme().panel_bg,
-            fg=theme.active_theme().text,
+            bg=t.panel_bg,
+            fg=t.text,
             justify="left",
             anchor="w",
             font=(theme.FONT_FAMILY, 9),
@@ -426,27 +352,47 @@ class SettingsView(tk.Frame):
         wrap.pack(fill="both", expand=True, padx=16, pady=16)
         wrap.grid_columnconfigure(1, weight=1)
 
-        ttk.Label(wrap, text="Tamanhos-base").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+        ttk.Label(wrap, text="Tamanhos-base").grid(
+            row=0,
+            column=0,
+            sticky="w",
+            padx=(0, 8),
+            pady=(0, 8),
+        )
         ttk.Entry(
             wrap,
             textvariable=vars_map["base_sizes"],
             width=60,
         ).grid(row=0, column=1, sticky="ew", pady=(0, 8))
 
-        ttk.Label(wrap, text="Prefixos").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+        ttk.Label(wrap, text="Prefixos").grid(
+            row=1,
+            column=0,
+            sticky="w",
+            padx=(0, 8),
+            pady=(0, 8),
+        )
         ttk.Entry(
             wrap,
             textvariable=vars_map["prefixes"],
             width=60,
         ).grid(row=1, column=1, sticky="ew", pady=(0, 8))
 
-        ttk.Label(wrap, text="Sufixos").grid(row=2, column=0, sticky="w", padx=(0, 8))
+        ttk.Label(wrap, text="Sufixos").grid(
+            row=2,
+            column=0,
+            sticky="w",
+            padx=(0, 8),
+        )
         ttk.Entry(
             wrap,
             textvariable=vars_map["suffixes"],
             width=60,
         ).grid(row=2, column=1, sticky="ew")
 
+    # ------------------------------------------------------------------
+    # Aparência
+    # ------------------------------------------------------------------
     def _build_appearance_tab(self) -> None:
         t = theme.active_theme()
         container = tk.Frame(self.tab_appearance, bg=t.app_bg)
@@ -454,7 +400,12 @@ class SettingsView(tk.Frame):
 
         _, inner_appearance = self._make_section(container, "Tema da interface")
 
-        ttk.Label(inner_appearance, text="Tema").grid(row=0, column=0, sticky="w", padx=(0, 8))
+        ttk.Label(inner_appearance, text="Tema").grid(
+            row=0,
+            column=0,
+            sticky="w",
+            padx=(0, 8),
+        )
         self.cmb_theme = ttk.Combobox(
             inner_appearance,
             textvariable=self.controller.theme_name_var,
@@ -471,11 +422,11 @@ class SettingsView(tk.Frame):
         tk.Label(
             inner_appearance,
             text=(
-                "Você pode manter o tema atual do Texpad ou usar um tema inspirado "
+                "Você pode manter o tema atual do programa ou usar um tema inspirado "
                 "na interface do SisBolt."
             ),
-            bg=theme.active_theme().panel_bg,
-            fg=theme.active_theme().text_muted,
+            bg=t.panel_bg,
+            fg=t.text_muted,
             justify="left",
             anchor="w",
             font=(theme.FONT_FAMILY, 10),
@@ -494,3 +445,9 @@ class SettingsView(tk.Frame):
 
     def refresh(self) -> None:
         self.controller.refresh_home_dashboard()
+
+    def refresh_theme(self) -> None:
+        t = theme.active_theme()
+        self.configure(bg=t.app_bg)
+        self.main_selector.refresh_theme()
+        self.size_selector.refresh_theme()

@@ -152,21 +152,26 @@ class TexpadController:
         self.shell = shell
 
     def attach_views(self, *, home_view=None, editor_view=None, settings_view=None) -> None:
-        self.home_view = home_view
-        self.editor_view = editor_view
-        self.settings_view = settings_view
+        if home_view is not None:
+            self.home_view = home_view
+
+        if editor_view is not None:
+            self.editor_view = editor_view
+
+        if settings_view is not None:
+            self.settings_view = settings_view
 
     def bind_editor_widgets(
         self,
         *,
-        txt_in: tk.Text,
-        txt_out: tk.Text,
-        txt_json: tk.Text,
-        notebook: ttk.Notebook,
+        txt_in,
+        txt_out,
+        txt_json,
+        notebook,
         tab_list,
         tab_json,
-        ent_find: ttk.Entry | None = None,
-        ent_replace: ttk.Entry | None = None,
+        ent_find=None,
+        ent_replace=None,
     ) -> None:
         self.txt_in = txt_in
         self.txt_out = txt_out
@@ -180,6 +185,7 @@ class TexpadController:
         self._set_text_readonly(self.txt_json, True)
         self._configure_tags()
         self._bind_editor_events()
+        self.update_settings_field_states()
 
         if not self.txt_in.get("1.0", "end-1c").strip():
             self.txt_in.insert(
@@ -207,57 +213,32 @@ class TexpadController:
     # ------------------------------------------------------------------
     # Theme
     # ------------------------------------------------------------------
-    def apply_theme(self, theme_name: str | None = None, *, persist: bool = False) -> None:
-        if self._theme_switch_in_progress:
-            return
-
-        selected = theme_name or self.theme_name_var.get()
-        if selected not in theme.THEMES:
-            selected = theme.DEFAULT_THEME_NAME
-
-        current = self.cfg.get("theme_name", theme.DEFAULT_THEME_NAME)
-        self.theme_name_var.set(selected)
+    def apply_theme(self, theme_name: str, *, persist: bool = True) -> None:
+        self.theme_name_var.set(theme_name)
 
         if persist:
-            self.cfg["theme_name"] = selected
-            save_config(self.cfg)
+            self.config.theme_name = theme_name
+            self.config.save()
 
-        if current == selected and not persist:
-            return
+        if getattr(self, "shell", None):
+            self.shell.rebuild_theme()
 
-        self._theme_switch_in_progress = True
-        try:
-            theme.set_active_theme(selected)
-            theme.apply_ttk_theme(theme_name=selected)
+        # ------------------------------------------------------------------
+        # Navigation / page context
+        # ------------------------------------------------------------------
+        def show_screen(self, key: str) -> None:
+            if self.shell is not None:
+                self.shell.show_screen(key)
 
-            try:
-                self.root.configure(bg=theme.active_theme().app_bg)
-            except Exception:
-                pass
-
-            if self.shell is not None and hasattr(self.shell, "rebuild_theme"):
-                self.shell.rebuild_theme()
-
-            self.cfg["theme_name"] = selected
-        finally:
-            self._theme_switch_in_progress = False
-
-    # ------------------------------------------------------------------
-    # Navigation / page context
-    # ------------------------------------------------------------------
-    def show_screen(self, key: str) -> None:
-        if self.shell is not None:
-            self.shell.show_screen(key)
-
-    def update_top_action_for_screen(self, key: str) -> None:
-        self.top_action_var.set("")
-        titles = {
-            "home": "Home",
-            "editor": "Editor",
-            "settings": "Configurações",
-            "manual": "Manual",
-        }
-        self.page_title_var.set(titles.get(key, APP_NAME))
+        def update_top_action_for_screen(self, key: str) -> None:
+            self.top_action_var.set("")
+            titles = {
+                "home": "Home",
+                "editor": "Editor",
+                "settings": "Configurações",
+                "manual": "Manual",
+            }
+            self.page_title_var.set(titles.get(key, APP_NAME))
 
     # ------------------------------------------------------------------
     # Init helpers
@@ -1042,7 +1023,7 @@ class TexpadController:
         if old_theme != selected_theme:
             self.apply_theme(selected_theme, persist=False)
         else:
-            self._apply_runtime_preferences()
+            #self._apply_runtime_preferences()
             self._refresh_size_summary()
             self.refresh_home_dashboard()
 
@@ -1086,7 +1067,8 @@ class TexpadController:
     # Runtime preferences
     # ------------------------------------------------------------------
     def _apply_runtime_preferences(self) -> None:
-        if self.editor_view is not None and hasattr(self.editor_view, "apply_runtime_preferences"):
+        if getattr(self, "editor_view", None):
             self.editor_view.apply_runtime_preferences()
-        self.update_settings_field_states()
-        self.refresh_home_dashboard()
+
+        if getattr(self, "settings_view", None):
+            self.update_settings_field_states()
