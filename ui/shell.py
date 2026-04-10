@@ -140,9 +140,6 @@ class TexpadShell(tk.Frame):
         self.topbar_left = tk.Frame(self.topbar, bg=t.topbar_bg)
         self.topbar_left.pack(side="left", fill="y", padx=14)
 
-        self.topbar_right = tk.Frame(self.topbar, bg=t.topbar_bg)
-        self.topbar_right.pack(side="right", fill="y", padx=14)
-
         self.title_var = tk.StringVar(value="Editor")
 
         tk.Label(
@@ -153,15 +150,6 @@ class TexpadShell(tk.Frame):
             font=(theme.FONT_FAMILY, 13, "bold"),
             anchor="w",
         ).pack(side="left", fill="y")
-
-        tk.Label(
-            self.topbar_right,
-            textvariable=self.controller.current_file_var,
-            bg=t.topbar_bg,
-            fg=t.text_muted,
-            font=(theme.FONT_FAMILY, 9),
-            anchor="e",
-        ).pack(side="right", fill="y")
 
     # ------------------------------------------------------------------
     # Views
@@ -215,9 +203,6 @@ class TexpadShell(tk.Frame):
     # ------------------------------------------------------------------
     def rebuild_theme(self) -> None:
         current_screen = self.current_screen
-
-        t = theme.active_theme()
-        self.configure(bg=t.app_bg)
 
         self.sidebar.destroy()
         self.topbar.destroy()

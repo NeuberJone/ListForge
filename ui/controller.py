@@ -71,25 +71,25 @@ class TexpadController:
         self._theme_switch_in_progress = False
 
         self.shell = None
-        self.home_view = None
         self.editor_view = None
         self.settings_view = None
 
         self.txt_in: tk.Text | None = None
         self.txt_out: tk.Text | None = None
         self.txt_json: tk.Text | None = None
-        self.outputs_nb: ttk.Notebook | None = None
+        self.outputs_nb = None
         self.tab_list = None
         self.tab_json = None
         self.ent_find: ttk.Entry | None = None
         self.ent_replace: ttk.Entry | None = None
+
         self.ent_output_dir: ttk.Entry | None = None
         self.btn_pick_output_dir: ttk.Button | None = None
         self.ent_default_name: ttk.Entry | None = None
 
         self.current_file_var = tk.StringVar(value="Arquivo atual: (nova lista)")
         self.status_var = tk.StringVar(value="Pronto.")
-        self.page_title_var = tk.StringVar(value="Home")
+        self.page_title_var = tk.StringVar(value="Editor")
         self.clock_var = tk.StringVar(value="")
         self.top_action_var = tk.StringVar(value="")
         self.size_summary_var = tk.StringVar(value="")
@@ -124,22 +124,12 @@ class TexpadController:
 
         self.theme_name_var = tk.StringVar(value=self.cfg.get("theme_name", theme.DEFAULT_THEME_NAME))
 
-        self.home_input_lines_var = tk.StringVar(value="0")
-        self.home_output_lines_var = tk.StringVar(value="0")
-        self.home_sizes_total_var = tk.StringVar(value="0")
-        self.home_json_status_var = tk.StringVar(value="Oculto")
-        self.home_current_file_var = tk.StringVar(value="Nenhum arquivo aberto")
-        self.home_mode_var = tk.StringVar(value="Original")
-        self.home_separator_var = tk.StringVar(value=",")
-        self.home_output_policy_var = tk.StringVar(value="Escolher ao salvar")
-
         self.size_group_vars: dict[str, dict[str, tk.StringVar]] = {}
         self._init_size_group_vars()
         self._load_last_opened_file_label()
         self._refresh_size_summary()
 
         theme.set_active_theme(self.theme_name_var.get())
-
 
     # ------------------------------------------------------------------
     # Public helpers
@@ -155,9 +145,7 @@ class TexpadController:
     def attach_shell(self, shell) -> None:
         self.shell = shell
 
-    def attach_views(self, *, home_view=None, editor_view=None, settings_view=None) -> None:
-        if home_view is not None:
-            self.home_view = home_view
+    def attach_views(self, *, editor_view=None, settings_view=None) -> None:
         if editor_view is not None:
             self.editor_view = editor_view
         if settings_view is not None:
@@ -169,7 +157,7 @@ class TexpadController:
         txt_in: tk.Text,
         txt_out: tk.Text,
         txt_json: tk.Text,
-        notebook: ttk.Notebook,
+        notebook,
         tab_list,
         tab_json,
         ent_find: ttk.Entry | None = None,
@@ -198,8 +186,6 @@ class TexpadController:
                 "JUACA,JUSÉ,PP\n",
             )
 
-        self.refresh_home_dashboard()
-
     def bind_settings_widgets(
         self,
         *,
@@ -218,15 +204,15 @@ class TexpadController:
     def apply_theme(self, theme_name: str | None = None, *, persist: bool = False) -> None:
         selected = theme_name or self.theme_name_var.get()
         self.theme_name_var.set(selected)
-        theme.set_active_theme(selected)
 
         if persist:
             self.cfg["theme_name"] = selected
             save_config(self.cfg)
 
+        theme.set_active_theme(selected)
+
         if self.shell is not None:
             self.shell.rebuild_theme()
-        self.theme_runtime.apply_theme(theme_name or self.theme_name_var.get(), persist=persist)
 
     # ------------------------------------------------------------------
     # Navigation / page context
@@ -238,7 +224,6 @@ class TexpadController:
     def update_top_action_for_screen(self, key: str) -> None:
         self.top_action_var.set("")
         titles = {
-            "home": "Home",
             "editor": "Editor",
             "settings": "Configurações",
             "manual": "Manual",
@@ -276,7 +261,6 @@ class TexpadController:
     # ------------------------------------------------------------------
     def _set_status(self, text: str) -> None:
         self.status_var.set(text)
-        self.refresh_home_dashboard()
 
     def _set_text_readonly(self, txt: tk.Text | None, readonly: bool) -> None:
         if txt is not None:
@@ -332,7 +316,7 @@ class TexpadController:
         return CASE_LABEL_TO_VALUE.get(self.default_case_label_var.get(), "original")
 
     # ------------------------------------------------------------------
-    # Home / summary
+    # Summary
     # ------------------------------------------------------------------
     def _refresh_size_summary(self) -> None:
         male_sizes = build_group_sizes(self.size_cfg["groups"][GROUP_MALE])
@@ -352,25 +336,6 @@ class TexpadController:
             f"• Feminino: {', '.join(female_sizes) if female_sizes else '(nenhum)'}\n"
             f"• Infantil: {', '.join(child_sizes) if child_sizes else '(nenhum)'}\n"
             f"• Total: {len(total_sizes)}"
-        )
-
-    def refresh_home_dashboard(self) -> None:
-        input_lines = 0
-        output_lines = 0
-
-        if self.txt_in is not None:
-            input_lines = len([ln for ln in self.txt_in.get("1.0", "end-1c").splitlines() if ln.strip()])
-        if self.txt_out is not None:
-            output_lines = len([ln for ln in self.txt_out.get("1.0", "end-1c").splitlines() if ln.strip()])
-
-        self.home_input_lines_var.set(str(input_lines))
-        self.home_output_lines_var.set(str(output_lines))
-        self.home_json_status_var.set("Ativo" if self.show_json_tab_var.get() else "Oculto")
-        self.home_current_file_var.set(self.current_file.name if self.current_file else "Nenhum arquivo aberto")
-        self.home_mode_var.set(self.editor_case_label_var.get())
-        self.home_separator_var.set(separator_label(self.editor_separator_var.get()))
-        self.home_output_policy_var.set(
-            "Pasta padrão" if self.use_default_output_dir_var.get() else "Escolher ao salvar"
         )
 
     # ------------------------------------------------------------------
@@ -416,7 +381,6 @@ class TexpadController:
         if self.txt_in is not None and self.txt_in.edit_modified():
             self._search_dirty = True
             self.txt_in.edit_modified(False)
-            self.refresh_home_dashboard()
 
     def _on_search_param_changed(self, *_args) -> None:
         self._search_dirty = True
@@ -486,20 +450,26 @@ class TexpadController:
         if self.txt_in is None:
             return
 
-        matches = self._ensure_search_matches()
-        if not matches:
+        pattern = self.find_var.get()
+        if not pattern:
+            self._set_status("Informe um texto para localizar.")
+            return
+
+        self._build_search_matches()
+        if not self._search_matches:
             messagebox.showinfo(APP_NAME, "Texto não encontrado.")
             self._set_status("Texto não encontrado.")
             return
 
-        insert_index = self.txt_in.index("insert")
-        target_idx = 0
-        for idx, pos in enumerate(matches):
-            if self.txt_in.compare(pos, ">=", insert_index):
-                target_idx = idx
+        insert_idx = self.txt_in.index("insert")
+        next_idx = 0
+
+        for i, pos in enumerate(self._search_matches):
+            if self.txt_in.compare(pos, ">=", insert_idx):
+                next_idx = i
                 break
 
-        self._set_current_match(target_idx)
+        self._set_current_match(next_idx)
 
     def find_next(self, _event=None):
         matches = self._ensure_search_matches()
@@ -529,23 +499,19 @@ class TexpadController:
 
         matches = self._ensure_search_matches()
         if not matches:
-            self.find_next_from_cursor()
-            matches = self._ensure_search_matches()
-            if not matches:
-                return
+            self._set_status("Nada para substituir.")
+            return
 
-        if self._search_current_idx < 0:
-            self._set_current_match(0)
-
-        pos = self._search_matches[self._search_current_idx]
-        pattern = self.find_var.get()
-        replacement = self.replace_var.get()
-        end = f"{pos}+{len(pattern)}c"
+        replace_text = self.replace_var.get()
+        pos = self._search_matches[self._search_current_idx if self._search_current_idx >= 0 else 0]
+        end = f"{pos}+{len(self.find_var.get())}c"
 
         self.txt_in.delete(pos, end)
-        self.txt_in.insert(pos, replacement)
+        self.txt_in.insert(pos, replace_text)
+
         self._search_dirty = True
         self.find_next_from_cursor()
+        self._set_status("Ocorrência substituída.")
 
     def replace_all(self) -> None:
         if self.txt_in is None:
@@ -553,19 +519,25 @@ class TexpadController:
 
         pattern = self.find_var.get()
         if not pattern:
+            self._set_status("Informe um texto para substituir.")
             return
 
-        replacement = self.replace_var.get()
-        content = self.txt_in.get("1.0", "end-1c")
-        flags = 0 if self.search_match_case_var.get() else re.IGNORECASE
-        new_content, count = re.subn(re.escape(pattern), replacement, content, flags=flags)
+        text = self.txt_in.get("1.0", "end-1c")
+        replace_text = self.replace_var.get()
+
+        if self.search_match_case_var.get():
+            count = text.count(pattern)
+            new_text = text.replace(pattern, replace_text)
+        else:
+            regex = re.compile(re.escape(pattern), flags=re.IGNORECASE)
+            new_text, count = regex.subn(replace_text, text)
+
         if count == 0:
-            messagebox.showinfo(APP_NAME, "Texto não encontrado.")
-            self._set_status("Texto não encontrado.")
+            self._set_status("Nenhuma ocorrência encontrada para substituir.")
             return
 
         self.txt_in.delete("1.0", "end")
-        self.txt_in.insert("1.0", new_content)
+        self.txt_in.insert("1.0", new_text)
         self._search_dirty = True
         self.clear_search_highlight(keep_status=True)
         self._set_status(f"{count} ocorrência(s) substituída(s).")
@@ -926,16 +898,15 @@ class TexpadController:
             self.output_dir_var.set(folder)
 
     def update_settings_field_states(self) -> None:
-        output_locked = self.use_default_output_dir_var.get()
-        list_name_locked = self.use_default_list_name_var.get()
+        output_enabled = not self.use_default_output_dir_var.get()
+        name_enabled = not self.use_default_list_name_var.get()
 
         if self.ent_output_dir is not None:
-            self.ent_output_dir.configure(state=("disabled" if output_locked else "normal"))
+            self.ent_output_dir.configure(state="normal" if output_enabled else "disabled")
         if self.btn_pick_output_dir is not None:
-            self.btn_pick_output_dir.configure(state=("disabled" if output_locked else "normal"))
+            self.btn_pick_output_dir.configure(state="normal" if output_enabled else "disabled")
         if self.ent_default_name is not None:
-            self.ent_default_name.configure(state=("disabled" if list_name_locked else "normal"))
-
+            self.ent_default_name.configure(state="normal" if name_enabled else "disabled")
 
     def _build_size_config_from_ui(self) -> dict:
         cfg = load_size_config()
@@ -1014,7 +985,6 @@ class TexpadController:
         else:
             self._apply_runtime_preferences()
             self._refresh_size_summary()
-            self.refresh_home_dashboard()
 
         self._set_status("Configurações salvas.")
         messagebox.showinfo(APP_NAME, "Configurações salvas com sucesso.")
@@ -1049,7 +1019,6 @@ class TexpadController:
         self.size_cfg = reset_size_config()
         self._load_size_config_into_vars()
         self._refresh_size_summary()
-        self.refresh_home_dashboard()
         self._set_status("Tamanhos restaurados para o padrão.")
 
     # ------------------------------------------------------------------
@@ -1059,4 +1028,3 @@ class TexpadController:
         if self.editor_view is not None:
             self.editor_view.apply_runtime_preferences()
         self.update_settings_field_states()
-        self.refresh_home_dashboard()

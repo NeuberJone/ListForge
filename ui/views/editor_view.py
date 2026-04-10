@@ -61,10 +61,22 @@ class CollapsiblePanel(tk.Frame):
         else:
             self.content.pack_forget()
 
+    def refresh_theme(self) -> None:
+        t = theme.active_theme()
+        self.configure(bg=t.app_bg)
+        self.header.configure(bg=t.panel_bg)
+        self.content.configure(bg=t.panel_bg)
+        self.btn_toggle.configure(
+            bg=t.panel_bg,
+            fg=t.text,
+            activebackground=t.panel_hover,
+            activeforeground=t.text,
+        )
+
 
 class OutputTabsAdapter:
     """
-    Adaptador para manter compatibilidade com o controller atual,
+    Adaptador leve para manter compatibilidade com o controller,
     que ainda espera uma interface parecida com ttk.Notebook.
     """
 
@@ -479,3 +491,5 @@ class EditorView(tk.Frame):
         t = theme.active_theme()
         self.configure(bg=t.app_bg)
         self.output_selector.refresh_theme()
+        self.prepare_panel.refresh_theme()
+        self.search_panel.refresh_theme()

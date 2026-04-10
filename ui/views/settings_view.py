@@ -444,7 +444,7 @@ class SettingsView(tk.Frame):
         )
 
     def refresh(self) -> None:
-        self.controller.refresh_home_dashboard()
+        pass
 
     def refresh_theme(self) -> None:
         t = theme.active_theme()
