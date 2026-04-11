@@ -166,6 +166,23 @@ class EditorView(tk.Frame):
         )
         self.btn_open_input.pack(side="left")
 
+        self.btn_extract_link = tk.Button(
+            files_inner,
+            text="Extrair lista do link",
+            command=self.controller.extract_list_from_link,
+            bg=t.panel_alt,
+            fg=t.text,
+            activebackground=t.panel_hover,
+            activeforeground=t.text,
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=(theme.FONT_FAMILY, 10),
+            padx=12,
+            pady=7,
+        )
+        self.btn_extract_link.pack(side="left", padx=(6, 0))
+
         self.btn_save_input = tk.Button(
             files_inner,
             text="Salvar Entrada",

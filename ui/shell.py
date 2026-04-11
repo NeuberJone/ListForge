@@ -110,27 +110,6 @@ class TexpadShell(tk.Frame):
             btn.pack(fill="x", pady=3)
             self.sidebar_buttons[key] = btn
 
-        footer = tk.Frame(self.sidebar, bg=t.sidebar_bg)
-        footer.pack(side="bottom", fill="x", padx=12, pady=12)
-
-        tk.Label(
-            footer,
-            text="Tema ativo",
-            bg=t.sidebar_bg,
-            fg=t.text_muted,
-            font=(theme.FONT_FAMILY, 9),
-            anchor="w",
-        ).pack(fill="x")
-
-        tk.Label(
-            footer,
-            textvariable=self.controller.theme_name_var,
-            bg=t.sidebar_bg,
-            fg=t.text,
-            font=(theme.FONT_FAMILY, 10, "bold"),
-            anchor="w",
-        ).pack(fill="x", pady=(2, 0))
-
     # ------------------------------------------------------------------
     # Topbar
     # ------------------------------------------------------------------

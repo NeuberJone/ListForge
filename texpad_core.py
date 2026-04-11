@@ -25,6 +25,20 @@ BASE_JSON = {
     "unique_nickname_chars": "",
 }
 
+JSON_IMPORT_FIELD_ORDER = [
+    "Name",
+    "Number",
+    "ShortSleeve",
+    "LongSleeve",
+    "Short",
+    "Pants",
+    "Tanktop",
+    "Vest",
+    "Nickname",
+    "BloodType",
+]
+JSON_IMPORT_MANDATORY_FIELDS = {"Name", "Number"}
+
 
 @dataclass(frozen=True)
 class ParsedRow:
@@ -114,6 +128,73 @@ def clean_text_by_separator(text: str, separator: str) -> str:
         cleaned_lines.append(sep.join(parts))
 
     return "\n".join(cleaned_lines)
+
+
+def _normalize_json_import_value(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).replace("\r", "").replace("\n", " ").strip()
+
+
+def _decide_effective_json_import_fields(orders: list[dict[str, Any]]) -> list[str]:
+    present: set[str] = set()
+
+    for entry in orders:
+        for key in JSON_IMPORT_FIELD_ORDER:
+            if key in JSON_IMPORT_MANDATORY_FIELDS:
+                continue
+            if _normalize_json_import_value(entry.get(key, "")):
+                present.add(key)
+
+    return [
+        key
+        for key in JSON_IMPORT_FIELD_ORDER
+        if key in JSON_IMPORT_MANDATORY_FIELDS or key in present
+    ]
+
+
+def extract_list_text_from_json_data(data: Any, *, output_separator: str = ",") -> str:
+    if isinstance(data, list):
+        orders = data
+    elif isinstance(data, dict):
+        orders = data.get("orders", [])
+    else:
+        raise ValueError("A resposta precisa ser um objeto com 'orders' ou uma lista de pedidos.")
+
+    if not isinstance(orders, list):
+        raise ValueError("Campo 'orders' inválido (não é lista).")
+
+    effective_fields = _decide_effective_json_import_fields(orders)
+    lines: list[str] = []
+
+    for entry in orders:
+        if not isinstance(entry, dict):
+            raise ValueError("Cada item de 'orders' precisa ser um objeto JSON.")
+
+        row_values = [
+            _normalize_json_import_value(entry.get(field, ""))
+            for field in effective_fields
+        ]
+
+        expanded_rows: list[str] = []
+
+        for idx, value in enumerate(row_values):
+            match = re.fullmatch(r"(\d+)-(.+)", value)
+            if match:
+                qty = int(match.group(1))
+                base_value = match.group(2).strip()
+
+                for _ in range(qty):
+                    new_row = row_values.copy()
+                    new_row[idx] = base_value
+                    expanded_rows.append(output_separator.join(new_row))
+                break
+        else:
+            expanded_rows.append(output_separator.join(row_values))
+
+        lines.extend(expanded_rows)
+
+    return "\n".join(lines)
 
 
 def parse_line(

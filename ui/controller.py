@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
+from urllib import error, request
 
 from texpad_config import (
     APP_NAME,
@@ -22,6 +24,7 @@ from texpad_core import (
     clean_text_by_separator,
     export_json,
     export_output_text,
+    extract_list_text_from_json_data,
     normalize_separator,
     process_text,
     sanitize_base_filename,
@@ -286,6 +289,29 @@ class TexpadController:
     def _default_case_mode(self) -> str:
         return CASE_LABEL_TO_VALUE.get(self.default_case_label_var.get(), "original")
 
+    def _load_json_from_url(self, url: str):
+        text = (url or "").strip()
+
+        if not text:
+            raise ValueError("Informe um link HTTP(S).")
+
+        if not text.lower().startswith(("http://", "https://")):
+            raise ValueError("O link precisa começar com http:// ou https://.")
+
+        try:
+            req = request.Request(
+                text,
+                headers={"User-Agent": f"{APP_NAME}/1.0 (+local)"},
+            )
+            with request.urlopen(req, timeout=20) as response:
+                charset = response.headers.get_content_charset() or "utf-8"
+                body = response.read().decode(charset, errors="replace")
+            return json.loads(body)
+        except error.URLError as exc:
+            raise ValueError(f"Não foi possível acessar o link.\n{exc}") from exc
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"O conteúdo retornado pelo link não é um JSON válido.\n{exc}") from exc
+
     # ------------------------------------------------------------------
     # Summary
     # ------------------------------------------------------------------
@@ -505,6 +531,43 @@ class TexpadController:
         self.clear_search_highlight(keep_status=True)
         self._set_status("Campos limpos.")
         self._focus_input_editor()
+
+    def extract_list_from_link(self) -> None:
+        if self.txt_in is None:
+            return
+
+        url = simpledialog.askstring(
+            APP_NAME,
+            "Cole o link do JSON para extrair a lista:",
+            parent=self.root,
+        )
+        if url is None:
+            return
+
+        try:
+            data = self._load_json_from_url(url)
+            extracted = extract_list_text_from_json_data(data, output_separator=",")
+
+            if not extracted.strip():
+                raise ValueError("Nenhuma linha foi extraída do link informado.")
+
+            self.txt_in.delete("1.0", "end")
+            self.txt_in.insert("1.0", extracted)
+
+            self.current_file = None
+            self.current_file_var.set("Arquivo atual: (lista extraída do link)")
+            self._search_dirty = True
+            self.clear_search_highlight(keep_status=True)
+
+            self._set_status("Lista extraída do link.")
+            self.show_screen("editor")
+            self._focus_input_editor()
+
+            self.process_and_preview()
+
+        except Exception as exc:
+            self._set_status(f"Erro: {exc}")
+            messagebox.showerror(APP_NAME, f"Falha ao extrair a lista do link.\n\n{exc}")
 
     # ------------------------------------------------------------------
     # Processing / exporting
