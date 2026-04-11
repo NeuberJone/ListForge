@@ -41,6 +41,12 @@ from texpad_sizes import (
     update_group_config,
 )
 from ui import theme
+from ui.controllers import (
+    EditorRuntime,
+    SearchRuntime,
+    SettingsRuntime,
+    ThemeRuntime,
+)
 
 
 CASE_LABEL_TO_VALUE = {
@@ -89,9 +95,6 @@ class TexpadController:
 
         self.current_file_var = tk.StringVar(value="Arquivo atual: (nova lista)")
         self.status_var = tk.StringVar(value="Pronto.")
-        self.page_title_var = tk.StringVar(value="Editor")
-        self.clock_var = tk.StringVar(value="")
-        self.top_action_var = tk.StringVar(value="")
         self.size_summary_var = tk.StringVar(value="")
 
         self.find_var = tk.StringVar(value="")
@@ -131,6 +134,11 @@ class TexpadController:
 
         theme.set_active_theme(self.theme_name_var.get())
 
+        self.search_runtime = SearchRuntime(self)
+        self.theme_runtime = ThemeRuntime(self)
+        self.settings_runtime = SettingsRuntime(self)
+        self.editor_runtime = EditorRuntime(self)
+
     # ------------------------------------------------------------------
     # Public helpers
     # ------------------------------------------------------------------
@@ -163,28 +171,17 @@ class TexpadController:
         ent_find: ttk.Entry | None = None,
         ent_replace: ttk.Entry | None = None,
     ) -> None:
-        self.txt_in = txt_in
-        self.txt_out = txt_out
-        self.txt_json = txt_json
-        self.outputs_nb = notebook
-        self.tab_list = tab_list
-        self.tab_json = tab_json
-        self.ent_find = ent_find
-        self.ent_replace = ent_replace
-
-        self._set_text_readonly(self.txt_json, True)
-        self._configure_tags()
-        self._bind_editor_events()
-        self.update_settings_field_states()
-
-        if not self.txt_in.get("1.0", "end-1c").strip():
-            self.txt_in.insert(
-                "1.0",
-                "G,JÃO,10\n"
-                "JOÃO,5,G,M\n"
-                "MANEL,PP\n"
-                "JUACA,JUSÉ,PP\n",
-            )
+        self.editor_runtime.bind_editor_widgets(
+            txt_in=txt_in,
+            txt_out=txt_out,
+            txt_json=txt_json,
+            notebook=notebook,
+            tab_list=tab_list,
+            tab_json=tab_json,
+            ent_find=ent_find,
+            ent_replace=ent_replace,
+        )
+        self.search_runtime.configure_tags()
 
     def bind_settings_widgets(
         self,
@@ -193,42 +190,17 @@ class TexpadController:
         btn_pick_output_dir: ttk.Button,
         ent_default_name: ttk.Entry,
     ) -> None:
-        self.ent_output_dir = ent_output_dir
-        self.btn_pick_output_dir = btn_pick_output_dir
-        self.ent_default_name = ent_default_name
-        self.update_settings_field_states()
+        self.settings_runtime.bind_settings_widgets(
+            ent_output_dir=ent_output_dir,
+            btn_pick_output_dir=btn_pick_output_dir,
+            ent_default_name=ent_default_name,
+        )
 
     # ------------------------------------------------------------------
     # Theme
     # ------------------------------------------------------------------
     def apply_theme(self, theme_name: str | None = None, *, persist: bool = False) -> None:
-        selected = theme_name or self.theme_name_var.get()
-        self.theme_name_var.set(selected)
-
-        if persist:
-            self.cfg["theme_name"] = selected
-            save_config(self.cfg)
-
-        theme.set_active_theme(selected)
-
-        if self.shell is not None:
-            self.shell.rebuild_theme()
-
-    # ------------------------------------------------------------------
-    # Navigation / page context
-    # ------------------------------------------------------------------
-    def show_screen(self, key: str) -> None:
-        if self.shell is not None:
-            self.shell.show_screen(key)
-
-    def update_top_action_for_screen(self, key: str) -> None:
-        self.top_action_var.set("")
-        titles = {
-            "editor": "Editor",
-            "settings": "Configurações",
-            "manual": "Manual",
-        }
-        self.page_title_var.set(titles.get(key, APP_NAME))
+        self.theme_runtime.apply_theme(theme_name or self.theme_name_var.get(), persist=persist)
 
     # ------------------------------------------------------------------
     # Init helpers
@@ -263,8 +235,7 @@ class TexpadController:
         self.status_var.set(text)
 
     def _set_text_readonly(self, txt: tk.Text | None, readonly: bool) -> None:
-        if txt is not None:
-            txt.configure(state=("disabled" if readonly else "normal"))
+        self.editor_runtime.set_text_readonly(txt, readonly)
 
     def _copy_to_clipboard(self, text: str) -> None:
         self.root.clipboard_clear()
@@ -339,208 +310,29 @@ class TexpadController:
         )
 
     # ------------------------------------------------------------------
-    # Editor widget events / search
+    # Search
     # ------------------------------------------------------------------
-    def _configure_tags(self) -> None:
-        if self.txt_in is None:
-            return
-        self.txt_in.tag_configure(self.SEARCH_TAG, background="#4A4412", foreground="#FFF2A8")
-        self.txt_in.tag_configure(self.SEARCH_CURRENT_TAG, background="#8A5A19", foreground="#FFFFFF")
-
-    def _bind_editor_events(self) -> None:
-        if self.txt_in is None:
-            return
-
-        self.txt_in.bind("<<Modified>>", self._on_editor_modified)
-        self.txt_in.bind("<Control-f>", self._focus_find_entry)
-        self.txt_in.bind("<Control-h>", self._focus_replace_entry)
-        self.txt_in.bind("<Control-z>", self._handle_ctrl_z)
-        self.txt_in.bind("<F3>", lambda _e: self.find_next())
-        self.txt_in.bind("<Shift-F3>", lambda _e: self.find_previous())
-
-        self.find_var.trace_add("write", self._on_search_param_changed)
-        self.search_match_case_var.trace_add("write", self._on_search_param_changed)
-
-    def _handle_ctrl_z(self, _event=None):
-        self.undo_last_change()
-        return "break"
-
-    def _focus_find_entry(self, _event=None):
-        if self.ent_find is not None:
-            self.ent_find.focus_set()
-            self.ent_find.selection_range(0, "end")
-        return "break"
-
-    def _focus_replace_entry(self, _event=None):
-        if self.ent_replace is not None:
-            self.ent_replace.focus_set()
-            self.ent_replace.selection_range(0, "end")
-        return "break"
-
-    def _on_editor_modified(self, _event=None) -> None:
-        if self.txt_in is not None and self.txt_in.edit_modified():
-            self._search_dirty = True
-            self.txt_in.edit_modified(False)
-
-    def _on_search_param_changed(self, *_args) -> None:
-        self._search_dirty = True
-        self.clear_search_highlight(keep_status=True)
-
     def clear_search_highlight(self, keep_status: bool = False) -> None:
-        if self.txt_in is not None:
-            self.txt_in.tag_remove(self.SEARCH_TAG, "1.0", "end")
-            self.txt_in.tag_remove(self.SEARCH_CURRENT_TAG, "1.0", "end")
-        self._search_matches = []
-        self._search_current_idx = -1
+        self.search_runtime.clear_search_highlight()
         if not keep_status:
             self._set_status("Destaque da busca removido.")
 
-    def _build_search_matches(self) -> list[str]:
-        if self.txt_in is None:
-            return []
-
-        pattern = self.find_var.get()
-        if not pattern:
-            self.clear_search_highlight(keep_status=True)
-            return []
-
-        self.txt_in.tag_remove(self.SEARCH_TAG, "1.0", "end")
-        self.txt_in.tag_remove(self.SEARCH_CURRENT_TAG, "1.0", "end")
-
-        matches: list[str] = []
-        start = "1.0"
-        nocase = 0 if self.search_match_case_var.get() else 1
-
-        while True:
-            pos = self.txt_in.search(pattern, start, stopindex="end-1c", nocase=nocase)
-            if not pos:
-                break
-            end = f"{pos}+{len(pattern)}c"
-            matches.append(pos)
-            self.txt_in.tag_add(self.SEARCH_TAG, pos, end)
-            start = end
-
-        self._search_matches = matches
-        self._search_dirty = False
-        self._search_current_idx = -1
-        return matches
-
-    def _ensure_search_matches(self) -> list[str]:
-        return self._build_search_matches() if self._search_dirty else self._search_matches
-
-    def _set_current_match(self, idx: int) -> None:
-        if self.txt_in is None or not self._search_matches:
-            self._search_current_idx = -1
-            return
-
-        idx = idx % len(self._search_matches)
-        self._search_current_idx = idx
-
-        self.txt_in.tag_remove(self.SEARCH_CURRENT_TAG, "1.0", "end")
-        pos = self._search_matches[idx]
-        end = f"{pos}+{len(self.find_var.get())}c"
-        self.txt_in.tag_add(self.SEARCH_CURRENT_TAG, pos, end)
-        self.txt_in.mark_set("insert", pos)
-        self.txt_in.see(pos)
-        self.txt_in.focus_set()
-
-        self._set_status(f"Ocorrência {idx + 1} de {len(self._search_matches)}.")
-
     def find_next_from_cursor(self) -> None:
-        if self.txt_in is None:
-            return
-
-        pattern = self.find_var.get()
-        if not pattern:
-            self._set_status("Informe um texto para localizar.")
-            return
-
-        self._build_search_matches()
-        if not self._search_matches:
-            messagebox.showinfo(APP_NAME, "Texto não encontrado.")
-            self._set_status("Texto não encontrado.")
-            return
-
-        insert_idx = self.txt_in.index("insert")
-        next_idx = 0
-
-        for i, pos in enumerate(self._search_matches):
-            if self.txt_in.compare(pos, ">=", insert_idx):
-                next_idx = i
-                break
-
-        self._set_current_match(next_idx)
+        self.search_runtime.find_next_from_cursor()
 
     def find_next(self, _event=None):
-        matches = self._ensure_search_matches()
-        if not matches:
-            messagebox.showinfo(APP_NAME, "Texto não encontrado.")
-            self._set_status("Texto não encontrado.")
-            return "break"
-
-        next_idx = 0 if self._search_current_idx < 0 else self._search_current_idx + 1
-        self._set_current_match(next_idx)
+        self.search_runtime.find_next()
         return "break"
 
     def find_previous(self, _event=None):
-        matches = self._ensure_search_matches()
-        if not matches:
-            messagebox.showinfo(APP_NAME, "Texto não encontrado.")
-            self._set_status("Texto não encontrado.")
-            return "break"
-
-        prev_idx = len(matches) - 1 if self._search_current_idx < 0 else self._search_current_idx - 1
-        self._set_current_match(prev_idx)
+        self.search_runtime.find_previous()
         return "break"
 
     def replace_current(self) -> None:
-        if self.txt_in is None:
-            return
-
-        matches = self._ensure_search_matches()
-        if not matches:
-            self._set_status("Nada para substituir.")
-            return
-
-        replace_text = self.replace_var.get()
-        pos = self._search_matches[self._search_current_idx if self._search_current_idx >= 0 else 0]
-        end = f"{pos}+{len(self.find_var.get())}c"
-
-        self.txt_in.delete(pos, end)
-        self.txt_in.insert(pos, replace_text)
-
-        self._search_dirty = True
-        self.find_next_from_cursor()
-        self._set_status("Ocorrência substituída.")
+        self.search_runtime.replace_current()
 
     def replace_all(self) -> None:
-        if self.txt_in is None:
-            return
-
-        pattern = self.find_var.get()
-        if not pattern:
-            self._set_status("Informe um texto para substituir.")
-            return
-
-        text = self.txt_in.get("1.0", "end-1c")
-        replace_text = self.replace_var.get()
-
-        if self.search_match_case_var.get():
-            count = text.count(pattern)
-            new_text = text.replace(pattern, replace_text)
-        else:
-            regex = re.compile(re.escape(pattern), flags=re.IGNORECASE)
-            new_text, count = regex.subn(replace_text, text)
-
-        if count == 0:
-            self._set_status("Nenhuma ocorrência encontrada para substituir.")
-            return
-
-        self.txt_in.delete("1.0", "end")
-        self.txt_in.insert("1.0", new_text)
-        self._search_dirty = True
-        self.clear_search_highlight(keep_status=True)
-        self._set_status(f"{count} ocorrência(s) substituída(s).")
+        self.search_runtime.replace_all()
 
     # ------------------------------------------------------------------
     # File actions
@@ -707,8 +499,6 @@ class TexpadController:
         self._rows = []
         self._last_orders = []
         self._last_json = ""
-        self._search_matches = []
-        self._search_current_idx = -1
         self._search_dirty = True
         self.current_file = None
         self.current_file_var.set("Arquivo atual: (nova lista)")
@@ -898,15 +688,7 @@ class TexpadController:
             self.output_dir_var.set(folder)
 
     def update_settings_field_states(self) -> None:
-        output_enabled = not self.use_default_output_dir_var.get()
-        name_enabled = not self.use_default_list_name_var.get()
-
-        if self.ent_output_dir is not None:
-            self.ent_output_dir.configure(state="normal" if output_enabled else "disabled")
-        if self.btn_pick_output_dir is not None:
-            self.btn_pick_output_dir.configure(state="normal" if output_enabled else "disabled")
-        if self.ent_default_name is not None:
-            self.ent_default_name.configure(state="normal" if name_enabled else "disabled")
+        self.settings_runtime.update_settings_field_states()
 
     def _build_size_config_from_ui(self) -> dict:
         cfg = load_size_config()
@@ -1025,6 +807,12 @@ class TexpadController:
     # Runtime preferences
     # ------------------------------------------------------------------
     def _apply_runtime_preferences(self) -> None:
-        if self.editor_view is not None:
-            self.editor_view.apply_runtime_preferences()
-        self.update_settings_field_states()
+        self.editor_runtime.apply_runtime_preferences()
+        self.settings_runtime.update_settings_field_states()
+
+    # ------------------------------------------------------------------
+    # Navigation helper
+    # ------------------------------------------------------------------
+    def show_screen(self, key: str) -> None:
+        if self.shell is not None:
+            self.shell.show_screen(key)

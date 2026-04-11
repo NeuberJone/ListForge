@@ -31,9 +31,9 @@ class EditorRuntime:
         self.controller.ent_find = ent_find
         self.controller.ent_replace = ent_replace
 
-        self._set_text_readonly(self.controller.txt_json, True)
-        self._configure_editor_tags()
-        self._bind_editor_events()
+        self.set_text_readonly(self.controller.txt_json, True)
+        self.configure_tags()
+        self.bind_editor_events()
         self.controller.update_settings_field_states()
 
         if not self.controller.txt_in.get("1.0", "end-1c").strip():
@@ -45,8 +45,6 @@ class EditorRuntime:
                 "JUACA,JUSÉ,PP\n",
             )
 
-        self.controller.refresh_home_dashboard()
-
     # ------------------------------------------------------------------
     # Preferências em runtime
     # ------------------------------------------------------------------
@@ -55,11 +53,12 @@ class EditorRuntime:
         if editor_view is not None:
             editor_view.apply_runtime_preferences()
 
-        self._sync_json_output_visibility()
+        self.sync_json_output_visibility()
 
-    def _sync_json_output_visibility(self) -> None:
+    def sync_json_output_visibility(self) -> None:
         outputs_nb = getattr(self.controller, "outputs_nb", None)
         tab_json = getattr(self.controller, "tab_json", None)
+        tab_list = getattr(self.controller, "tab_list", None)
         show_json_var = getattr(self.controller, "show_json_tab_var", None)
 
         if outputs_nb is None or tab_json is None or show_json_var is None:
@@ -90,15 +89,16 @@ class EditorRuntime:
             except Exception:
                 pass
 
-            try:
-                outputs_nb.select(self.controller.tab_list)
-            except Exception:
-                pass
+            if tab_list is not None:
+                try:
+                    outputs_nb.select(tab_list)
+                except Exception:
+                    pass
 
     # ------------------------------------------------------------------
     # Utilidades visuais do editor
     # ------------------------------------------------------------------
-    def _set_text_readonly(self, widget: tk.Text | None, readonly: bool) -> None:
+    def set_text_readonly(self, widget: tk.Text | None, readonly: bool) -> None:
         if widget is None:
             return
 
@@ -108,62 +108,75 @@ class EditorRuntime:
             pass
 
     def set_json_readonly(self, readonly: bool = True) -> None:
-        self._set_text_readonly(getattr(self.controller, "txt_json", None), readonly)
+        self.set_text_readonly(getattr(self.controller, "txt_json", None), readonly)
 
-    def _configure_editor_tags(self) -> None:
-        txt_in = getattr(self.controller, "txt_in", None)
-        txt_out = getattr(self.controller, "txt_out", None)
-        txt_json = getattr(self.controller, "txt_json", None)
-
-        widgets = [w for w in (txt_in, txt_out, txt_json) if w is not None]
-
-        for widget in widgets:
-            try:
-                widget.tag_configure("highlight", background="#3A4C6B")
-                widget.tag_configure("current_highlight", background="#4C8DFF", foreground="#FFFFFF")
-            except Exception:
-                pass
-
-        search_runtime = getattr(self.controller, "search_runtime", None)
-        if search_runtime is not None:
-            try:
-                search_runtime.configure_tags()
-            except Exception:
-                pass
-
-    def _bind_editor_events(self) -> None:
+    def configure_tags(self) -> None:
         txt_in = getattr(self.controller, "txt_in", None)
         if txt_in is None:
             return
 
-        txt_in.bind("<<Modified>>", self._on_input_modified, add="+")
-        txt_in.bind("<KeyRelease>", self._on_input_key_release, add="+")
-        txt_in.bind("<<Paste>>", self._schedule_home_refresh, add="+")
-        txt_in.bind("<<Cut>>", self._schedule_home_refresh, add="+")
-        txt_in.bind("<<Undo>>", self._schedule_home_refresh, add="+")
-        txt_in.bind("<<Redo>>", self._schedule_home_refresh, add="+")
+        try:
+            txt_in.tag_configure(
+                self.controller.SEARCH_TAG,
+                background="#4A4412",
+                foreground="#FFF2A8",
+            )
+            txt_in.tag_configure(
+                self.controller.SEARCH_CURRENT_TAG,
+                background="#8A5A19",
+                foreground="#FFFFFF",
+            )
+        except Exception:
+            pass
 
-    def _on_input_modified(self, _event=None) -> None:
+    def bind_editor_events(self) -> None:
+        txt_in = getattr(self.controller, "txt_in", None)
+        if txt_in is None:
+            return
+
+        txt_in.bind("<<Modified>>", self._on_editor_modified)
+        txt_in.bind("<Control-f>", self._focus_find_entry)
+        txt_in.bind("<Control-h>", self._focus_replace_entry)
+        txt_in.bind("<Control-z>", self._handle_ctrl_z)
+        txt_in.bind("<F3>", lambda _e: self.controller.find_next())
+        txt_in.bind("<Shift-F3>", lambda _e: self.controller.find_previous())
+
+        self.controller.find_var.trace_add("write", self._on_search_param_changed)
+        self.controller.search_match_case_var.trace_add("write", self._on_search_param_changed)
+
+    # ------------------------------------------------------------------
+    # Eventos do editor
+    # ------------------------------------------------------------------
+    def _handle_ctrl_z(self, _event=None):
+        self.controller.undo_last_change()
+        return "break"
+
+    def _focus_find_entry(self, _event=None):
+        ent_find = getattr(self.controller, "ent_find", None)
+        if ent_find is not None:
+            ent_find.focus_set()
+            ent_find.selection_range(0, "end")
+        return "break"
+
+    def _focus_replace_entry(self, _event=None):
+        ent_replace = getattr(self.controller, "ent_replace", None)
+        if ent_replace is not None:
+            ent_replace.focus_set()
+            ent_replace.selection_range(0, "end")
+        return "break"
+
+    def _on_editor_modified(self, _event=None) -> None:
         txt_in = getattr(self.controller, "txt_in", None)
         if txt_in is None:
             return
 
         try:
             if txt_in.edit_modified():
+                self.controller._search_dirty = True
                 txt_in.edit_modified(False)
-                self._schedule_home_refresh()
         except Exception:
             pass
 
-    def _on_input_key_release(self, _event=None) -> None:
-        self._schedule_home_refresh()
-
-    def _schedule_home_refresh(self, _event=None) -> None:
-        txt_in = getattr(self.controller, "txt_in", None)
-        if txt_in is None:
-            return
-
-        try:
-            txt_in.after_idle(self.controller.refresh_home_dashboard)
-        except Exception:
-            pass
+    def _on_search_param_changed(self, *_args) -> None:
+        self.controller._search_dirty = True
+        self.controller.clear_search_highlight(keep_status=True)
