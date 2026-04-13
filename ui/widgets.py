@@ -330,6 +330,11 @@ def create_text_area(parent: tk.Misc, *, background: str | None = None) -> tuple
     def schedule_refresh(_event=None) -> None:
         holder.after_idle(refresh_line_numbers)
 
+    def on_modified(_event=None) -> None:
+        if text.edit_modified():
+            text.edit_modified(False)
+            schedule_refresh()
+
     text.bind("<KeyRelease>", schedule_refresh, add="+")
     text.bind("<MouseWheel>", schedule_refresh, add="+")
     text.bind("<ButtonRelease-1>", schedule_refresh, add="+")
@@ -338,6 +343,8 @@ def create_text_area(parent: tk.Misc, *, background: str | None = None) -> tuple
     text.bind("<<Cut>>", schedule_refresh, add="+")
     text.bind("<<Undo>>", schedule_refresh, add="+")
     text.bind("<<Redo>>", schedule_refresh, add="+")
+    text.bind("<<Modified>>", on_modified, add="+")
+    text.bind("<Configure>", schedule_refresh, add="+")
 
     holder.rowconfigure(0, weight=1)
     holder.columnconfigure(1, weight=1)
@@ -347,7 +354,8 @@ def create_text_area(parent: tk.Misc, *, background: str | None = None) -> tuple
     yscroll.grid(row=0, column=2, sticky="ns")
     xscroll.grid(row=1, column=1, sticky="ew")
 
-    refresh_line_numbers()
+    text.edit_modified(False)
+    holder.after_idle(refresh_line_numbers)
 
     return holder, text
 

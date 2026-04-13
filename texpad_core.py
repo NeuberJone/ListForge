@@ -11,8 +11,8 @@ from texpad_sizes import (
     format_size_token,
     gender_from_size,
     is_valid_size,
-    normalize_size_token,
     parse_qty_and_size,
+    size_group_of,
 )
 
 
@@ -38,6 +38,8 @@ JSON_IMPORT_FIELD_ORDER = [
     "BloodType",
 ]
 JSON_IMPORT_MANDATORY_FIELDS = {"Name", "Number"}
+
+GROUP_RENDER_ORDER = ("male", "female", "child")
 
 
 @dataclass(frozen=True)
@@ -100,7 +102,12 @@ def _is_size(token: str, size_config: dict[str, Any]) -> bool:
     text = _clean_token(token)
     if not text:
         return False
-    return is_valid_size(text, size_config)
+
+    try:
+        parse_qty_and_size(text, size_config)
+        return True
+    except Exception:
+        return is_valid_size(text, size_config)
 
 
 def apply_case_mode(text: str, case_mode: str) -> str:
@@ -277,6 +284,78 @@ def process_text(
     return parsed
 
 
+def _explode_row_fragments(
+    row: ParsedRow,
+    *,
+    size_config: dict[str, Any],
+) -> list[tuple[ParsedRow, str]]:
+    grouped_single_sizes: dict[str, list[str]] = {group: [] for group in GROUP_RENDER_ORDER}
+    exploded_fragments: list[tuple[ParsedRow, str]] = []
+
+    for token in row.tams:
+        qty, size = parse_qty_and_size(token, size_config)
+        group = size_group_of(size, size_config)
+
+        if qty > 1:
+            for _ in range(qty):
+                exploded_fragments.append(
+                    (
+                        ParsedRow(
+                            name=row.name,
+                            number=row.number,
+                            tams=(size,),
+                            s2=row.s2,
+                            s3=row.s3,
+                        ),
+                        group,
+                    )
+                )
+        else:
+            grouped_single_sizes[group].append(size)
+
+    for group in GROUP_RENDER_ORDER:
+        sizes = grouped_single_sizes[group]
+        if sizes:
+            exploded_fragments.append(
+                (
+                    ParsedRow(
+                        name=row.name,
+                        number=row.number,
+                        tams=tuple(sizes),
+                        s2=row.s2,
+                        s3=row.s3,
+                    ),
+                    group,
+                )
+            )
+
+    return exploded_fragments
+
+
+def _normalize_rows_for_output(
+    rows: list[ParsedRow],
+    *,
+    size_config: dict[str, Any],
+) -> list[tuple[ParsedRow, str]]:
+    normalized: list[tuple[ParsedRow, str]] = []
+
+    for row in rows:
+        normalized.extend(_explode_row_fragments(row, size_config=size_config))
+
+    return normalized
+
+
+def _group_column_widths(
+    normalized_rows: list[tuple[ParsedRow, str]],
+) -> dict[str, int]:
+    widths = {group: 0 for group in GROUP_RENDER_ORDER}
+
+    for row, group in normalized_rows:
+        widths[group] = max(widths[group], len(row.tams))
+
+    return widths
+
+
 def build_output(
     rows: List[ParsedRow],
     *,
@@ -287,21 +366,31 @@ def build_output(
     if not rows:
         return ""
 
-    max_tams = max(len(row.tams) for row in rows)
-    has_s2 = any(row.s2 for row in rows)
-    has_s3 = any(row.s3 for row in rows)
+    normalized_rows = _normalize_rows_for_output(rows, size_config=size_config)
+    if not normalized_rows:
+        return ""
+
+    widths = _group_column_widths(normalized_rows)
+    active_groups = [group for group in GROUP_RENDER_ORDER if widths[group] > 0]
+
+    has_s2 = any(row.s2 for row, _ in normalized_rows)
+    has_s3 = any(row.s3 for row, _ in normalized_rows)
 
     out_lines: List[str] = []
 
-    for row in rows:
+    for row, row_group in normalized_rows:
         cols: List[str] = [
             apply_case_mode(row.name, case_mode),
             row.number,
         ]
 
-        formatted_sizes = [format_size_token(size, size_config) for size in row.tams]
-        formatted_sizes.extend([""] * (max_tams - len(row.tams)))
-        cols.extend(formatted_sizes)
+        for group in active_groups:
+            if group == row_group:
+                group_sizes = [format_size_token(size, size_config) for size in row.tams]
+                group_sizes.extend([""] * (widths[group] - len(group_sizes)))
+                cols.extend(group_sizes)
+            else:
+                cols.extend([""] * widths[group])
 
         if has_s2:
             cols.append(apply_case_mode(row.s2, case_mode))
@@ -321,27 +410,29 @@ def build_orders_from_orderlist(
 ) -> List[dict[str, str]]:
     orders: List[dict[str, str]] = []
 
-    for row in rows:
+    normalized_rows = _normalize_rows_for_output(rows, size_config=size_config)
+
+    for row, _group in normalized_rows:
         for tam in row.tams:
-            normalized = normalize_size_token(tam, size_config)
-            qty, size = parse_qty_and_size(normalized, size_config)
+            qty, size = parse_qty_and_size(tam, size_config)
             gender = gender_from_size(size, size_config)
 
-            orders.append(
-                {
-                    "Name": apply_case_mode(row.name, case_mode),
-                    "Nickname": apply_case_mode(row.s2, case_mode),
-                    "Number": row.number,
-                    "BloodType": apply_case_mode(row.s3, case_mode),
-                    "Gender": gender,
-                    "ShortSleeve": f"{qty}-{size}",
-                    "LongSleeve": "",
-                    "Short": "",
-                    "Pants": "",
-                    "Tanktop": "",
-                    "Vest": "",
-                }
-            )
+            for _ in range(qty):
+                orders.append(
+                    {
+                        "Name": apply_case_mode(row.name, case_mode),
+                        "Nickname": apply_case_mode(row.s2, case_mode),
+                        "Number": row.number,
+                        "BloodType": apply_case_mode(row.s3, case_mode),
+                        "Gender": gender,
+                        "ShortSleeve": size,
+                        "LongSleeve": "",
+                        "Short": "",
+                        "Pants": "",
+                        "Tanktop": "",
+                        "Vest": "",
+                    }
+                )
 
     return orders
 
