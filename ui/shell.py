@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import sys
 import tkinter as tk
 
 from ui import theme
@@ -7,6 +9,12 @@ from ui.views.editor_view import EditorView
 from ui.views.manual_view import ManualView
 from ui.views.settings_view import SettingsView
 from ui.widgets import make_sidebar_button, set_sidebar_button_active
+
+
+def resource_path(relative_path: str) -> str:
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 
 class ListForgeShell(tk.Frame):
@@ -202,6 +210,13 @@ def run_app() -> tuple[tk.Tk, ListForgeShell]:
     from ui.controller import ListForgeController
 
     root = tk.Tk()
+    root.title("ListForge")
+
+    try:
+        root.iconbitmap(resource_path("logo.ico"))
+    except Exception:
+        pass
+
     controller = ListForgeController(root)
 
     theme.configure_root(root, controller.theme_name_var.get())

@@ -243,8 +243,8 @@ def parse_line(
     if not tams:
         raise ValueError(f"Sem TAM reconhecido: {raw}")
 
-    if len(tams) > 4:
-        raise ValueError(f"Mais de 4 TAMs na linha: {raw}")
+    if len(tams) > 6:
+        raise ValueError(f"Mais de 6 TAMs na linha: {raw}")
 
     s2 = extra_strings[0] if len(extra_strings) >= 1 else ""
     s3 = extra_strings[1] if len(extra_strings) >= 2 else ""
@@ -366,38 +366,39 @@ def build_output(
     if not rows:
         return ""
 
-    normalized_rows = _normalize_rows_for_output(rows, size_config=size_config)
-    if not normalized_rows:
-        return ""
-
-    widths = _group_column_widths(normalized_rows)
-    active_groups = [group for group in GROUP_RENDER_ORDER if widths[group] > 0]
-
-    has_s2 = any(row.s2 for row, _ in normalized_rows)
-    has_s3 = any(row.s3 for row, _ in normalized_rows)
+    has_s2 = any(row.s2 for row in rows)
+    has_s3 = any(row.s3 for row in rows)
 
     out_lines: List[str] = []
 
-    for row, row_group in normalized_rows:
-        cols: List[str] = [
-            apply_case_mode(row.name, case_mode),
-            row.number,
-        ]
+    for source_row in rows:
+        row_fragments = _explode_row_fragments(source_row, size_config=size_config)
+        if not row_fragments:
+            continue
 
-        for group in active_groups:
-            if group == row_group:
-                group_sizes = [format_size_token(size, size_config) for size in row.tams]
-                group_sizes.extend([""] * (widths[group] - len(group_sizes)))
-                cols.extend(group_sizes)
-            else:
-                cols.extend([""] * widths[group])
+        widths = _group_column_widths(row_fragments)
+        active_groups = [group for group in GROUP_RENDER_ORDER if widths[group] > 0]
 
-        if has_s2:
-            cols.append(apply_case_mode(row.s2, case_mode))
-        if has_s3:
-            cols.append(apply_case_mode(row.s3, case_mode))
+        for row, row_group in row_fragments:
+            cols: List[str] = [
+                apply_case_mode(row.name, case_mode),
+                row.number,
+            ]
 
-        out_lines.append(output_separator.join(cols))
+            for group in active_groups:
+                if group == row_group:
+                    group_sizes = [format_size_token(size, size_config) for size in row.tams]
+                    group_sizes.extend([""] * (widths[group] - len(group_sizes)))
+                    cols.extend(group_sizes)
+                else:
+                    cols.extend([""] * widths[group])
+
+            if has_s2:
+                cols.append(apply_case_mode(row.s2, case_mode))
+            if has_s3:
+                cols.append(apply_case_mode(row.s3, case_mode))
+
+            out_lines.append(output_separator.join(cols))
 
     return "\n".join(out_lines)
 

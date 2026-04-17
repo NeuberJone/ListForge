@@ -4,9 +4,13 @@ import json
 import os
 import re
 from pathlib import Path
+from shutil import which
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from urllib import error, request
+
+from PIL import Image, ImageOps
+import pytesseract
 
 from listforge_config import (
     APP_NAME,
@@ -105,8 +109,12 @@ class ListForgeController:
         self.search_match_case_var = tk.BooleanVar(value=False)
 
         self.editor_separator_var = tk.StringVar(value=self.cfg.get("default_input_separator", ","))
+
         self.editor_case_label_var = tk.StringVar(
-            value=CASE_VALUE_TO_LABEL.get(self.cfg.get("default_case_mode", "original"), "Original")
+            value=CASE_VALUE_TO_LABEL.get(
+                self.cfg.get("default_case_mode", "original"),
+                "Original",
+            )
         )
 
         self.show_json_tab_var = tk.BooleanVar(value=bool(self.cfg.get("show_json_tab", False)))
@@ -117,18 +125,31 @@ class ListForgeController:
             value=bool(self.cfg.get("show_copy_json_button", False))
         )
 
-        self.use_default_output_dir_var = tk.BooleanVar(value=bool(self.cfg.get("use_default_output_dir", False)))
+        self.use_default_output_dir_var = tk.BooleanVar(
+            value=bool(self.cfg.get("use_default_output_dir", False))
+        )
         self.output_dir_var = tk.StringVar(value=str(self.cfg.get("output_dir", "")))
 
-        self.use_default_list_name_var = tk.BooleanVar(value=bool(self.cfg.get("use_default_list_name", False)))
-        self.default_list_name_var = tk.StringVar(value=str(self.cfg.get("default_list_name", "lista")))
+        self.use_default_list_name_var = tk.BooleanVar(
+            value=bool(self.cfg.get("use_default_list_name", False))
+        )
+        self.default_list_name_var = tk.StringVar(
+            value=str(self.cfg.get("default_list_name", "lista"))
+        )
 
         self.default_case_label_var = tk.StringVar(
-            value=CASE_VALUE_TO_LABEL.get(self.cfg.get("default_case_mode", "original"), "Original")
+            value=CASE_VALUE_TO_LABEL.get(
+                self.cfg.get("default_case_mode", "original"),
+                "Original",
+            )
         )
-        self.default_input_separator_var = tk.StringVar(value=self.cfg.get("default_input_separator", ","))
+        self.default_input_separator_var = tk.StringVar(
+            value=self.cfg.get("default_input_separator", ",")
+        )
 
-        self.theme_name_var = tk.StringVar(value=self.cfg.get("theme_name", theme.DEFAULT_THEME_NAME))
+        self.theme_name_var = tk.StringVar(
+            value=self.cfg.get("theme_name", theme.DEFAULT_THEME_NAME)
+        )
 
         self.size_group_vars: dict[str, dict[str, tk.StringVar]] = {}
         self._init_size_group_vars()
@@ -221,9 +242,15 @@ class ListForgeController:
     def _load_size_config_into_vars(self) -> None:
         for group_key in (GROUP_MALE, GROUP_FEMALE, GROUP_CHILD):
             group = self.size_cfg["groups"][group_key]
-            self.size_group_vars[group_key]["base_sizes"].set(tokens_to_csv(group.get("base_sizes", [])))
-            self.size_group_vars[group_key]["prefixes"].set(tokens_to_csv(group.get("prefixes", [])))
-            self.size_group_vars[group_key]["suffixes"].set(tokens_to_csv(group.get("suffixes", [])))
+            self.size_group_vars[group_key]["base_sizes"].set(
+                tokens_to_csv(group.get("base_sizes", []))
+            )
+            self.size_group_vars[group_key]["prefixes"].set(
+                tokens_to_csv(group.get("prefixes", []))
+            )
+            self.size_group_vars[group_key]["suffixes"].set(
+                tokens_to_csv(group.get("suffixes", []))
+            )
 
     def _load_last_opened_file_label(self) -> None:
         last_opened = (self.cfg.get("last_opened_file") or "").strip()
@@ -311,6 +338,115 @@ class ListForgeController:
             raise ValueError(f"Não foi possível acessar o link.\n{exc}") from exc
         except json.JSONDecodeError as exc:
             raise ValueError(f"O conteúdo retornado pelo link não é um JSON válido.\n{exc}") from exc
+
+    # ------------------------------------------------------------------
+    # OCR
+    # ------------------------------------------------------------------
+    def _configure_tesseract(self) -> None:
+        current_cmd = str(getattr(pytesseract.pytesseract, "tesseract_cmd", "")).strip()
+        if current_cmd and Path(current_cmd).exists():
+            return
+
+        env_cmd = os.environ.get("TESSERACT_CMD", "").strip()
+        if env_cmd and Path(env_cmd).exists():
+            pytesseract.pytesseract.tesseract_cmd = env_cmd
+            return
+
+        found = which("tesseract")
+        if found:
+            pytesseract.pytesseract.tesseract_cmd = found
+            return
+
+        common_paths = [
+            Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
+            Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
+        ]
+
+        for candidate in common_paths:
+            if candidate.exists():
+                pytesseract.pytesseract.tesseract_cmd = str(candidate)
+                return
+
+        raise ValueError(
+            "O Tesseract OCR não foi encontrado.\n\n"
+            "Instale o Tesseract no sistema ou defina o caminho do executável.\n\n"
+            "Caminhos esperados no Windows:\n"
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+            "\n"
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
+        )
+
+    def _ocr_image_to_text(self, path: Path) -> str:
+        self._configure_tesseract()
+
+        try:
+            image = Image.open(path)
+        except Exception as exc:
+            raise ValueError(f"Não foi possível abrir a imagem.\n{exc}") from exc
+
+        image = ImageOps.exif_transpose(image)
+        image = ImageOps.grayscale(image)
+        image = ImageOps.autocontrast(image)
+
+        try:
+            text = pytesseract.image_to_string(image, lang="por+eng")
+        except pytesseract.TesseractNotFoundError as exc:
+            raise ValueError(
+                "O Tesseract OCR não foi encontrado.\n"
+                "Instale o Tesseract no sistema e garanta que ele esteja no PATH."
+            ) from exc
+        except Exception as exc:
+            raise ValueError(f"Falha ao executar OCR.\n{exc}") from exc
+
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        text = "\n".join(line.rstrip() for line in text.splitlines())
+        text = text.strip()
+
+        return text
+
+    def extract_text_from_image(self) -> None:
+        if self.txt_in is None:
+            return
+
+        filename = filedialog.askopenfilename(
+            title=f"{APP_NAME} - Escolher imagem para OCR",
+            filetypes=[
+                ("Imagens", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp"),
+                ("Todos os arquivos", "*.*"),
+            ],
+        )
+        if not filename:
+            return
+
+        path = Path(filename)
+
+        try:
+            text = self._ocr_image_to_text(path)
+
+            if not text.strip():
+                raise ValueError("Nenhum texto foi reconhecido na imagem.")
+
+            self.txt_in.delete("1.0", "end")
+            self.txt_in.insert("1.0", text)
+
+            self.current_file = None
+            self.current_file_var.set("Arquivo atual: (texto extraído da imagem)")
+            self._search_dirty = True
+            self.clear_search_highlight(keep_status=True)
+
+            self._set_status("Texto extraído da imagem com OCR.")
+            self.show_screen("editor")
+            self._focus_input_editor()
+
+            messagebox.showinfo(
+                APP_NAME,
+                "Texto extraído da imagem.\n\n"
+                "Confira a entrada e clique em Processar quando estiver tudo certo.",
+            )
+
+        except Exception as exc:
+            self._set_status(f"Erro: {exc}")
+            messagebox.showerror(APP_NAME, f"Falha ao extrair texto da imagem.\n\n{exc}")
 
     # ------------------------------------------------------------------
     # Summary
@@ -422,7 +558,9 @@ class ListForgeController:
             save_config(self.cfg)
 
             if backup_path:
-                self._set_status(f"Entrada salva: {self.current_file.name} | Backup: {backup_path.name}")
+                self._set_status(
+                    f"Entrada salva: {self.current_file.name} | Backup: {backup_path.name}"
+                )
             else:
                 self._set_status(f"Entrada salva: {self.current_file.name}")
         except Exception as exc:
@@ -509,7 +647,9 @@ class ListForgeController:
         self.txt_in.insert("1.0", cleaned)
 
         sep_label = separator_label(self.editor_separator_var.get())
-        self._set_status(f"Espaços desnecessários removidos usando o separador {sep_label!r}.")
+        self._set_status(
+            f"Espaços desnecessários removidos usando o separador {sep_label!r}."
+        )
 
     def clear_all(self) -> None:
         if self.txt_in is None or self.txt_out is None or self.txt_json is None:
@@ -694,7 +834,10 @@ class ListForgeController:
             if self.show_json_tab_var.get() and self.outputs_nb is not None and self.tab_json is not None:
                 self.outputs_nb.select(self.tab_json)
             self._set_status(f"JSON gerado: {path.name}")
-            messagebox.showinfo(APP_NAME, f"JSON gerado:\n{path}\n\nRegistros: {len(self._last_orders)}")
+            messagebox.showinfo(
+                APP_NAME,
+                f"JSON gerado:\n{path}\n\nRegistros: {len(self._last_orders)}",
+            )
         except Exception as exc:
             messagebox.showerror(APP_NAME, f"Falha ao gerar o JSON.\n\n{exc}")
 
@@ -763,7 +906,9 @@ class ListForgeController:
             suffixes = parse_csv_tokens(vars_map["suffixes"].get())
 
             if not base_sizes:
-                raise ValueError(f"Informe ao menos um tamanho-base para {GROUP_LABELS[group_key]}.")
+                raise ValueError(
+                    f"Informe ao menos um tamanho-base para {GROUP_LABELS[group_key]}."
+                )
 
             cfg = update_group_config(
                 cfg,
@@ -777,11 +922,17 @@ class ListForgeController:
 
     def save_settings_from_ui(self) -> None:
         if self.use_default_output_dir_var.get() and not self.output_dir_var.get().strip():
-            messagebox.showerror(APP_NAME, "Informe uma pasta padrão de saída ou desative essa opção.")
+            messagebox.showerror(
+                APP_NAME,
+                "Informe uma pasta padrão de saída ou desative essa opção.",
+            )
             return
 
         if self.use_default_list_name_var.get() and not self.default_list_name_var.get().strip():
-            messagebox.showerror(APP_NAME, "Informe um nome padrão de lista ou desative essa opção.")
+            messagebox.showerror(
+                APP_NAME,
+                "Informe um nome padrão de lista ou desative essa opção.",
+            )
             return
 
         try:
@@ -822,7 +973,9 @@ class ListForgeController:
         save_size_config(size_cfg)
         self.size_cfg = size_cfg
 
-        self.editor_case_label_var.set(CASE_VALUE_TO_LABEL.get(self.cfg["default_case_mode"], "Original"))
+        self.editor_case_label_var.set(
+            CASE_VALUE_TO_LABEL.get(self.cfg["default_case_mode"], "Original")
+        )
         self.editor_separator_var.set(self.cfg["default_input_separator"])
 
         if old_theme != selected_theme:
@@ -848,11 +1001,15 @@ class ListForgeController:
         self.use_default_list_name_var.set(bool(cfg["use_default_list_name"]))
         self.default_list_name_var.set(str(cfg["default_list_name"]))
 
-        self.default_case_label_var.set(CASE_VALUE_TO_LABEL.get(cfg["default_case_mode"], "Original"))
+        self.default_case_label_var.set(
+            CASE_VALUE_TO_LABEL.get(cfg["default_case_mode"], "Original")
+        )
         self.default_input_separator_var.set(cfg["default_input_separator"])
         self.theme_name_var.set(cfg.get("theme_name", theme.DEFAULT_THEME_NAME))
 
-        self.editor_case_label_var.set(CASE_VALUE_TO_LABEL.get(cfg["default_case_mode"], "Original"))
+        self.editor_case_label_var.set(
+            CASE_VALUE_TO_LABEL.get(cfg["default_case_mode"], "Original")
+        )
         self.editor_separator_var.set(cfg["default_input_separator"])
 
         self.apply_theme(self.theme_name_var.get(), persist=False)

@@ -183,6 +183,23 @@ class EditorView(tk.Frame):
         )
         self.btn_extract_link.pack(side="left", padx=(6, 0))
 
+        self.btn_extract_ocr = tk.Button(
+            files_inner,
+            text="Extrair texto da imagem",
+            command=self.controller.extract_text_from_image,
+            bg=t.panel_alt,
+            fg=t.text,
+            activebackground=t.panel_hover,
+            activeforeground=t.text,
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=(theme.FONT_FAMILY, 10),
+            padx=12,
+            pady=7,
+        )
+        self.btn_extract_ocr.pack(side="left", padx=(6, 0))
+
         self.btn_save_input = tk.Button(
             files_inner,
             text="Salvar Entrada",
@@ -279,16 +296,16 @@ class EditorView(tk.Frame):
             text="Padrão (,)",
             command=self.controller.set_default_separator,
         )
-        self.btn_reset_separator.grid(row=0, column=3, sticky="w", padx=(0, 8))
+        self.btn_reset_separator.grid(row=0, column=2, sticky="w", padx=(0, 8))
 
         self.btn_clean_spaces = ttk.Button(
             inner,
             text="Remover espaços desnecessários",
             command=self.controller.clean_unnecessary_spaces,
         )
-        self.btn_clean_spaces.grid(row=0, column=4, sticky="w", padx=(0, 18))
+        self.btn_clean_spaces.grid(row=0, column=3, sticky="w", padx=(0, 18))
 
-        ttk.Label(inner, text="Maiúsculas / minúsculas").grid(row=0, column=5, sticky="w", padx=(0, 6))
+        ttk.Label(inner, text="Maiúsculas / minúsculas").grid(row=0, column=4, sticky="w", padx=(0, 6))
 
         self.cmb_case_mode = ttk.Combobox(
             inner,
@@ -297,7 +314,7 @@ class EditorView(tk.Frame):
             width=18,
             state="readonly",
         )
-        self.cmb_case_mode.grid(row=0, column=6, sticky="w")
+        self.cmb_case_mode.grid(row=0, column=5, sticky="w")
 
     def _build_search_panel(self) -> None:
         self.search_panel = CollapsiblePanel(self, "Localizar / Localizar e substituir", starts_open=False)
