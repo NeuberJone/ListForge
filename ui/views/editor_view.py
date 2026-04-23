@@ -183,23 +183,6 @@ class EditorView(tk.Frame):
         )
         self.btn_extract_link.pack(side="left", padx=(6, 0))
 
-        self.btn_extract_ocr = tk.Button(
-            files_inner,
-            text="Extrair texto da imagem",
-            command=self.controller.extract_text_from_image,
-            bg=t.panel_alt,
-            fg=t.text,
-            activebackground=t.panel_hover,
-            activeforeground=t.text,
-            relief="flat",
-            bd=0,
-            cursor="hand2",
-            font=(theme.FONT_FAMILY, 10),
-            padx=12,
-            pady=7,
-        )
-        self.btn_extract_ocr.pack(side="left", padx=(6, 0))
-
         self.btn_save_input = tk.Button(
             files_inner,
             text="Salvar Entrada",

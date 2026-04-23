@@ -3,14 +3,13 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import tempfile
 from pathlib import Path
-from shutil import which
+from shutil import which, rmtree
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from urllib import error, request
-
-from PIL import Image, ImageOps
-import pytesseract
 
 from listforge_config import (
     APP_NAME,
@@ -68,6 +67,12 @@ class ListForgeController:
     SEARCH_TAG = "search_match"
     SEARCH_CURRENT_TAG = "search_current"
 
+    TEXT_EXTENSIONS = {".txt", ".csv", ".list"}
+    PDF_EXTENSIONS = {".pdf"}
+    WORD_EXTENSIONS = {".docx", ".doc"}
+    EXCEL_EXTENSIONS = {".xlsx", ".xlsm", ".xls"}
+    IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
+
     def __init__(self, root: tk.Misc) -> None:
         self.root = root
 
@@ -108,8 +113,9 @@ class ListForgeController:
         self.replace_var = tk.StringVar(value="")
         self.search_match_case_var = tk.BooleanVar(value=False)
 
-        self.editor_separator_var = tk.StringVar(value=self.cfg.get("default_input_separator", ","))
-
+        self.editor_separator_var = tk.StringVar(
+            value=self.cfg.get("default_input_separator", ",")
+        )
         self.editor_case_label_var = tk.StringVar(
             value=CASE_VALUE_TO_LABEL.get(
                 self.cfg.get("default_case_mode", "original"),
@@ -117,7 +123,9 @@ class ListForgeController:
             )
         )
 
-        self.show_json_tab_var = tk.BooleanVar(value=bool(self.cfg.get("show_json_tab", False)))
+        self.show_json_tab_var = tk.BooleanVar(
+            value=bool(self.cfg.get("show_json_tab", False))
+        )
         self.show_generate_json_button_var = tk.BooleanVar(
             value=bool(self.cfg.get("show_generate_json_button", False))
         )
@@ -163,9 +171,6 @@ class ListForgeController:
         self.settings_runtime = SettingsRuntime(self)
         self.editor_runtime = EditorRuntime(self)
 
-    # ------------------------------------------------------------------
-    # Public helpers
-    # ------------------------------------------------------------------
     @property
     def case_labels(self) -> list[str]:
         return list(CASE_LABEL_TO_VALUE.keys())
@@ -220,15 +225,9 @@ class ListForgeController:
             ent_default_name=ent_default_name,
         )
 
-    # ------------------------------------------------------------------
-    # Theme
-    # ------------------------------------------------------------------
     def apply_theme(self, theme_name: str | None = None, *, persist: bool = False) -> None:
         self.theme_runtime.apply_theme(theme_name or self.theme_name_var.get(), persist=persist)
 
-    # ------------------------------------------------------------------
-    # Init helpers
-    # ------------------------------------------------------------------
     def _init_size_group_vars(self) -> None:
         self.size_group_vars = {}
         for group_key in (GROUP_MALE, GROUP_FEMALE, GROUP_CHILD):
@@ -258,9 +257,6 @@ class ListForgeController:
             self.current_file = Path(last_opened)
             self.current_file_var.set(f"Arquivo atual: {self.current_file}")
 
-    # ------------------------------------------------------------------
-    # Generic helpers
-    # ------------------------------------------------------------------
     def _set_status(self, text: str) -> None:
         self.status_var.set(text)
 
@@ -316,6 +312,58 @@ class ListForgeController:
     def _default_case_mode(self) -> str:
         return CASE_LABEL_TO_VALUE.get(self.default_case_label_var.get(), "original")
 
+    def _normalize_imported_text(self, text: str) -> str:
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        lines = [line.rstrip() for line in text.splitlines()]
+        return "\n".join(lines).strip()
+
+    def _load_imported_text_to_input(
+        self,
+        text: str,
+        *,
+        source_label: str,
+        warning_message: str | None = None,
+    ) -> None:
+        if self.txt_in is None:
+            return
+
+        normalized = self._normalize_imported_text(text)
+        if not normalized.strip():
+            raise ValueError("Não foi possível obter conteúdo útil desse arquivo.")
+
+        self.txt_in.delete("1.0", "end")
+        self.txt_in.insert("1.0", normalized)
+
+        self.current_file = None
+        self.current_file_var.set(f"Importado de: {source_label}")
+        self._search_dirty = True
+        self.clear_search_highlight(keep_status=True)
+
+        self._set_status(f"Conteúdo importado: {source_label}")
+        self.show_screen("editor")
+        self._focus_input_editor()
+
+        if warning_message:
+            messagebox.showinfo(APP_NAME, warning_message)
+
+    def _normalize_import_cell(self, value) -> str:
+        if value is None:
+            return ""
+        text = str(value)
+        text = text.replace("\r", " ").replace("\n", " ").replace("\x07", " ")
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    def _require_module(self, module_name: str, package_name: str | None = None):
+        try:
+            return __import__(module_name, fromlist=["*"])
+        except ImportError as exc:
+            pip_name = package_name or module_name
+            raise ValueError(
+                f"Dependência ausente: {module_name}\n\n"
+                f"Instale com:\npython -m pip install {pip_name}"
+            ) from exc
+
     def _load_json_from_url(self, url: str):
         text = (url or "").strip()
 
@@ -337,24 +385,23 @@ class ListForgeController:
         except error.URLError as exc:
             raise ValueError(f"Não foi possível acessar o link.\n{exc}") from exc
         except json.JSONDecodeError as exc:
-            raise ValueError(f"O conteúdo retornado pelo link não é um JSON válido.\n{exc}") from exc
+            raise ValueError(
+                f"O conteúdo retornado pelo link não é um JSON válido.\n{exc}"
+            ) from exc
 
-    # ------------------------------------------------------------------
-    # OCR
-    # ------------------------------------------------------------------
-    def _configure_tesseract(self) -> None:
-        current_cmd = str(getattr(pytesseract.pytesseract, "tesseract_cmd", "")).strip()
+    def _configure_tesseract(self, pytesseract_module) -> None:
+        current_cmd = str(getattr(pytesseract_module.pytesseract, "tesseract_cmd", "")).strip()
         if current_cmd and Path(current_cmd).exists():
             return
 
         env_cmd = os.environ.get("TESSERACT_CMD", "").strip()
         if env_cmd and Path(env_cmd).exists():
-            pytesseract.pytesseract.tesseract_cmd = env_cmd
+            pytesseract_module.pytesseract.tesseract_cmd = env_cmd
             return
 
         found = which("tesseract")
         if found:
-            pytesseract.pytesseract.tesseract_cmd = found
+            pytesseract_module.pytesseract.tesseract_cmd = found
             return
 
         common_paths = [
@@ -364,7 +411,7 @@ class ListForgeController:
 
         for candidate in common_paths:
             if candidate.exists():
-                pytesseract.pytesseract.tesseract_cmd = str(candidate)
+                pytesseract_module.pytesseract.tesseract_cmd = str(candidate)
                 return
 
         raise ValueError(
@@ -376,81 +423,324 @@ class ListForgeController:
             r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
         )
 
+    def _prepare_ocr_variants(self, image):
+        pil_image = self._require_module("PIL.Image", "pillow")
+        image_ops = self._require_module("PIL.ImageOps", "pillow")
+        image_filter = self._require_module("PIL.ImageFilter", "pillow")
+
+        image = image_ops.exif_transpose(image).convert("L")
+
+        scale = 2
+        if max(image.size) < 1400:
+            scale = 3
+
+        image = image.resize(
+            (image.width * scale, image.height * scale),
+            pil_image.LANCZOS,
+        )
+
+        gray = image_ops.autocontrast(image)
+        sharp = gray.filter(image_filter.SHARPEN)
+        bw = sharp.point(lambda x: 255 if x > 185 else 0, mode="1").convert("L")
+
+        return [sharp, bw]
+
+    def _score_ocr_text(self, text: str) -> int:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if not lines:
+            return -1
+
+        useful_lines = sum(1 for line in lines if re.search(r"[A-Za-zÀ-ÿ0-9]", line))
+        return useful_lines * 10 + len(lines)
+
     def _ocr_image_to_text(self, path: Path) -> str:
-        self._configure_tesseract()
+        pil_image = self._require_module("PIL.Image", "pillow")
+        pytesseract_module = self._require_module("pytesseract")
+
+        self._configure_tesseract(pytesseract_module)
 
         try:
-            image = Image.open(path)
+            image = pil_image.open(path)
         except Exception as exc:
             raise ValueError(f"Não foi possível abrir a imagem.\n{exc}") from exc
 
-        image = ImageOps.exif_transpose(image)
-        image = ImageOps.grayscale(image)
-        image = ImageOps.autocontrast(image)
+        variants = self._prepare_ocr_variants(image)
+        configs = [
+            r"--oem 3 --psm 6",
+            r"--oem 3 --psm 4",
+            r"--oem 3 --psm 11",
+        ]
 
-        try:
-            text = pytesseract.image_to_string(image, lang="por+eng")
-        except pytesseract.TesseractNotFoundError as exc:
+        best_text = ""
+        best_score = -1
+
+        for variant in variants:
+            for config in configs:
+                try:
+                    text = pytesseract_module.image_to_string(
+                        variant,
+                        lang="por+eng",
+                        config=config,
+                    )
+                except pytesseract_module.TesseractNotFoundError as exc:
+                    raise ValueError(
+                        "O Tesseract OCR não foi encontrado.\n"
+                        "Instale o Tesseract no sistema e garanta que ele esteja no PATH."
+                    ) from exc
+                except Exception:
+                    continue
+
+                text = self._normalize_imported_text(text)
+                score = self._score_ocr_text(text)
+
+                if score > best_score:
+                    best_score = score
+                    best_text = text
+
+        if not best_text.strip():
+            raise ValueError("Nenhum texto útil foi reconhecido na imagem.")
+
+        return best_text
+
+    def _read_pdf_text(self, path: Path) -> str:
+        pypdf_module = self._require_module("pypdf")
+        reader = pypdf_module.PdfReader(str(path))
+        chunks: list[str] = []
+
+        for page in reader.pages:
+            text = ""
+            try:
+                text = page.extract_text(
+                    extraction_mode="layout",
+                    layout_mode_space_vertically=False,
+                ) or ""
+            except Exception:
+                try:
+                    text = page.extract_text() or ""
+                except Exception:
+                    text = ""
+
+            if text.strip():
+                chunks.append(text)
+
+        result = "\n\n".join(chunks).strip()
+        if not result:
             raise ValueError(
-                "O Tesseract OCR não foi encontrado.\n"
-                "Instale o Tesseract no sistema e garanta que ele esteja no PATH."
-            ) from exc
-        except Exception as exc:
-            raise ValueError(f"Falha ao executar OCR.\n{exc}") from exc
+                "Não consegui extrair texto desse PDF.\n"
+                "Se ele for um PDF escaneado como imagem, use uma imagem/OCR."
+            )
+        return result
 
-        text = text.replace("\r\n", "\n").replace("\r", "\n")
-        text = "\n".join(line.rstrip() for line in text.splitlines())
-        text = text.strip()
+    def _read_docx_text(self, path: Path) -> str:
+        docx_module = self._require_module("docx", "python-docx")
+        doc = docx_module.Document(str(path))
+        lines: list[str] = []
 
-        return text
+        for paragraph in doc.paragraphs:
+            text = self._normalize_import_cell(paragraph.text)
+            if text:
+                lines.append(text)
 
-    def extract_text_from_image(self) -> None:
-        if self.txt_in is None:
-            return
+        for table in doc.tables:
+            for row in table.rows:
+                cells = [self._normalize_import_cell(cell.text) for cell in row.cells]
+                while cells and cells[-1] == "":
+                    cells.pop()
+                if any(cells):
+                    lines.append(",".join(cells))
 
-        filename = filedialog.askopenfilename(
-            title=f"{APP_NAME} - Escolher imagem para OCR",
-            filetypes=[
-                ("Imagens", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp"),
-                ("Todos os arquivos", "*.*"),
-            ],
-        )
-        if not filename:
-            return
+        result = "\n".join(lines).strip()
+        if not result:
+            raise ValueError("Não consegui extrair texto útil desse arquivo Word.")
+        return result
 
-        path = Path(filename)
+    def _read_excel_text(self, path: Path) -> str:
+        openpyxl_module = self._require_module("openpyxl")
+        wb = openpyxl_module.load_workbook(str(path), read_only=True, data_only=True)
+        ws = wb[wb.sheetnames[0]]
 
-        try:
-            text = self._ocr_image_to_text(path)
+        lines: list[str] = []
 
-            if not text.strip():
-                raise ValueError("Nenhum texto foi reconhecido na imagem.")
+        for row in ws.iter_rows(values_only=True):
+            cells = [self._normalize_import_cell(value) for value in row]
+            while cells and cells[-1] == "":
+                cells.pop()
+            if any(cells):
+                lines.append(",".join(cells))
 
-            self.txt_in.delete("1.0", "end")
-            self.txt_in.insert("1.0", text)
+        result = "\n".join(lines).strip()
+        if not result:
+            raise ValueError("Não consegui extrair texto útil dessa planilha.")
+        return result
 
-            self.current_file = None
-            self.current_file_var.set("Arquivo atual: (texto extraído da imagem)")
-            self._search_dirty = True
-            self.clear_search_highlight(keep_status=True)
+    def _find_soffice(self) -> str | None:
+        found = which("soffice")
+        if found:
+            return found
 
-            self._set_status("Texto extraído da imagem com OCR.")
-            self.show_screen("editor")
-            self._focus_input_editor()
+        common_paths = [
+            r"C:\Program Files\LibreOffice\program\soffice.exe",
+            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+        ]
+        for candidate in common_paths:
+            if Path(candidate).exists():
+                return candidate
+        return None
 
-            messagebox.showinfo(
-                APP_NAME,
-                "Texto extraído da imagem.\n\n"
-                "Confira a entrada e clique em Processar quando estiver tudo certo.",
+    def _convert_with_soffice(self, path: Path, target_ext: str) -> Path:
+        soffice = self._find_soffice()
+        if not soffice:
+            raise ValueError(
+                "Não encontrei LibreOffice para converter este arquivo legado."
             )
 
-        except Exception as exc:
-            self._set_status(f"Erro: {exc}")
-            messagebox.showerror(APP_NAME, f"Falha ao extrair texto da imagem.\n\n{exc}")
+        temp_dir = Path(tempfile.mkdtemp(prefix="listforge_convert_"))
 
-    # ------------------------------------------------------------------
-    # Summary
-    # ------------------------------------------------------------------
+        try:
+            subprocess.run(
+                [
+                    soffice,
+                    "--headless",
+                    "--convert-to",
+                    target_ext,
+                    "--outdir",
+                    str(temp_dir),
+                    str(path),
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            converted = temp_dir / f"{path.stem}.{target_ext}"
+            if not converted.exists():
+                raise ValueError(
+                    "A conversão foi executada, mas o arquivo convertido não foi encontrado."
+                )
+
+            return converted
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.decode(errors="ignore") if exc.stderr else ""
+            raise ValueError(f"Falha ao converter arquivo legado.\n{stderr}") from exc
+
+    def _read_doc_legacy_text(self, path: Path) -> str:
+        try:
+            import win32com.client  # type: ignore
+        except Exception:
+            converted = self._convert_with_soffice(path, "docx")
+            try:
+                return self._read_docx_text(converted)
+            finally:
+                try:
+                    rmtree(converted.parent, ignore_errors=True)
+                except Exception:
+                    pass
+
+        word = None
+        doc = None
+
+        try:
+            word = win32com.client.DispatchEx("Word.Application")
+            word.Visible = False
+            word.DisplayAlerts = 0
+
+            doc = word.Documents.Open(str(path), ReadOnly=True)
+
+            lines: list[str] = []
+
+            try:
+                for para in doc.Paragraphs:
+                    text = self._normalize_import_cell(para.Range.Text)
+                    if text:
+                        lines.append(text)
+            except Exception:
+                pass
+
+            try:
+                for table in doc.Tables:
+                    row_count = table.Rows.Count
+                    col_count = table.Columns.Count
+                    for r in range(1, row_count + 1):
+                        cells: list[str] = []
+                        for c in range(1, col_count + 1):
+                            try:
+                                cell_text = table.Cell(r, c).Range.Text
+                            except Exception:
+                                cell_text = ""
+                            cells.append(self._normalize_import_cell(cell_text))
+
+                        while cells and cells[-1] == "":
+                            cells.pop()
+
+                        if any(cells):
+                            lines.append(",".join(cells))
+            except Exception:
+                pass
+
+            result = "\n".join(lines).strip()
+            if not result:
+                raise ValueError("Não consegui extrair texto útil desse arquivo .doc.")
+
+            return result
+
+        except Exception as exc:
+            raise ValueError(f"Falha ao abrir arquivo .doc.\n{exc}") from exc
+        finally:
+            try:
+                if doc is not None:
+                    doc.Close(False)
+            except Exception:
+                pass
+            try:
+                if word is not None:
+                    word.Quit()
+            except Exception:
+                pass
+
+    def _read_xls_legacy_text(self, path: Path) -> str:
+        try:
+            xlrd_module = self._require_module("xlrd")
+        except Exception:
+            converted = self._convert_with_soffice(path, "xlsx")
+            try:
+                return self._read_excel_text(converted)
+            finally:
+                try:
+                    rmtree(converted.parent, ignore_errors=True)
+                except Exception:
+                    pass
+
+        try:
+            book = xlrd_module.open_workbook(str(path))
+            sheet = book.sheet_by_index(0)
+
+            lines: list[str] = []
+
+            for row_idx in range(sheet.nrows):
+                values: list[str] = []
+                for col_idx in range(sheet.ncols):
+                    value = sheet.cell_value(row_idx, col_idx)
+
+                    if isinstance(value, float) and value.is_integer():
+                        value = int(value)
+
+                    values.append(self._normalize_import_cell(value))
+
+                while values and values[-1] == "":
+                    values.pop()
+
+                if any(values):
+                    lines.append(",".join(values))
+
+            result = "\n".join(lines).strip()
+            if not result:
+                raise ValueError("Não consegui extrair texto útil desse arquivo .xls.")
+
+            return result
+
+        except Exception as exc:
+            raise ValueError(f"Falha ao abrir arquivo .xls.\n{exc}") from exc
+
     def _refresh_size_summary(self) -> None:
         male_sizes = build_group_sizes(self.size_cfg["groups"][GROUP_MALE])
         female_sizes = build_group_sizes(self.size_cfg["groups"][GROUP_FEMALE])
@@ -471,9 +761,6 @@ class ListForgeController:
             f"• Total: {len(total_sizes)}"
         )
 
-    # ------------------------------------------------------------------
-    # Search
-    # ------------------------------------------------------------------
     def clear_search_highlight(self, keep_status: bool = False) -> None:
         self.search_runtime.clear_search_highlight()
         if not keep_status:
@@ -496,9 +783,6 @@ class ListForgeController:
     def replace_all(self) -> None:
         self.search_runtime.replace_all()
 
-    # ------------------------------------------------------------------
-    # File actions
-    # ------------------------------------------------------------------
     def open_input_file(self) -> None:
         if self.txt_in is None:
             return
@@ -506,7 +790,15 @@ class ListForgeController:
         filename = filedialog.askopenfilename(
             title=f"{APP_NAME} - Abrir lista",
             filetypes=[
-                ("Arquivos de texto", "*.txt *.csv *.list"),
+                (
+                    "Arquivos compatíveis",
+                    "*.txt *.csv *.list *.pdf *.doc *.docx *.xls *.xlsx *.xlsm *.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp",
+                ),
+                ("Texto", "*.txt *.csv *.list"),
+                ("PDF", "*.pdf"),
+                ("Word", "*.doc *.docx"),
+                ("Excel", "*.xls *.xlsx *.xlsm"),
+                ("Imagens", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp"),
                 ("Todos os arquivos", "*.*"),
             ],
         )
@@ -514,26 +806,90 @@ class ListForgeController:
             return
 
         path = Path(filename)
+        ext = path.suffix.lower()
 
         try:
-            content = self._read_text_file(path)
+            if ext in self.TEXT_EXTENSIONS:
+                content = self._read_text_file(path)
+
+                self.txt_in.delete("1.0", "end")
+                self.txt_in.insert("1.0", content)
+                self.current_file = path
+                self.current_file_var.set(f"Arquivo atual: {path}")
+                self._search_dirty = True
+                self.clear_search_highlight(keep_status=True)
+
+                self.cfg["last_opened_file"] = str(path)
+                save_config(self.cfg)
+
+                self._set_status(f"Lista carregada: {path.name}")
+                self.show_screen("editor")
+                self._focus_input_editor()
+                return
+
+            if ext in self.PDF_EXTENSIONS:
+                text = self._read_pdf_text(path)
+                self._load_imported_text_to_input(
+                    text,
+                    source_label=path.name,
+                    warning_message=(
+                        "Texto extraído do PDF.\n\n"
+                        "Confira todo o conteúdo antes de processar.\n"
+                        "A extração pode alterar a formatação original."
+                    ),
+                )
+                return
+
+            if ext in self.WORD_EXTENSIONS:
+                if ext == ".docx":
+                    text = self._read_docx_text(path)
+                else:
+                    text = self._read_doc_legacy_text(path)
+
+                self._load_imported_text_to_input(
+                    text,
+                    source_label=path.name,
+                    warning_message=(
+                        "Texto extraído do Word.\n\n"
+                        "Confira todo o conteúdo antes de processar.\n"
+                        "A extração pode alterar a formatação original."
+                    ),
+                )
+                return
+
+            if ext in self.EXCEL_EXTENSIONS:
+                if ext == ".xls":
+                    text = self._read_xls_legacy_text(path)
+                else:
+                    text = self._read_excel_text(path)
+
+                self._load_imported_text_to_input(
+                    text,
+                    source_label=path.name,
+                    warning_message=(
+                        "Texto extraído da planilha.\n\n"
+                        "Confira todo o conteúdo antes de processar.\n"
+                        "A extração pode alterar a estrutura original."
+                    ),
+                )
+                return
+
+            if ext in self.IMAGE_EXTENSIONS:
+                text = self._ocr_image_to_text(path)
+                self._load_imported_text_to_input(
+                    text,
+                    source_label=path.name,
+                    warning_message=(
+                        "Texto extraído da imagem.\n\n"
+                        "Confira todo o conteúdo antes de processar.\n"
+                        "OCR não é 100% confiável."
+                    ),
+                )
+                return
+
+            raise ValueError("Formato não suportado.")
         except Exception as exc:
             messagebox.showerror(APP_NAME, str(exc))
-            return
-
-        self.txt_in.delete("1.0", "end")
-        self.txt_in.insert("1.0", content)
-        self.current_file = path
-        self.current_file_var.set(f"Arquivo atual: {path}")
-        self._search_dirty = True
-        self.clear_search_highlight(keep_status=True)
-
-        self.cfg["last_opened_file"] = str(path)
-        save_config(self.cfg)
-
-        self._set_status(f"Lista carregada: {path.name}")
-        self.show_screen("editor")
-        self._focus_input_editor()
 
     def save_input_file(self) -> None:
         if self.txt_in is None:
@@ -612,9 +968,6 @@ class ListForgeController:
     def _write_text_file(self, path: Path, text: str) -> None:
         path.write_text(text, encoding="utf-8", newline="\n")
 
-    # ------------------------------------------------------------------
-    # Editor actions
-    # ------------------------------------------------------------------
     def undo_last_change(self) -> None:
         if self.txt_in is None:
             return
@@ -709,9 +1062,6 @@ class ListForgeController:
             self._set_status(f"Erro: {exc}")
             messagebox.showerror(APP_NAME, f"Falha ao extrair a lista do link.\n\n{exc}")
 
-    # ------------------------------------------------------------------
-    # Processing / exporting
-    # ------------------------------------------------------------------
     def process_and_preview(self) -> None:
         if self.txt_in is None or self.txt_out is None or self.txt_json is None:
             return
@@ -831,7 +1181,11 @@ class ListForgeController:
 
         try:
             path = export_json(self._last_orders, output_dir, base_name)
-            if self.show_json_tab_var.get() and self.outputs_nb is not None and self.tab_json is not None:
+            if (
+                self.show_json_tab_var.get()
+                and self.outputs_nb is not None
+                and self.tab_json is not None
+            ):
                 self.outputs_nb.select(self.tab_json)
             self._set_status(f"JSON gerado: {path.name}")
             messagebox.showinfo(
@@ -845,7 +1199,10 @@ class ListForgeController:
         if self.use_default_output_dir_var.get():
             folder_text = self.output_dir_var.get().strip()
             if not folder_text:
-                messagebox.showerror(APP_NAME, "Defina uma pasta padrão de saída nas configurações.")
+                messagebox.showerror(
+                    APP_NAME,
+                    "Defina uma pasta padrão de saída nas configurações.",
+                )
                 return None
             folder = Path(folder_text)
             folder.mkdir(parents=True, exist_ok=True)
@@ -866,7 +1223,10 @@ class ListForgeController:
         if self.use_default_list_name_var.get():
             base = sanitize_base_filename(self.default_list_name_var.get().strip())
             if not base:
-                messagebox.showerror(APP_NAME, "Defina um nome padrão válido nas configurações.")
+                messagebox.showerror(
+                    APP_NAME,
+                    "Defina um nome padrão válido nas configurações.",
+                )
                 return None
             return base
 
@@ -885,11 +1245,10 @@ class ListForgeController:
             return None
         return base
 
-    # ------------------------------------------------------------------
-    # Settings
-    # ------------------------------------------------------------------
     def pick_default_output_folder(self) -> None:
-        folder = filedialog.askdirectory(title=f"{APP_NAME} - Escolha a pasta padrão de saída")
+        folder = filedialog.askdirectory(
+            title=f"{APP_NAME} - Escolha a pasta padrão de saída"
+        )
         if folder:
             self.output_dir_var.set(folder)
 
@@ -1023,16 +1382,10 @@ class ListForgeController:
         self._refresh_size_summary()
         self._set_status("Tamanhos restaurados para o padrão.")
 
-    # ------------------------------------------------------------------
-    # Runtime preferences
-    # ------------------------------------------------------------------
     def _apply_runtime_preferences(self) -> None:
         self.editor_runtime.apply_runtime_preferences()
         self.settings_runtime.update_settings_field_states()
 
-    # ------------------------------------------------------------------
-    # Navigation helper
-    # ------------------------------------------------------------------
     def show_screen(self, key: str) -> None:
         if self.shell is not None:
             self.shell.show_screen(key)
