@@ -1,0 +1,100 @@
+<UserControl x:Class="ListForge.UI.Views.ManualView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource AppBg}">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="20,14,20,24">
+
+      <!-- Header -->
+      <Border Style="{StaticResource Card}" Padding="18,14" Margin="0,0,0,10">
+        <StackPanel>
+          <TextBlock Text="Manual" FontSize="15" FontWeight="Bold"/>
+          <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}"
+                     Text="Este manual descreve o funcionamento atual do ListForge: como montar a entrada, como o programa interpreta cada linha, como extrair lista a partir de um link, como usar a saída organizada, o JSON e as configurações."/>
+        </StackPanel>
+      </Border>
+
+      <Expander Header="Visão geral" IsExpanded="True" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="O ListForge é um editor voltado para organizar listas de produção e transformar a entrada em duas saídas principais: a Lista organizada e a Prévia JSON.&#x0a;&#x0a;O fluxo mais comum é:&#x0a;  1. Abrir ou colar a lista na entrada.&#x0a;  2. Ajustar separador, limpeza e modo de texto, se necessário.&#x0a;  3. Processar a lista.&#x0a;  4. Conferir a Lista organizada.&#x0a;  5. Salvar a saída ou gerar o JSON.&#x0a;&#x0a;Além disso, o programa também pode extrair uma lista a partir de um link HTTP(S) que retorna um JSON compatível."/>
+      </Expander>
+
+      <Expander Header="Fluxo rápido de uso" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="Fluxo recomendado para o dia a dia:&#x0a;&#x0a;• Clique em Abrir Lista para carregar um arquivo de texto.&#x0a;• Se a lista veio de fora e precisa de limpeza, use o painel Preparação da lista.&#x0a;• Se a origem for um link, use Extrair lista do link e cole a URL na janela que abrir.&#x0a;• Clique em Processar.&#x0a;• Confira a aba Lista organizada.&#x0a;• Se estiver tudo certo, use Copiar saída ou Salvar saída.&#x0a;• Quando precisar do arquivo estruturado, use Gerar JSON.&#x0a;&#x0a;Se algo não sair como esperado, revise primeiro o separador da entrada e os tamanhos usados."/>
+      </Expander>
+
+      <Expander Header="Interface do programa" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="A interface é dividida em três áreas principais:&#x0a;&#x0a;• Barra lateral: acesso às telas Editor, Configurações e Manual.&#x0a;• Área central do Editor: onde ficam a entrada, os painéis retráteis e a saída.&#x0a;• Rodapé do Editor: onde ficam os botões de limpar, copiar, salvar, gerar JSON e processar.&#x0a;&#x0a;Na tela Editor, a coluna da esquerda é usada para entrada e edição da lista. A coluna da direita mostra a saída processada.&#x0a;&#x0a;A saída pode alternar entre:&#x0a;• Lista organizada&#x0a;• Prévia JSON&#x0a;&#x0a;As áreas de texto possuem numeração de linhas, barras de rolagem e suporte a colagem e edição manual."/>
+      </Expander>
+
+      <Expander Header="Arquivos, salvamento e backups" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="Na barra superior do Editor existem ações ligadas a arquivo e edição:&#x0a;&#x0a;• Abrir Lista: abre um arquivo de texto para colocar na entrada.&#x0a;• Extrair lista do link: abre uma janela para você colar um link HTTP(S) que retorna JSON.&#x0a;• Salvar Entrada: salva o conteúdo atual da entrada no arquivo atual.&#x0a;• Salvar Entrada Como: salva a entrada em um novo arquivo.&#x0a;• Desfazer: desfaz a última alteração feita na entrada (Ctrl+Z).&#x0a;• Abrir pasta de backups: abre a pasta onde os backups são guardados.&#x0a;&#x0a;Quando você salva por cima de um arquivo já existente, o programa cria um backup antes da gravação. Isso ajuda a recuperar versões anteriores da lista."/>
+      </Expander>
+
+      <Expander Header="Como montar a entrada" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="A entrada é lida linha por linha.&#x0a;&#x0a;Cada linha pode conter:&#x0a;• nome&#x0a;• número&#x0a;• um ou mais tamanhos&#x0a;• até dois campos extras de texto&#x0a;&#x0a;Exemplos válidos:&#x0a;  JOÃO,10,P&#x0a;  JOÃO,10,P,M&#x0a;  JOÃO,APELIDO,10,P&#x0a;  JOÃO,APELIDO,10,P,O+&#x0a;  JUACA,JUSÉ,4-PP,BLG,8A&#x0a;&#x0a;O separador padrão é a vírgula, mas você pode usar outro no painel Preparação da lista.&#x0a;Linhas vazias são ignoradas."/>
+      </Expander>
+
+      <Expander Header="Como o editor interpreta cada linha" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="A leitura da linha segue estas regras:&#x0a;&#x0a;  1. A linha é dividida usando o separador atual.&#x0a;  2. O primeiro valor numérico puro é tratado como Número.&#x0a;  3. Valores reconhecidos como tamanho entram na lista de tamanhos.&#x0a;  4. O primeiro texto que não for número nem tamanho vira Nome.&#x0a;  5. Os dois próximos textos extras viram campos adicionais.&#x0a;&#x0a;Na prática, esses campos extras costumam ser usados como:&#x0a;  • s2 = Apelido&#x0a;  • s3 = Tipo sanguíneo&#x0a;&#x0a;Se a linha não tiver nenhum tamanho reconhecido, ela gera erro.&#x0a;Se a linha tiver mais de 6 tokens de tamanho, ela também gera erro.&#x0a;&#x0a;Importante: o programa não depende da posição fixa de cada parte. Ele decide pelo conteúdo."/>
+      </Expander>
+
+      <Expander Header="Regras de quantidade e separação por gênero" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="O programa aplica duas regras importantes durante o processamento:&#x0a;&#x0a;1. Quantidade no tamanho&#x0a;Se um tamanho vier no formato qtd-tamanho, ele é expandido em múltiplas linhas.&#x0a;&#x0a;Exemplo: ,,3-P  vira:  ,,P  /  ,,P  /  ,,P&#x0a;&#x0a;2. Gêneros diferentes na mesma linha&#x0a;Uma mesma linha não deve sair misturando tamanhos de grupos diferentes. Se houver mistura de Masculino, Feminino e/ou Infantil, o programa separa em linhas diferentes.&#x0a;&#x0a;Exemplo: JUACA,JUSÉ,PP,BLP  vira:&#x0a;  JUACA,,PP,,JUSÉ&#x0a;  JUACA,,,BLP,JUSÉ&#x0a;&#x0a;Com isso, a saída fica coerente com os grupos de tamanho e evita colunas misturadas."/>
+      </Expander>
+
+      <Expander Header="Preparação da lista" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="O painel Preparação da lista serve para ajustar a entrada antes do processamento.&#x0a;&#x0a;Campos e ações:&#x0a;&#x0a;• Separador da entrada — define como cada linha será dividida. O padrão é vírgula.&#x0a;• Padrão (,) — restaura rapidamente o separador para vírgula.&#x0a;• Remover espaços desnecessários — remove espaços extras ao redor de cada parte da linha.&#x0a;• Maiúsculas / minúsculas — controla como textos comuns saem após o processamento:&#x0a;    - Original&#x0a;    - Tudo maiúsculo&#x0a;    - Tudo minúsculo&#x0a;&#x0a;Observação: os campos de tamanho continuam sendo tratados como tamanhos válidos do sistema."/>
+      </Expander>
+
+      <Expander Header="Extrair lista do link" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="O botão Extrair lista do link serve para quando a origem da lista é um link HTTP(S) que retorna um JSON compatível.&#x0a;&#x0a;Como funciona:&#x0a;  1. Clique em Extrair lista do link.&#x0a;  2. Cole o link na janela que abrir.&#x0a;  3. O programa baixa o JSON.&#x0a;  4. A lista é extraída automaticamente para a entrada.&#x0a;  5. Em seguida, o programa já processa o conteúdo.&#x0a;&#x0a;Regras:&#x0a;• O link precisa começar com http:// ou https://.&#x0a;• O conteúdo retornado precisa ser um JSON válido.&#x0a;• O JSON precisa conter uma estrutura compatível.&#x0a;&#x0a;Erros comuns: link inválido, link inacessível, resposta que não é JSON, JSON sem estrutura esperada."/>
+      </Expander>
+
+      <Expander Header="Localizar e substituir" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="O painel Localizar / Substituir é usado para revisar e corrigir a entrada.&#x0a;&#x0a;Campos:&#x0a;• Localizar&#x0a;• Substituir por&#x0a;• Diferenciar maiúsculas/minúsculas&#x0a;&#x0a;Botões:&#x0a;• Localizar — encontra o próximo termo a partir da posição atual.&#x0a;• Anterior — volta para a ocorrência anterior.&#x0a;• Próximo — avança para a próxima ocorrência.&#x0a;• Substituir — troca apenas a ocorrência selecionada.&#x0a;• Substituir tudo — troca todas as ocorrências.&#x0a;• Limpar destaque — remove a marcação visual da busca.&#x0a;&#x0a;Esse painel é útil para corrigir nomes, apelidos, abreviações e padrões repetidos antes de processar."/>
+      </Expander>
+
+      <Expander Header="Saída organizada" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="A Lista organizada é a principal saída visual do programa, montada a partir da entrada já interpretada e normalizada.&#x0a;&#x0a;Estrutura geral:&#x0a;• Nome&#x0a;• Número&#x0a;• colunas de tamanhos por grupo ativo (Masculino / Feminino / Infantil)&#x0a;• campos extras, quando existirem&#x0a;&#x0a;Se houver mistura de grupos na mesma linha original, o programa separa em linhas diferentes.&#x0a;Se houver quantidade no formato 3-P, ele expande em várias linhas.&#x0a;&#x0a;Botões relacionados:&#x0a;• Copiar saída — copia o texto da saída organizada.&#x0a;• Salvar saída — salva a saída em arquivo de texto.&#x0a;&#x0a;Se a saída ainda estiver vazia, o programa tenta processar antes de copiar ou salvar."/>
+      </Expander>
+
+      <Expander Header="JSON e prévia JSON" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="Além da Lista organizada, o programa também monta uma Prévia JSON, gerada a partir do conteúdo processado.&#x0a;&#x0a;Opções configuráveis em Configurações:&#x0a;• Mostrar área de JSON&#x0a;• Mostrar botão Gerar JSON&#x0a;• Mostrar botão Copiar JSON&#x0a;&#x0a;Botões:&#x0a;• Copiar JSON — copia a prévia atual.&#x0a;• Gerar JSON — salva um arquivo .json no disco.&#x0a;&#x0a;O JSON reflete o conteúdo depois das regras de processamento, incluindo expansão de quantidade e separação por grupo."/>
+      </Expander>
+
+      <Expander Header="Configurações" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="A tela Configurações é dividida em grupos principais:&#x0a;&#x0a;1. Exibição&#x0a;  • mostrar área de JSON / botão Gerar JSON / botão Copiar JSON&#x0a;&#x0a;2. Saída&#x0a;  • pasta padrão, nome padrão, modo de capitalização, separador padrão&#x0a;&#x0a;3. Tema&#x0a;  • seleção do tema da interface (ListForge Dark / SisBolt Dark)&#x0a;&#x0a;4. Tamanhos&#x0a;  • cadastro separado por Masculino, Feminino e Infantil (tamanhos-base, prefixos, sufixos)&#x0a;&#x0a;Na parte inferior: Salvar configurações / Restaurar padrões gerais / Restaurar tamanhos padrão."/>
+      </Expander>
+
+      <Expander Header="Tamanhos" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="O reconhecimento de tamanhos depende do cadastro configurado em Configurações.&#x0a;&#x0a;Cada grupo possui:&#x0a;• Tamanhos-base&#x0a;• Prefixos&#x0a;• Sufixos&#x0a;&#x0a;Exemplos:&#x0a;• Masculino: PP, P, M, G, GG...&#x0a;• Feminino: prefixo BL + base P = BLP&#x0a;• Infantil: base 8 + sufixo A = 8A&#x0a;&#x0a;Se um tamanho válido não estiver sendo lido corretamente, a primeira coisa a revisar é o cadastro de tamanhos.&#x0a;&#x0a;O grupo do tamanho influencia:&#x0a;• a saída organizada&#x0a;• a separação por linha&#x0a;• o campo Gender no JSON&#x0a;&#x0a;Arquivos de config: %APPDATA%\ListForge\config.json e sizes.json"/>
+      </Expander>
+
+      <Expander Header="Mensagens de erro e revisão" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="Erros comuns do processamento:&#x0a;&#x0a;• Sem TAM reconhecido — a linha não possui nenhum tamanho válido para o cadastro atual.&#x0a;• Mais de 6 TAMs na linha — a linha excedeu o limite de tokens de tamanho aceitos.&#x0a;• Nenhuma linha válida encontrada — a entrada não gerou linhas utilizáveis.&#x0a;• Separador inválido — o separador informado não pôde ser usado corretamente.&#x0a;&#x0a;Quando ocorre erro em uma linha específica, o programa tenta levar o cursor até a linha para facilitar a correção."/>
+      </Expander>
+
+      <Expander Header="Dúvidas comuns" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="1. Meu tamanho não foi reconhecido. O que revisar?&#x0a;   Revise o separador da entrada e o cadastro de tamanhos.&#x0a;&#x0a;2. Usei 4-PP e saiu em várias linhas. Isso é erro?&#x0a;   Não. Quantidade no tamanho é expandida em várias linhas — comportamento correto.&#x0a;&#x0a;3. Coloquei PP e BLP na mesma linha e o programa separou. Isso é esperado?&#x0a;   Sim. Tamanhos de grupos diferentes não ficam misturados na mesma linha de saída.&#x0a;&#x0a;4. O link não funcionou. O que pode ser?&#x0a;   O link pode estar inacessível, não começar com http/https ou não retornar JSON válido.&#x0a;&#x0a;5. A prévia JSON sumiu.&#x0a;   Verifique em Configurações se a área de JSON está habilitada.&#x0a;&#x0a;6. Quero padronizar várias palavras de uma vez.&#x0a;   Use o painel Localizar e substituir antes de processar.&#x0a;&#x0a;7. Como usar separador de tabulação?&#x0a;   Digite \t no campo de separador. Útil ao copiar de planilhas.&#x0a;&#x0a;8. Formatos de arquivo suportados:&#x0a;   .txt .csv .list .pdf .doc .docx .xls .xlsx .xlsm&#x0a;   .png .jpg .jpeg .bmp .tif .tiff .webp (via OCR com Tesseract)"/>
+      </Expander>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
