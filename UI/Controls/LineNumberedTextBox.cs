@@ -200,23 +200,18 @@ public class LineNumberedTextBox : Control
         var lineCount = _textBox.LineCount;
         if (lineCount <= 0) return;
 
-        // Calculate pixel height of one line
-        double firstY = 0;
-        double secondY = lineCount > 1
-            ? _textBox.GetRectFromCharacterIndex(_textBox.GetCharacterIndexFromLineIndex(1)).Top
-            : 16;
-
-        double lh = lineCount > 1 ? Math.Max(secondY - firstY, 8) : 16;
-
-        // Vertical scroll offset
-        double scrollOffset = _scroller?.VerticalOffset ?? 0;
-
-        // Viewport height
-        double viewportHeight = _gutter.ActualHeight > 0 ? _gutter.ActualHeight : 400;
-
-        // First visible line
-        int firstLine = Math.Max(0, (int)(scrollOffset / lh));
-        int lastLine = Math.Min(lineCount - 1, (int)((scrollOffset + viewportHeight) / lh) + 1);
+        int firstLine;
+        int lastLine;
+        try
+        {
+            firstLine = Math.Max(0, _textBox.GetFirstVisibleLineIndex());
+            lastLine = Math.Min(lineCount - 1, _textBox.GetLastVisibleLineIndex());
+        }
+        catch
+        {
+            firstLine = 0;
+            lastLine = lineCount - 1;
+        }
 
         var mutedBrush = (TryFindResource("TextMutedBrush") as Brush)
             ?? new SolidColorBrush(Color.FromRgb(0x8E, 0xA3, 0xC7));
@@ -227,25 +222,25 @@ public class LineNumberedTextBox : Control
             try
             {
                 var charIdx = _textBox.GetCharacterIndexFromLineIndex(i);
-                lineTop = _textBox.GetRectFromCharacterIndex(charIdx).Top - scrollOffset;
+                lineTop = _textBox.GetRectFromCharacterIndex(charIdx).Top;
             }
             catch
             {
-                lineTop = i * lh - scrollOffset;
+                continue;
             }
 
             var tb = new TextBlock
             {
                 Text = (i + 1).ToString(),
                 Foreground = mutedBrush,
-                FontFamily = new FontFamily("Consolas"),
-                FontSize = 12,
+                FontFamily = _textBox.FontFamily,
+                FontSize = _textBox.FontSize,
                 Width = GutterWidth - 8,
                 TextAlignment = TextAlignment.Right,
             };
 
             Canvas.SetLeft(tb, 0);
-            Canvas.SetTop(tb, lineTop + _textBox.Padding.Top);
+            Canvas.SetTop(tb, lineTop);
             _gutter.Children.Add(tb);
         }
     }

@@ -46,4 +46,4 @@ Desktop.ini
 ~$*
 
 # Accidental shell-artifact directory
-{Core,Config,Models,UI/
+[{]Core,Config,Models,UI/

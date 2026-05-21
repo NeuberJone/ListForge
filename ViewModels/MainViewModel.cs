@@ -270,6 +270,9 @@ public class MainViewModel : INotifyPropertyChanged
         _ => "ListForge Dark",
     };
 
+    private static string FriendlyError(Exception ex) =>
+        ex.GetBaseException().Message;
+
     // ---------------------------------------------------------------
     // File operations
     // ---------------------------------------------------------------
@@ -344,7 +347,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(FriendlyError(ex), ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -484,8 +487,9 @@ public class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             GotoErrorLine(ex.Message);
-            StatusText = $"Erro: {ex.Message}";
-            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            var message = FriendlyError(ex);
+            StatusText = $"Erro: {message}";
+            MessageBox.Show(message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
