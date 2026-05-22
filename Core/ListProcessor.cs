@@ -14,6 +14,8 @@ public static class ListProcessor
 {
     private static readonly string[] GroupRenderOrder = ["male", "female", "child"];
 
+    private sealed record RowFragment(ParsedRow Row, string Group, IReadOnlyList<string> Socks);
+
     // ---------------------------------------------------------------
     // Separator helpers
     // ---------------------------------------------------------------
@@ -72,7 +74,7 @@ public static class ListProcessor
     // JSON import extraction
     // ---------------------------------------------------------------
     private static readonly string[] JsonImportFieldOrder =
-        ["Name", "Number", "ShortSleeve", "LongSleeve", "Short", "Pants", "Tanktop", "Vest", "Nickname", "BloodType"];
+        ["Name", "Number", "ShortSleeve", "LongSleeve", "Short", "Pants", "Tanktop", "Vest", "Socks", "Nickname", "BloodType"];
 
     private static readonly HashSet<string> JsonImportMandatory = ["Name", "Number"];
 
@@ -248,20 +250,28 @@ public static class ListProcessor
     // ---------------------------------------------------------------
     // Explode & normalize
     // ---------------------------------------------------------------
-    private static List<(ParsedRow row, string group)> ExplodeRowFragments(ParsedRow row, SizeConfig config)
+    private static List<RowFragment> ExplodeRowFragments(ParsedRow row, SizeConfig config)
     {
         var groupedSingle = GroupRenderOrder.ToDictionary(g => g, _ => new List<string>());
-        var exploded = new List<(ParsedRow, string)>();
+        var exploded = new List<RowFragment>();
+        var socks = new List<string>();
 
         foreach (var token in row.Tams)
         {
             var (qty, size) = SizeHelper.ParseQtyAndSize(token, config);
             var group = SizeHelper.SizeGroupOf(size, config);
 
+            if (group == SizeHelper.GroupSock)
+            {
+                for (var i = 0; i < qty; i++)
+                    socks.Add(size);
+                continue;
+            }
+
             if (qty > 1)
             {
                 for (var i = 0; i < qty; i++)
-                    exploded.Add((new ParsedRow(row.Name, row.Number, [size], row.S2, row.S3), group));
+                    exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, [size], row.S2, row.S3), group, []));
             }
             else
             {
@@ -273,17 +283,25 @@ public static class ListProcessor
         {
             var sizes = groupedSingle[group];
             if (sizes.Count > 0)
-                exploded.Add((new ParsedRow(row.Name, row.Number, sizes, row.S2, row.S3), group));
+                exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, sizes, row.S2, row.S3), group, []));
         }
+
+        if (exploded.Count == 0 && socks.Count > 0)
+            exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, [], row.S2, row.S3), "", socks));
+        else if (socks.Count > 0)
+            exploded[0] = exploded[0] with { Socks = socks };
 
         return exploded;
     }
 
-    private static Dictionary<string, int> GroupColumnWidths(List<(ParsedRow row, string group)> normalized)
+    private static Dictionary<string, int> GroupColumnWidths(List<RowFragment> normalized)
     {
         var widths = GroupRenderOrder.ToDictionary(g => g, _ => 0);
-        foreach (var (row, group) in normalized)
-            widths[group] = Math.Max(widths[group], row.Tams.Count);
+        foreach (var fragment in normalized)
+        {
+            if (!widths.ContainsKey(fragment.Group)) continue;
+            widths[fragment.Group] = Math.Max(widths[fragment.Group], fragment.Row.Tams.Count);
+        }
         return widths;
     }
 
@@ -310,8 +328,11 @@ public static class ListProcessor
             var widths = GroupColumnWidths(fragments);
             var activeGroups = GroupRenderOrder.Where(g => widths[g] > 0).ToList();
 
-            foreach (var (row, rowGroup) in fragments)
+            var sockWidth = fragments.Max(f => f.Socks.Count);
+
+            foreach (var fragment in fragments)
             {
+                var row = fragment.Row;
                 var cols = new List<string>
                 {
                     ApplyCaseMode(row.Name, caseMode),
@@ -320,7 +341,7 @@ public static class ListProcessor
 
                 foreach (var group in activeGroups)
                 {
-                    if (group == rowGroup)
+                    if (group == fragment.Group)
                     {
                         var groupSizes = row.Tams.Select(s => SizeHelper.FormatSizeToken(s, sizeConfig)).ToList();
                         groupSizes.AddRange(Enumerable.Repeat("", widths[group] - groupSizes.Count));
@@ -330,6 +351,13 @@ public static class ListProcessor
                     {
                         cols.AddRange(Enumerable.Repeat("", widths[group]));
                     }
+                }
+
+                if (sockWidth > 0)
+                {
+                    var sockSizes = fragment.Socks.Select(s => SizeHelper.FormatSizeToken(s, sizeConfig)).ToList();
+                    sockSizes.AddRange(Enumerable.Repeat("", sockWidth - sockSizes.Count));
+                    cols.AddRange(sockSizes);
                 }
 
                 if (hasS2) cols.Add(ApplyCaseMode(row.S2, caseMode));
@@ -356,8 +384,32 @@ public static class ListProcessor
             .SelectMany(r => ExplodeRowFragments(r, sizeConfig))
             .ToList();
 
-        foreach (var (row, _) in normalized)
+        foreach (var fragment in normalized)
         {
+            var row = fragment.Row;
+            if (row.Tams.Count == 0 && fragment.Socks.Count > 0)
+            {
+                orders.Add(new Dictionary<string, string>
+                {
+                    ["Name"] = ApplyCaseMode(row.Name, caseMode),
+                    ["Nickname"] = ApplyCaseMode(row.S2, caseMode),
+                    ["Number"] = row.Number,
+                    ["BloodType"] = ApplyCaseMode(row.S3, caseMode),
+                    ["Gender"] = "",
+                    ["ShortSleeve"] = "",
+                    ["LongSleeve"] = "",
+                    ["Short"] = "",
+                    ["Pants"] = "",
+                    ["Tanktop"] = "",
+                    ["Vest"] = "",
+                    ["Socks"] = string.Join(", ", fragment.Socks),
+                });
+                continue;
+            }
+
+            var sockText = string.Join(", ", fragment.Socks);
+            var sockAttached = false;
+
             foreach (var tam in row.Tams)
             {
                 var (qty, size) = SizeHelper.ParseQtyAndSize(tam, sizeConfig);
@@ -378,7 +430,9 @@ public static class ListProcessor
                         ["Pants"] = "",
                         ["Tanktop"] = "",
                         ["Vest"] = "",
+                        ["Socks"] = !sockAttached ? sockText : "",
                     });
+                    sockAttached = true;
                 }
             }
         }

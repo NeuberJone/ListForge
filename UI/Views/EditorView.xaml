@@ -19,12 +19,12 @@
                    TextTrimming="CharacterEllipsis"
                    MaxWidth="380"/>
         <WrapPanel>
-          <Button Content="Abrir Lista"          Command="{Binding OpenInputFileCommand}"    Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-          <Button Content="Extrair do link"       Command="{Binding ExtractFromLinkCommand}"  Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-          <Button Content="Salvar Entrada"        Command="{Binding SaveInputFileCommand}"    Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-          <Button Content="Salvar Como"           Command="{Binding SaveInputAsFileCommand}"  Style="{StaticResource StdButton}" Margin="0,0,12,0"/>
-          <Button Content="Desfazer"              Command="{Binding UndoCommand}"             Style="{StaticResource StdButton}" Margin="0,0,5,0" ToolTip="Ctrl+Z no editor"/>
-          <Button Content="Pasta de backups"      Command="{Binding OpenBackupsFolderCommand}" Style="{StaticResource StdButton}"/>
+          <Button Content="Abrir Lista"          Command="{Binding OpenInputFileCommand}"     Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+          <Button Content="Extrair do link"      Command="{Binding ExtractFromLinkCommand}"   Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+          <Button Content="Salvar Entrada"       Command="{Binding SaveInputFileCommand}"     Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+          <Button Content="Salvar Como"          Command="{Binding SaveInputAsFileCommand}"   Style="{StaticResource StdButton}" Margin="0,0,12,0"/>
+          <Button Content="Desfazer"             Command="{Binding UndoCommand}"              Style="{StaticResource StdButton}" Margin="0,0,5,0" ToolTip="Ctrl+Z no editor"/>
+          <Button Content="Pasta de backups"     Command="{Binding OpenBackupsFolderCommand}" Style="{StaticResource StdButton}"/>
         </WrapPanel>
       </DockPanel>
     </Border>
@@ -38,14 +38,14 @@
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
       <WrapPanel Grid.Column="0">
-        <Button Content="Limpar tudo"  Command="{Binding ClearAllCommand}"    Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-        <Button Content="Copiar saída" Command="{Binding CopyOutputCommand}"  Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-        <Button Content="Salvar saída" Command="{Binding SaveOutputCommand}"  Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-        <Button x:Name="BtnCopyJson"   Content="Copiar JSON" Command="{Binding CopyJsonCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+        <Button Content="Limpar tudo"  Command="{Binding ClearAllCommand}"   Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+        <Button Content="Copiar sa&#x00ED;da" Command="{Binding CopyOutputCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+        <Button Content="Salvar sa&#x00ED;da" Command="{Binding SaveOutputCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+        <Button x:Name="BtnCopyJson" Content="Copiar JSON" Command="{Binding CopyJsonCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
       </WrapPanel>
       <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
         <Button x:Name="BtnGenerateJson" Content="Gerar JSON" Command="{Binding GenerateJsonCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-        <Button Content="Processar"      Command="{Binding ProcessCommand}"    Style="{StaticResource AccentButton}"/>
+        <Button Content="Processar" Command="{Binding ProcessCommand}" Style="{StaticResource AccentButton}"/>
       </WrapPanel>
     </Grid>
 
@@ -55,19 +55,32 @@
     <DockPanel>
 
       <!-- Preparation panel -->
-      <Expander DockPanel.Dock="Top" Header="▶  Preparação da lista" Margin="0,0,0,6" Padding="12,8">
-        <WrapPanel Margin="4,6,4,4">
-          <TextBlock Text="Separador da entrada" VerticalAlignment="Center" Margin="0,0,8,0"/>
-          <TextBox x:Name="TxtSeparator" Width="60" Style="{StaticResource FormEntry}" Margin="0,0,6,0"/>
-          <Button Content="Padrão (,)" Command="{Binding ResetSeparatorCommand}" Style="{StaticResource StdButton}" Margin="0,0,14,0"/>
-          <Button Content="Remover espaços" Command="{Binding CleanSpacesCommand}" Style="{StaticResource StdButton}" Margin="0,0,20,0"/>
-          <TextBlock Text="Capitalização" VerticalAlignment="Center" Margin="0,0,8,0"/>
-          <ComboBox x:Name="CmbCaseMode" Width="160"/>
-        </WrapPanel>
+      <Expander DockPanel.Dock="Top" Header="&#x25B6;  Prepara&#x00E7;&#x00E3;o da lista" Margin="0,0,0,6" Padding="12,8">
+        <StackPanel Margin="4,6,4,4">
+          <WrapPanel>
+            <TextBlock Text="Separador da entrada" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBox x:Name="TxtSeparator" Width="80" Style="{StaticResource FormEntry}" Margin="0,0,8,0"/>
+            <Button Content="Padr&#x00E3;o (,)" Command="{Binding ResetSeparatorCommand}" Style="{StaticResource StdButton}" Margin="0,0,14,0"/>
+            <Button Content="Remover espa&#x00E7;os" Command="{Binding CleanSpacesCommand}" Style="{StaticResource StdButton}" Margin="0,0,22,0"/>
+            <TextBlock Text="Capitaliza&#x00E7;&#x00E3;o" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="CmbCaseMode" Width="220"/>
+          </WrapPanel>
+
+          <WrapPanel Margin="0,10,0,0">
+            <TextBlock Text="Adicionar:" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <CheckBox x:Name="ChkApplySock" Content="Mei&#x00E3;o" IsChecked="True" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
+            <ComboBox x:Name="CmbBulkSock" Width="170" Margin="0,0,22,0"/>
+            <Border Width="2" Height="36" Background="{StaticResource BorderBrush}" Margin="0,0,22,0"/>
+            <CheckBox x:Name="ChkApplySize" Content="Tamanho" IsChecked="True" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
+            <TextBox x:Name="TxtBulkSize" Width="150" Style="{StaticResource FormEntry}" Margin="0,0,16,0"/>
+            <Button Content="Na sele&#x00E7;&#x00E3;o" Click="AppendSelected_Click" Style="{StaticResource StdButton}" Margin="0,0,8,0"/>
+            <Button Content="Em todas" Click="AppendAll_Click" Style="{StaticResource StdButton}"/>
+          </WrapPanel>
+        </StackPanel>
       </Expander>
 
       <!-- Search panel -->
-      <Expander DockPanel.Dock="Top" Header="▶  Localizar / Substituir" Margin="0,0,0,6" Padding="12,8">
+      <Expander DockPanel.Dock="Top" Header="&#x25B6;  Localizar / Substituir" Margin="0,0,0,6" Padding="12,8">
         <StackPanel Margin="4,6,4,4">
           <WrapPanel>
             <TextBlock Text="Localizar" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -77,10 +90,10 @@
             <CheckBox x:Name="ChkMatchCase" Content="Diferenciar mai/min" VerticalAlignment="Center"/>
           </WrapPanel>
           <WrapPanel Margin="0,6,0,0">
-            <Button Content="Anterior"        Command="{Binding FindPreviousCommand}"        Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-            <Button Content="Próximo"         Command="{Binding FindNextCommand}"            Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-            <Button Content="Substituir"      Command="{Binding ReplaceCurrentCommand}"      Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-            <Button Content="Substituir tudo" Command="{Binding ReplaceAllCommand}"          Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+            <Button Content="Anterior" Command="{Binding FindPreviousCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+            <Button Content="Pr&#x00F3;ximo" Command="{Binding FindNextCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+            <Button Content="Substituir" Command="{Binding ReplaceCurrentCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+            <Button Content="Substituir tudo" Command="{Binding ReplaceAllCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
             <Button Content="Limpar destaque" Command="{Binding ClearSearchHighlightCommand}" Style="{StaticResource StdButton}"/>
           </WrapPanel>
         </StackPanel>
@@ -94,23 +107,20 @@
           <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Left: input with line numbers -->
         <Border Grid.Column="0" Style="{StaticResource Card}">
           <DockPanel>
             <TextBlock DockPanel.Dock="Top"
-                       Text="Entrada / edição"
+                       Text="Entrada / edi&#x00E7;&#x00E3;o"
                        FontSize="13" FontWeight="Bold"
                        Margin="12,10,12,6"/>
-            <ctrl:LineNumberedTextBox x:Name="LnbInput"
-                                      Margin="0,0,0,0"/>
+            <ctrl:LineNumberedTextBox x:Name="LnbInput" Margin="0,0,0,0"/>
           </DockPanel>
         </Border>
 
-        <!-- Right: output with line numbers -->
         <Border Grid.Column="2" Style="{StaticResource Card}">
           <DockPanel>
             <TextBlock DockPanel.Dock="Top"
-                       Text="Saída"
+                       Text="Sa&#x00ED;da"
                        FontSize="13" FontWeight="Bold"
                        Margin="12,10,12,6"/>
 
@@ -119,11 +129,11 @@
                         Margin="12,0,12,6"
                         SelectionChanged="OutputTabs_SelectionChanged">
               <TabItem Header="Lista organizada" Tag="list"/>
-              <TabItem x:Name="TabJson" Header="Prévia JSON" Tag="json"/>
+              <TabItem x:Name="TabJson" Header="Pr&#x00E9;via JSON" Tag="json"/>
             </TabControl>
 
             <ctrl:LineNumberedTextBox x:Name="LnbOutput" IsReadOnly="True" Visibility="Visible"/>
-            <ctrl:LineNumberedTextBox x:Name="LnbJson"   IsReadOnly="True" Visibility="Collapsed"/>
+            <ctrl:LineNumberedTextBox x:Name="LnbJson" IsReadOnly="True" Visibility="Collapsed"/>
           </DockPanel>
         </Border>
       </Grid>

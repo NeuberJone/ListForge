@@ -1,6 +1,9 @@
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using ListForge.Core;
 using ListForge.ViewModels;
 
 namespace ListForge.UI.Views;
@@ -43,6 +46,14 @@ public partial class EditorView : UserControl
         CmbCaseMode.ItemsSource = vm.CaseLabels;
         CmbCaseMode.SetBinding(ComboBox.SelectedItemProperty,
             new System.Windows.Data.Binding(nameof(vm.EditorCaseLabel))
+            {
+                Source = vm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+            });
+
+        CmbBulkSock.ItemsSource = vm.SockSizeOptions;
+        CmbBulkSock.SetBinding(ComboBox.SelectedItemProperty,
+            new System.Windows.Data.Binding(nameof(vm.SelectedSockSize))
             {
                 Source = vm,
                 Mode = System.Windows.Data.BindingMode.TwoWay,
@@ -121,6 +132,82 @@ public partial class EditorView : UserControl
         {
             TxtFind.Focus();
             e.Handled = true;
+        }
+    }
+
+    private void AppendSelected_Click(object sender, RoutedEventArgs e) =>
+        AppendTokensToInput(applyToAll: false);
+
+    private void AppendAll_Click(object sender, RoutedEventArgs e) =>
+        AppendTokensToInput(applyToAll: true);
+
+    private void AppendTokensToInput(bool applyToAll)
+    {
+        if (_vm == null) return;
+
+        var tokens = new System.Collections.Generic.List<string>();
+        if (ChkApplySock.IsChecked == true)
+            tokens.Add((_vm.SelectedSockSize ?? "").Trim());
+        if (ChkApplySize.IsChecked == true)
+            tokens.Add((TxtBulkSize.Text ?? "").Trim());
+
+        tokens = tokens
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (tokens.Count == 0)
+        {
+            MessageBox.Show("Marque e informe um tamanho, um meião, ou os dois para adicionar.", "ListForge", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var sep = ListProcessor.NormalizeSeparator(_vm.EditorSeparator);
+        var textBox = LnbInput.InnerTextBox;
+        var originalText = _vm.InputText ?? "";
+        var lines = originalText.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n').ToList();
+        if (lines.Count == 0) lines.Add("");
+
+        var firstLine = 0;
+        var lastLine = lines.Count - 1;
+
+        if (!applyToAll && textBox != null)
+        {
+            firstLine = textBox.GetLineIndexFromCharacterIndex(textBox.SelectionStart);
+            var selectionEnd = textBox.SelectionLength > 0
+                ? Math.Max(textBox.SelectionStart, textBox.SelectionStart + textBox.SelectionLength - 1)
+                : textBox.SelectionStart;
+            lastLine = textBox.GetLineIndexFromCharacterIndex(selectionEnd);
+        }
+
+        firstLine = Math.Clamp(firstLine, 0, lines.Count - 1);
+        lastLine = Math.Clamp(lastLine, firstLine, lines.Count - 1);
+
+        var changed = 0;
+        for (var i = firstLine; i <= lastLine; i++)
+        {
+            if (string.IsNullOrWhiteSpace(lines[i])) continue;
+            lines[i] = lines[i].TrimEnd() + sep + string.Join(sep, tokens);
+            changed++;
+        }
+
+        if (changed == 0)
+        {
+            _vm.StatusText = "Nenhuma linha com conteudo para alterar.";
+            return;
+        }
+
+        _vm.InputText = string.Join("\n", lines);
+        _vm.ClearSearchHighlight(keepStatus: true);
+        var label = string.Join(" + ", tokens);
+        _vm.StatusText = applyToAll
+            ? $"{label} adicionado em {changed} linha(s)."
+            : $"{label} adicionado na selecao atual.";
+
+        if (textBox != null)
+        {
+            LnbInput.Focus();
+            LnbInput.ScrollToLine(firstLine);
         }
     }
 

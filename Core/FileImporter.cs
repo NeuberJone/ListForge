@@ -134,9 +134,11 @@ public static class FileImporter
     // ---------------------------------------------------------------
     public static string OcrImageToText(string path)
     {
-        var bundledTesseract = ResolveBundledTesseractExe();
-        if (bundledTesseract != null)
-            return OcrImageWithBundledCli(path, bundledTesseract);
+        var cliText = TryOcrWithTesseractCli(path);
+        if (!string.IsNullOrWhiteSpace(cliText))
+            return cliText;
+
+        var tessDataDir = ResolveTessDataDir();
 
         string bestText = "";
         int bestScore = -1;
@@ -147,11 +149,11 @@ public static class FileImporter
             PageSegMode.Auto,
             PageSegMode.SingleColumn,
             PageSegMode.SingleBlock,
-            PageSegMode.SingleBlockVertText,
+            PageSegMode.SparseText,
         };
 
-        var tessDataDir = ResolveTessDataDir();
         using var engine = new TesseractEngine(tessDataDir, "por+eng", EngineMode.Default);
+        engine.SetVariable("preserve_interword_spaces", "1");
 
         using var pix = Pix.LoadFromFile(path);
 
@@ -165,7 +167,7 @@ public static class FileImporter
                 try
                 {
                     using var page = engine.Process(variant, psm);
-                    var text = NormalizeOcrText(page.GetText() ?? "");
+                    var text = NormalizeImportedText(page.GetText() ?? "");
                     var score = ScoreOcrText(text);
                     if (score > bestScore)
                     {
@@ -185,123 +187,128 @@ public static class FileImporter
         return bestText;
     }
 
-    private static string OcrImageWithBundledCli(string path, string exe)
+    private static string TryOcrWithTesseractCli(string path)
     {
-        var exeDir = Path.GetDirectoryName(Path.GetFullPath(exe));
-        if (string.IsNullOrWhiteSpace(exeDir))
-            throw new InvalidOperationException($"Pasta do Tesseract invÃ¡lida: {exe}");
+        var exe = ResolveTesseractExe();
+        if (exe == null) return "";
 
-        var tessData = Path.Combine(exeDir, "tessdata");
-        if (!Directory.Exists(tessData))
-            throw new InvalidOperationException($"Pasta tessdata nÃ£o encontrada: {tessData}");
-
-        var info = new ProcessStartInfo
+        try
         {
-            FileName = exe,
-            WorkingDirectory = exeDir,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            CreateNoWindow = true,
-        };
+            using var process = new Process();
+            process.StartInfo = new ProcessStartInfo
+            {
+                FileName = exe,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            };
 
-        info.ArgumentList.Add(path);
-        info.ArgumentList.Add("stdout");
-        info.ArgumentList.Add("--tessdata-dir");
-        info.ArgumentList.Add(tessData);
-        info.ArgumentList.Add("-l");
-        info.ArgumentList.Add("por+eng");
-        info.ArgumentList.Add("--psm");
-        info.ArgumentList.Add("6");
+            process.StartInfo.ArgumentList.Add(path);
+            process.StartInfo.ArgumentList.Add("stdout");
+            process.StartInfo.ArgumentList.Add("-l");
+            process.StartInfo.ArgumentList.Add("por+eng");
+            process.StartInfo.ArgumentList.Add("--psm");
+            process.StartInfo.ArgumentList.Add("6");
+            process.StartInfo.ArgumentList.Add("--oem");
+            process.StartInfo.ArgumentList.Add("1");
+            process.StartInfo.ArgumentList.Add("-c");
+            process.StartInfo.ArgumentList.Add("preserve_interword_spaces=1");
 
-        using var process = Process.Start(info)
-            ?? throw new InvalidOperationException("NÃ£o foi possÃ­vel iniciar o Tesseract OCR.");
+            process.Start();
+            var output = process.StandardOutput.ReadToEnd();
+            _ = process.StandardError.ReadToEnd();
 
-        var text = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+            if (!process.WaitForExit(30000))
+            {
+                try { process.Kill(); } catch { }
+                return "";
+            }
 
-        if (!process.WaitForExit(30000))
-        {
-            try { process.Kill(); } catch { }
-            throw new InvalidOperationException("O Tesseract OCR demorou demais para ler a imagem.");
+            if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
+                return "";
+
+            return NormalizeOcrTableText(output);
         }
-
-        if (process.ExitCode != 0)
-            throw new InvalidOperationException($"Falha no Tesseract OCR.\n\n{error.Trim()}");
-
-        var normalized = NormalizeOcrText(text);
-        if (string.IsNullOrWhiteSpace(normalized))
-            throw new InvalidOperationException("Nenhum texto Ãºtil foi reconhecido na imagem.");
-
-        return normalized;
+        catch
+        {
+            return "";
+        }
     }
 
-    private static string? ResolveBundledTesseractExe()
+    private static string? ResolveTesseractExe()
     {
-        var baseDir = AppContext.BaseDirectory;
-        var currentDir = Environment.CurrentDirectory;
-        var processDir = Path.GetDirectoryName(Environment.ProcessPath ?? "");
+        var envCmd = (Environment.GetEnvironmentVariable("TESSERACT_CMD") ?? "").Trim();
+        if (!string.IsNullOrEmpty(envCmd) && File.Exists(envCmd))
+            return envCmd;
 
-        var candidates = new List<string>();
-        AddTesseractCandidate(candidates, baseDir);
-        AddTesseractCandidate(candidates, processDir);
-        AddTesseractCandidate(candidates, currentDir);
+        var bundled = Path.Combine(AppContext.BaseDirectory, "tesseract", "tesseract.exe");
+        if (File.Exists(bundled)) return bundled;
+
+        var candidates = new[]
+        {
+            @"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            @"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        };
 
         return candidates.FirstOrDefault(File.Exists);
     }
 
-    private static void AddTesseractCandidate(List<string> candidates, string? root)
+    private static string NormalizeOcrTableText(string text)
     {
-        if (string.IsNullOrWhiteSpace(root)) return;
-        candidates.Add(Path.Combine(root, "tesseract", "tesseract.exe"));
-    }
+        var lines = NormalizeImportedText(text)
+            .Split('\n')
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0)
+            .ToList();
 
-    private static string? GetDirectoryIfFileExists(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
-        return Path.GetDirectoryName(Path.GetFullPath(path));
-    }
+        var normalized = new List<string>();
 
-    private static string? ResolveTessDataBesideExe(string path)
-    {
-        var dir = GetDirectoryIfFileExists(path);
-        if (string.IsNullOrWhiteSpace(dir)) return null;
-
-        var tessData = Path.Combine(dir, "tessdata");
-        return Directory.Exists(tessData) ? tessData : null;
-    }
-
-    private static string? ResolveBundledTessDataDir()
-    {
-        var roots = new[]
+        foreach (var line in lines)
         {
-            AppContext.BaseDirectory,
-            Path.GetDirectoryName(Environment.ProcessPath ?? ""),
-            Environment.CurrentDirectory,
-        };
+            if (Regex.IsMatch(line, @"^\s*Lista\s+de\s+", RegexOptions.IgnoreCase))
+                continue;
 
-        foreach (var root in roots)
-        {
-            if (string.IsNullOrWhiteSpace(root)) continue;
-            var tessData = Path.Combine(root, "tesseract", "tessdata");
-            if (Directory.Exists(tessData)) return tessData;
+            if (Regex.IsMatch(line, @"Nome\s+Tamanho\s+N[uú]mero", RegexOptions.IgnoreCase))
+                continue;
+
+            var clean = Regex.Replace(line, @"\s+v\s*$", "", RegexOptions.IgnoreCase).Trim();
+            var columns = Regex.Split(clean, @"\s{2,}")
+                .Select(c => c.Trim())
+                .Where(c => c.Length > 0)
+                .ToList();
+
+            if (columns.Count >= 3 && Regex.IsMatch(columns[^1], @"^\d+$"))
+            {
+                var name = string.Join(" ", columns.Take(columns.Count - 2)).Trim();
+                var size = columns[^2];
+                var number = columns[^1];
+                normalized.Add($"{name},{size},{number}");
+                continue;
+            }
+
+            normalized.Add(clean);
         }
 
-        return null;
+        return string.Join("\n", normalized).Trim();
     }
 
     private static string ResolveTessDataDir()
     {
         // 1. Environment variable override
         var envCmd = (Environment.GetEnvironmentVariable("TESSERACT_CMD") ?? "").Trim();
-        var envTessData = ResolveTessDataBesideExe(envCmd);
-        if (envTessData != null) return envTessData;
+        if (!string.IsNullOrEmpty(envCmd) && File.Exists(envCmd))
+        {
+            var tessData = Path.Combine(Path.GetDirectoryName(envCmd)!, "tessdata");
+            if (Directory.Exists(tessData)) return tessData;
+        }
 
         // 2. Bundled tesseract/ directory beside the exe
-        var bundledTessData = ResolveBundledTessDataDir();
-        if (bundledTessData != null) return bundledTessData;
+        var exeDir = AppContext.BaseDirectory;
+        var bundledTessData = Path.Combine(exeDir, "tesseract", "tessdata");
+        if (Directory.Exists(bundledTessData)) return bundledTessData;
 
         // 3. System installs
         var candidates = new[]
@@ -347,8 +354,7 @@ public static class FileImporter
         var lines = text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
         if (lines.Count == 0) return -1;
         var useful = lines.Count(l => Regex.IsMatch(l, @"[A-Za-zÀ-ÿ0-9]"));
-        var tableRows = lines.Count(IsLikelyOcrTableRow);
-        return tableRows * 100 + useful * 10 + lines.Count;
+        return useful * 10 + lines.Count;
     }
 
     // ---------------------------------------------------------------
@@ -360,64 +366,6 @@ public static class FileImporter
                 .Split('\n')
                 .Select(l => l.TrimEnd()))
         .Trim();
-
-    private static string NormalizeOcrText(string text)
-    {
-        var normalized = NormalizeImportedText(text);
-        var tableRows = ExtractOcrTableRows(normalized);
-        return tableRows.Count >= 2
-            ? string.Join("\n", tableRows)
-            : normalized;
-    }
-
-    private static List<string> ExtractOcrTableRows(string text)
-    {
-        var result = new List<string>();
-        foreach (var rawLine in text.Split('\n'))
-        {
-            var line = Regex.Replace(rawLine.Trim(), @"\s+", " ");
-            if (string.IsNullOrWhiteSpace(line)) continue;
-            if (Regex.IsMatch(line, @"lista\s+de|nome\s+tamanho|tamanho\s+n[uú]mero", RegexOptions.IgnoreCase))
-                continue;
-
-            var parsed = TryParseOcrTableRow(line);
-            if (parsed != null) result.Add(parsed);
-        }
-        return result;
-    }
-
-    private static bool IsLikelyOcrTableRow(string line) =>
-        TryParseOcrTableRow(Regex.Replace(line.Trim(), @"\s+", " ")) != null;
-
-    private static string? TryParseOcrTableRow(string line)
-    {
-        line = Regex.Replace(line, @"\s+[vV]\s*$", "").Trim();
-        const string sizePattern = @"(?:XXGG|XLGG|XGG|GG|XG|PP|BLPP|BLP|BLM|BLG|BLGG|BLXG|P|M|G|[0-9]{1,2}A?)";
-
-        var nameSizeNumber = Regex.Match(
-            line,
-            $@"^(?<name>.+?)\s+(?<size>{sizePattern})\s+(?<number>\d+)$",
-            RegexOptions.IgnoreCase);
-        if (nameSizeNumber.Success)
-            return BuildCsvRow(nameSizeNumber.Groups["name"].Value, nameSizeNumber.Groups["number"].Value, nameSizeNumber.Groups["size"].Value);
-
-        var nameNumberSize = Regex.Match(
-            line,
-            $@"^(?<name>.+?)\s+(?<number>\d+)\s+(?<size>{sizePattern})$",
-            RegexOptions.IgnoreCase);
-        if (nameNumberSize.Success)
-            return BuildCsvRow(nameNumberSize.Groups["name"].Value, nameNumberSize.Groups["number"].Value, nameNumberSize.Groups["size"].Value);
-
-        return null;
-    }
-
-    private static string BuildCsvRow(string name, string number, string size)
-    {
-        var cleanName = Regex.Replace(name.Trim(), @"\s+", " ");
-        var cleanNumber = number.Trim();
-        var cleanSize = size.Trim().ToUpperInvariant();
-        return $"{cleanName},{cleanNumber},{cleanSize}";
-    }
 
     private static string NormalizeCell(string? value)
     {

@@ -11,12 +11,17 @@ public static class SizeHelper
     public const string GroupMale = "male";
     public const string GroupFemale = "female";
     public const string GroupChild = "child";
+    public const string GroupSock = "sock";
+
+    public static readonly string[] EditableGroupOrder =
+        [GroupMale, GroupFemale, GroupChild, GroupSock];
 
     public static readonly Dictionary<string, string> GroupLabels = new()
     {
         [GroupMale] = "Masculino",
         [GroupFemale] = "Feminino",
         [GroupChild] = "Infantil",
+        [GroupSock] = "Meiao",
     };
 
     private static readonly Regex QtySizeRe =
@@ -49,7 +54,7 @@ public static class SizeHelper
         var def = SizeConfig.Default();
         var result = new SizeConfig();
 
-        foreach (var groupKey in new[] { GroupMale, GroupFemale, GroupChild })
+        foreach (var groupKey in EditableGroupOrder)
         {
             raw.Groups.TryGetValue(groupKey, out var rawGroup);
             var defGroup = def.Groups[groupKey];
@@ -177,16 +182,19 @@ public static class SizeHelper
     // ---------------------------------------------------------------
     public static string BuildSizeSummary(SizeConfig cfg)
     {
-        var male = BuildGroupSizes(cfg.Groups[GroupMale]);
-        var female = BuildGroupSizes(cfg.Groups[GroupFemale]);
-        var child = BuildGroupSizes(cfg.Groups[GroupChild]);
-        var total = male.Union(female).Union(child).Distinct().Count();
+        var normalized = Normalize(cfg);
+        var male = BuildGroupSizes(normalized.Groups[GroupMale]);
+        var female = BuildGroupSizes(normalized.Groups[GroupFemale]);
+        var child = BuildGroupSizes(normalized.Groups[GroupChild]);
+        var sock = BuildGroupSizes(normalized.Groups[GroupSock]);
+        var total = male.Union(female).Union(child).Union(sock).Distinct().Count();
 
         var maleStr = male.Count > 0 ? string.Join(", ", male) : "(nenhum)";
         var femaleStr = female.Count > 0 ? string.Join(", ", female) : "(nenhum)";
         var childStr = child.Count > 0 ? string.Join(", ", child) : "(nenhum)";
+        var sockStr = sock.Count > 0 ? string.Join(", ", sock) : "(nenhum)";
 
-        return $"Tamanhos válidos atuais:\n• Masculino: {maleStr}\n• Feminino: {femaleStr}\n• Infantil: {childStr}\n• Total: {total}";
+        return $"Tamanhos válidos atuais:\n• Masculino: {maleStr}\n• Feminino: {femaleStr}\n• Infantil: {childStr}\n• Meiao: {sockStr}\n• Total: {total}";
     }
 
     public static SizeConfig UpdateGroupConfig(

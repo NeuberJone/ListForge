@@ -184,6 +184,33 @@
         </Grid>
       </GroupBox>
 
+      <!-- Tamanhos — Meiao -->
+      <GroupBox Header="Tamanhos — Meiao">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="160"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Tamanhos base:" VerticalAlignment="Center"/>
+          <TextBox x:Name="TxtSockBase" Grid.Row="0" Grid.Column="1" Style="{StaticResource FormEntry}"
+                   ToolTip="Ex: JUVENIL, ADULTO, INFANTIL"/>
+
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="Prefixos:" VerticalAlignment="Center"/>
+          <TextBox x:Name="TxtSockPre" Grid.Row="2" Grid.Column="1" Style="{StaticResource FormEntry}"/>
+
+          <TextBlock Grid.Row="4" Grid.Column="0" Text="Sufixos:" VerticalAlignment="Center"/>
+          <TextBox x:Name="TxtSockSuf" Grid.Row="4" Grid.Column="1" Style="{StaticResource FormEntry}"/>
+        </Grid>
+      </GroupBox>
+
       <!-- Resumo de tamanhos -->
       <GroupBox Header="Resumo dos tamanhos válidos atuais">
         <TextBlock x:Name="TxtSizeSummary"

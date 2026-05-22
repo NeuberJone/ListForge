@@ -71,6 +71,14 @@ public partial class SettingsView : UserControl
         TxtChildSuf.SetBinding(TextBox.TextProperty,
             new Binding(nameof(child.Suffixes)) { Source = child, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
 
+        var sock = vm.SizeGroupBindings["sock"];
+        TxtSockBase.SetBinding(TextBox.TextProperty,
+            new Binding(nameof(sock.BaseSizes)) { Source = sock, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+        TxtSockPre.SetBinding(TextBox.TextProperty,
+            new Binding(nameof(sock.Prefixes)) { Source = sock, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+        TxtSockSuf.SetBinding(TextBox.TextProperty,
+            new Binding(nameof(sock.Suffixes)) { Source = sock, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+
         // ---- Size summary ----
         TxtSizeSummary.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
             new Binding(nameof(vm.SizeSummary)) { Source = vm });

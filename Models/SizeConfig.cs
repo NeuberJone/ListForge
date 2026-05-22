@@ -39,6 +39,13 @@ public sealed class SizeConfig
                 Prefixes = [],
                 Suffixes = ["A"],
             },
+            ["sock"] = new()
+            {
+                Label = "Meiao",
+                BaseSizes = ["JUVENIL", "ADULTO", "INFANTIL"],
+                Prefixes = [],
+                Suffixes = [],
+            },
         }
     };
 }

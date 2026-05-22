@@ -60,6 +60,7 @@ public class MainViewModel : INotifyPropertyChanged
     private string _currentFileLabel = "Arquivo atual: (nova lista)";
     private string _statusText = "Pronto.";
     private string _selectedOutputSection = "list";
+    private string _selectedSockSize = "";
     private bool _showJsonSection;
 
     public string InputText { get => _inputText; set => Set(ref _inputText, value); }
@@ -73,6 +74,7 @@ public class MainViewModel : INotifyPropertyChanged
     public string CurrentFileLabel { get => _currentFileLabel; set => Set(ref _currentFileLabel, value); }
     public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
     public string SelectedOutputSection { get => _selectedOutputSection; set => Set(ref _selectedOutputSection, value); }
+    public string SelectedSockSize { get => _selectedSockSize; set => Set(ref _selectedSockSize, value); }
     public bool ShowJsonSection { get => _showJsonSection; set => Set(ref _showJsonSection, value); }
 
     // ---------------------------------------------------------------
@@ -126,6 +128,7 @@ public class MainViewModel : INotifyPropertyChanged
         ["male"] = new(),
         ["female"] = new(),
         ["child"] = new(),
+        ["sock"] = new(),
     };
 
     // ---------------------------------------------------------------
@@ -133,6 +136,7 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     public ObservableCollection<string> CaseLabels { get; } = ["Original", "Tudo maiúsculo", "Tudo minúsculo"];
     public ObservableCollection<string> ThemeNames { get; } = ["ListForge Dark", "ListForge Light", "SISBolt"];
+    public ObservableCollection<string> SockSizeOptions { get; } = [];
 
     // ---------------------------------------------------------------
     // Commands
@@ -179,6 +183,7 @@ public class MainViewModel : INotifyPropertyChanged
         LoadConfigIntoProperties();
         LoadSizeConfigIntoBindings();
         RefreshSizeSummary();
+        RefreshSockSizeOptions();
 
         OpenInputFileCommand = new RelayCommand(OpenInputFile);
         SaveInputFileCommand = new RelayCommand(SaveInputFile);
@@ -236,7 +241,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void LoadSizeConfigIntoBindings()
     {
-        foreach (var groupKey in new[] { "male", "female", "child" })
+        foreach (var groupKey in CoreHelper.EditableGroupOrder)
         {
             if (!_sizeCfg.Groups.TryGetValue(groupKey, out var group)) continue;
             var b = SizeGroupBindings[groupKey];
@@ -269,9 +274,6 @@ public class MainViewModel : INotifyPropertyChanged
         "ListForge Light" => "ListForge Light",
         _ => "ListForge Dark",
     };
-
-    private static string FriendlyError(Exception ex) =>
-        ex.GetBaseException().Message;
 
     // ---------------------------------------------------------------
     // File operations
@@ -347,7 +349,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(FriendlyError(ex), ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -487,9 +489,8 @@ public class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             GotoErrorLine(ex.Message);
-            var message = FriendlyError(ex);
-            StatusText = $"Erro: {message}";
-            MessageBox.Show(message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = $"Erro: {ex.Message}";
+            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -776,6 +777,7 @@ public class MainViewModel : INotifyPropertyChanged
         ConfigManager.SaveSizeConfig(newSizeCfg);
         _sizeCfg = newSizeCfg;
         RefreshSizeSummary();
+        RefreshSockSizeOptions();
 
         EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
         EditorSeparator = _cfg.DefaultInputSeparator;
@@ -800,13 +802,14 @@ public class MainViewModel : INotifyPropertyChanged
         _sizeCfg = ConfigManager.ResetSizeConfig();
         LoadSizeConfigIntoBindings();
         RefreshSizeSummary();
+        RefreshSockSizeOptions();
         StatusText = "Tamanhos restaurados para o padrão.";
     }
 
     private SizeConfig BuildSizeConfigFromUI()
     {
         var cfg = ConfigManager.LoadSizeConfig();
-        foreach (var groupKey in new[] { "male", "female", "child" })
+        foreach (var groupKey in CoreHelper.EditableGroupOrder)
         {
             var b = SizeGroupBindings[groupKey];
             var bases = CoreHelper.ParseCsvTokens(b.BaseSizes);
@@ -823,6 +826,22 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void RefreshSizeSummary() =>
         SizeSummary = CoreHelper.BuildSizeSummary(_sizeCfg);
+
+    private void RefreshSockSizeOptions()
+    {
+        var selected = SelectedSockSize;
+        SockSizeOptions.Clear();
+        SockSizeOptions.Add("");
+
+        var normalized = CoreHelper.Normalize(_sizeCfg);
+        if (normalized.Groups.TryGetValue(CoreHelper.GroupSock, out var sockGroup))
+        {
+            foreach (var size in CoreHelper.BuildGroupSizes(sockGroup))
+                SockSizeOptions.Add(size);
+        }
+
+        SelectedSockSize = SockSizeOptions.Contains(selected) ? selected : "";
+    }
 }
 
 // ---------------------------------------------------------------

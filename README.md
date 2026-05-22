@@ -1,538 +1,436 @@
 # ListForge
 
-**ListForge** é uma ferramenta desktop para edição, padronização, organização e exportação de listas de produção.
+> Organize listas de pedidos, valide tamanhos, importe arquivos e gere saídas prontas para uso em poucos cliques.
 
-O sistema foi desenvolvido para transformar listas recebidas em diferentes formatos em uma saída limpa, previsível e pronta para uso em fluxos de produção, reduzindo retrabalho manual, erros de digitação, inconsistências de tamanho e perda de tempo na preparação dos dados.
+**ListForge** é um aplicativo desktop para Windows feito em **C# + WPF**. Ele nasceu para transformar listas bagunçadas em listas organizadas, revisáveis e exportáveis, com suporte a temas, importação de múltiplos formatos e geração de JSON.
 
----
-
-## Visão geral
-
-O ListForge centraliza em uma única aplicação as tarefas mais comuns de tratamento de listas:
-
-* abrir, editar e salvar listas;
-* importar dados a partir de arquivos de texto, planilhas, documentos, PDFs e imagens;
-* organizar nomes, números, tamanhos e informações adicionais;
-* reconhecer grupos de tamanho configuráveis;
-* limpar espaçamentos e padronizar separadores;
-* localizar e substituir informações no editor;
-* gerar saída organizada em texto;
-* gerar JSON compatível com fluxos estruturados de produção;
-* manter backups automáticos dos arquivos editados;
-* salvar preferências de uso, tema, separadores e tamanhos.
-
-A proposta do ListForge é ser uma ferramenta objetiva: o operador cola, abre ou importa uma lista, confere o conteúdo, processa os dados e exporta o resultado com menos etapas manuais.
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge&logo=windows)
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)
+![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.2-16A34A?style=for-the-badge)
 
 ---
 
-## Principais recursos
+## Sumário
+
+- [Sobre o Projeto](#sobre-o-projeto)
+- [Principais Recursos](#principais-recursos)
+- [Fluxo de Uso](#fluxo-de-uso)
+- [Temas](#temas)
+- [Formatos Suportados](#formatos-suportados)
+- [Instalação e Execução](#instalação-e-execução)
+- [Gerando Versões de Distribuição](#gerando-versões-de-distribuição)
+- [Criando Instalador](#criando-instalador)
+- [Configurações e Dados Locais](#configurações-e-dados-locais)
+- [Estrutura do Projeto](#estrutura-do-projeto)
+- [Stack Técnica](#stack-técnica)
+- [Roadmap](#roadmap)
+
+---
+
+## Sobre o Projeto
+
+O **ListForge** foi criado para acelerar o trabalho de quem recebe listas em formatos variados e precisa transformar esse conteúdo em uma saída limpa, padronizada e confiável.
+
+Ele ajuda em tarefas como:
+
+- limpar listas copiadas de mensagens, planilhas, PDFs ou imagens;
+- separar nomes, tamanhos e quantidades;
+- adicionar tamanho ou meião em lote antes de processar;
+- validar tamanhos conhecidos;
+- organizar a saída em ordem previsível;
+- gerar prévia JSON;
+- manter backups automáticos das listas editadas;
+- alternar entre temas visuais para diferentes ambientes de uso.
+
+Esta versão é uma reimplementação em **C# / WPF** de uma versão anterior feita em Python/Tkinter.
+
+---
+
+## Principais Recursos
 
 ### Editor de listas
 
-O editor permite trabalhar diretamente com o conteúdo da lista antes do processamento. É possível colar texto, abrir arquivos compatíveis, limpar espaços, localizar termos, substituir valores e salvar alterações.
+- Editor com numeração de linhas.
+- Entrada e saída lado a lado.
+- Atalhos e comandos rápidos.
+- Busca e substituição.
+- Destaque de resultado encontrado.
+- Adição de tamanho e/ou meião em todas as linhas ou na seleção atual.
+- ComboBox de meião alimentado pelos tamanhos cadastrados nas configurações.
+- Caixas de seleção para controlar se o botão aplica meião, tamanho, ou ambos.
+- Botões para limpar, copiar e salvar saídas.
 
-Recursos disponíveis:
+### Processamento
 
-* abertura de arquivos de entrada;
-* salvamento da lista atual;
-* salvamento como novo arquivo;
-* limpeza de espaços baseada no separador configurado;
-* busca avançada no texto;
-* substituição individual ou em massa;
-* indicação da lista atualmente carregada;
-* barra de status com retorno das operações.
+- Separador configurável.
+- Capitalização configurável.
+- Organização automática da lista.
+- Tratamento de meião em coluna própria, acompanhando a primeira linha do kit.
+- Validação de linhas inválidas.
+- Navegação até a linha com erro.
+- Geração de saída em texto.
+- Geração de prévia JSON.
 
----
+### Configurações
 
-### Importação de arquivos
+- Pasta padrão de saída.
+- Nome padrão de lista.
+- Separador padrão.
+- Modo padrão de capitalização.
+- Controle de exibição da aba JSON.
+- Controle de botões de JSON.
+- Grupos de tamanhos editáveis: masculino, feminino, infantil e meião.
 
-O ListForge consegue importar conteúdo a partir de diferentes formatos usados no dia a dia.
+### Segurança de edição
 
-Formatos suportados:
-
-| Tipo    | Extensões                                                 |
-| ------- | --------------------------------------------------------- |
-| Texto   | `.txt`, `.csv`, `.list`                                   |
-| PDF     | `.pdf`                                                    |
-| Word    | `.doc`, `.docx`                                           |
-| Excel   | `.xls`, `.xlsx`, `.xlsm`                                  |
-| Imagens | `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tif`, `.tiff`, `.webp` |
-
-Ao importar arquivos que não são texto puro, o ListForge extrai o conteúdo e envia para o editor, permitindo que o usuário revise a lista antes de processar.
-
----
-
-### OCR para imagens
-
-O ListForge possui suporte a OCR para leitura de listas em imagem.
-
-Esse recurso é útil quando a lista chega como captura de tela, imagem exportada, foto ou arquivo escaneado. O texto reconhecido é enviado para o editor para conferência antes do processamento.
-
-Idiomas utilizados no OCR:
-
-* Português;
-* Inglês.
-
-O OCR ajuda a reduzir digitação manual, mas não substitui a conferência humana. Sempre revise o conteúdo importado antes de exportar a lista final.
+- Backup automático antes de sobrescrever arquivos existentes.
+- Configurações salvas por usuário.
+- Fallback de diretório de configuração caso `%APPDATA%` esteja indisponível.
 
 ---
 
-### Processamento de listas
+## Fluxo de Uso
 
-O processamento interpreta linhas de entrada contendo nome, número, tamanho e informações adicionais.
-
-O ListForge identifica tamanhos válidos, separa os campos principais, organiza os registros e monta uma saída padronizada.
+1. Abra ou cole uma lista no painel **Entrada / edição**.
+2. Ajuste o separador, se necessário.
+3. Clique em **Processar**.
+4. Revise a saída no painel **Saída**.
+5. Copie, salve ou gere JSON.
+6. Ajuste tamanhos e preferências na tela **Configurações**.
 
 Exemplo de entrada:
 
-```txt
+```text
 JOÃO,10,G
-MARIA,7,BLM
-PEDRO,15,12A
+MARIA,2,M
+PEDRO,PP
+ANA,1,GG
+JOANA,10,M,BLM,JUVENIL
 ```
 
-Exemplo de saída organizada:
+O ListForge interpreta, organiza e prepara a saída de acordo com os tamanhos configurados.
 
-```txt
-JOÃO,10,G
-MARIA,7,,BLM
-PEDRO,15,,,12A
+---
+
+## Temas
+
+O aplicativo possui três temas:
+
+| Tema | Descrição |
+|---|---|
+| `ListForge Dark` | Tema escuro padrão do ListForge |
+| `ListForge Light` | Tema claro para uso em ambientes iluminados |
+| `SISBolt` | Tema baseado na paleta original do SISBolt |
+
+Os temas são aplicados em runtime por meio de `ResourceDictionary` do WPF.
+
+Arquivos:
+
+```text
+UI/Themes/DarkTheme.xaml
+UI/Themes/LightTheme.xaml
+UI/Themes/SisBoltTheme.xaml
 ```
 
-A saída final pode variar conforme os grupos de tamanho configurados e os campos adicionais presentes na lista.
+---
+
+## Formatos Suportados
+
+| Tipo | Extensões |
+|---|---|
+| Texto | `.txt`, `.csv`, `.list` |
+| PDF | `.pdf` |
+| Word | `.docx` |
+| Excel | `.xlsx`, `.xlsm` |
+| Imagens | `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tif`, `.tiff`, `.webp` |
+| JSON por link | URLs `http://` ou `https://` |
+
+> Para imagens, o app usa OCR via Tesseract.
 
 ---
 
-### Suporte a quantidades por tamanho
+## Instalação e Execução
 
-O ListForge aceita tamanhos com quantidade informada no formato `quantidade-tamanho`.
+### Requisitos para desenvolvimento
 
-Exemplo:
+| Ferramenta | Versão recomendada |
+|---|---|
+| Windows | 10 ou 11 x64 |
+| .NET SDK | 8.0+ |
+| Visual Studio | 2022 ou superior |
+| Inno Setup | 6.x ou 7.x, opcional para instalador |
 
-```txt
-JOÃO,10,3-G
+### Rodar pelo terminal
+
+Na raiz do projeto:
+
+```powershell
+dotnet run
 ```
 
-Esse formato permite representar múltiplas peças do mesmo tamanho sem repetir manualmente a mesma linha na entrada.
+### Compilar em Debug
+
+```powershell
+dotnet build
+```
+
+Executável de debug:
+
+```text
+bin\Debug\net8.0-windows\ListForge.exe
+```
 
 ---
 
-### Grupos de tamanho configuráveis
+## Gerando Versões de Distribuição
 
-O sistema trabalha com grupos de tamanho para organizar corretamente a saída.
+As versões finais são geradas em:
 
-Grupos padrão:
+```text
+bin\Release\dist\2.1.2\
+```
 
-| Grupo     | Exemplos                                               |
-| --------- | ------------------------------------------------------ |
-| Masculino | `PP`, `P`, `M`, `G`, `GG`, `XG`, `XGG`, `XXGG`, `XLGG` |
-| Feminino  | `BLPP`, `BLP`, `BLM`, `BLG`, `BLGG`, `BLXG`            |
-| Infantil  | `2A`, `4A`, `6A`, `8A`, `10A`, `12A`, `14A`, `16A`     |
+### Versão instalável
 
-Os grupos podem ser configurados na tela de configurações por meio de:
+Pasta usada como base para o instalador. Ela já inclui o runtime necessário para Windows x64.
 
-* tamanhos-base;
-* prefixos;
-* sufixos.
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.2\ListForge-Installable
+```
 
-Isso permite adaptar o ListForge ao padrão usado por cada operação, cliente ou fluxo de produção.
+Saída:
 
----
+```text
+bin\Release\dist\2.1.2\ListForge-Installable\
+```
 
-### Separadores personalizados
+### Versão portátil one-file
 
-O usuário pode definir o separador de entrada utilizado para interpretar as listas.
+Gera um único `.exe`, parecido com o modelo de distribuição comum em apps Python empacotados.
 
-Separadores comuns:
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.2\ListForge-Portable-OneFile
+```
 
-* vírgula: `,`;
-* ponto e vírgula: `;`;
-* tabulação: `\t`.
+Saída:
 
-O separador padrão pode ser salvo nas configurações para uso recorrente.
+```text
+bin\Release\dist\2.1.2\ListForge-Portable-OneFile\ListForge-2.1.2-Portable-OneFile.exe
+```
 
----
+Observações:
 
-### Padronização de caixa
-
-O ListForge permite controlar a forma como os textos serão exportados.
-
-Opções disponíveis:
-
-| Opção          | Resultado                                          |
-| -------------- | -------------------------------------------------- |
-| Original       | Mantém o texto como foi informado                  |
-| Tudo maiúsculo | Converte nomes e campos adicionais para maiúsculas |
-| Tudo minúsculo | Converte nomes e campos adicionais para minúsculas |
+- O arquivo fica maior porque inclui runtime e dependências.
+- Bibliotecas nativas podem ser extraídas temporariamente pelo runtime na primeira execução.
+- O `.pdb` gerado é opcional e pode ser ignorado na distribuição.
 
 ---
 
-### Geração de JSON
+## Criando Instalador
 
-Além da saída em texto, o ListForge pode gerar uma estrutura JSON para integração com fluxos que utilizam dados estruturados.
+O projeto já inclui um script para **Inno Setup**:
 
-A geração de JSON pode ser habilitada ou ocultada nas configurações, permitindo usar a aplicação em um modo simples ou em um modo mais completo.
+```text
+installer\ListForge.iss
+```
 
-Campos usados na estrutura de saída:
+### Passo a passo
 
-* `Name`;
-* `Nickname`;
-* `Number`;
-* `BloodType`;
-* `Gender`;
-* `ShortSleeve`;
-* `LongSleeve`;
-* `Short`;
-* `Pants`;
-* `Tanktop`;
-* `Vest`.
+1. Gere a versão instalável:
 
----
+   ```powershell
+   dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.2\ListForge-Installable
+   ```
 
-### Extração por link
+2. Instale o Inno Setup:
 
-O ListForge permite extrair listas a partir de um link que retorne JSON válido.
+   ```text
+   https://jrsoftware.org/isdl.php
+   ```
 
-Esse recurso é útil quando a lista está disponível em uma origem externa ou serviço intermediário, permitindo trazer o conteúdo diretamente para o editor e processá-lo dentro da aplicação.
+3. Abra:
 
----
+   ```text
+   installer\ListForge.iss
+   ```
 
-### Backups automáticos
+4. Clique em **Build > Compile**.
 
-Ao salvar alterações em arquivos já existentes, o ListForge cria backups automáticos antes de sobrescrever o conteúdo.
+O instalador será gerado em:
 
-Os backups são armazenados na pasta de dados da aplicação, preservando versões anteriores da lista e reduzindo o risco de perda de informação.
+```text
+bin\Release\dist\2.1.2\Installer\
+```
 
----
+O script configura:
 
-### Temas visuais
-
-O ListForge possui suporte a temas visuais selecionáveis em tempo de execução.
-
-Temas disponíveis:
-
-* ListForge Dark;
-* ListForge Light;
-* SISBolt.
-
-A preferência de tema é salva automaticamente nas configurações do usuário.
+- nome do app;
+- versão `2.1.2`;
+- instalação em `Program Files`;
+- atalho no Menu Iniciar;
+- opção de atalho na Área de Trabalho;
+- ícone do instalador;
+- execução do app ao finalizar.
 
 ---
 
-## Estrutura do projeto
+## Ícone
 
-```txt
+O ícone do aplicativo fica em:
+
+```text
+Assets\logo.ico
+```
+
+Referência no projeto:
+
+```xml
+<ApplicationIcon>Assets\logo.ico</ApplicationIcon>
+```
+
+---
+
+## Configurações e Dados Locais
+
+O ListForge salva as configurações do usuário em uma pasta gravável. A ordem de tentativa é:
+
+1. `%APPDATA%\ListForge`
+2. `%LOCALAPPDATA%\ListForge`
+3. Pasta do app
+4. Pasta temporária do Windows
+
+Arquivos principais:
+
+```text
+config.json
+sizes.json
+backups\
+```
+
+### Arquivos de configuração
+
+| Arquivo | Uso |
+|---|---|
+| `config.json` | Preferências gerais do app |
+| `sizes.json` | Grupos de tamanhos válidos |
+| `backups\` | Backups automáticos de listas sobrescritas |
+
+---
+
+## Estrutura do Projeto
+
+```text
 ListForge/
-├── App.xaml
-├── App.xaml.cs
-├── GlobalUsings.cs
-├── ListForge.csproj
-│
-├── Assets/
-│   └── recursos visuais da aplicação
-│
-├── Config/
-│   └── ConfigManager.cs
-│
-├── Core/
-│   ├── FileImporter.cs
-│   ├── ListProcessor.cs
-│   └── SizeHelper.cs
-│
-├── Models/
-│   ├── AppConfig.cs
-│   ├── ParsedRow.cs
-│   └── SizeConfig.cs
-│
-├── UI/
-│   ├── Controls/
-│   ├── Themes/
-│   └── Views/
-│
-├── ViewModels/
-│   ├── MainViewModel.cs
-│   └── RelayCommand.cs
-│
-├── installer/
-│   └── arquivos auxiliares de instalação
-│
-└── tesseract/
-    ├── tesseract.exe
-    └── tessdata/
-        ├── por.traineddata
-        └── eng.traineddata
+├─ App.xaml
+├─ App.xaml.cs
+├─ GlobalUsings.cs
+├─ ListForge.csproj
+├─ README.md
+├─ Assets/
+│  └─ logo.ico
+├─ Config/
+│  └─ ConfigManager.cs
+├─ Core/
+│  ├─ FileImporter.cs
+│  ├─ ListProcessor.cs
+│  └─ SizeHelper.cs
+├─ Models/
+│  ├─ AppConfig.cs
+│  ├─ ParsedRow.cs
+│  └─ SizeConfig.cs
+├─ ViewModels/
+│  ├─ MainViewModel.cs
+│  └─ RelayCommand.cs
+├─ UI/
+│  ├─ Controls/
+│  │  ├─ LineNumberedTextBox.cs
+│  │  ├─ SegmentedControl.cs
+│  │  └─ SegmentedControl.xaml
+│  ├─ Themes/
+│  │  ├─ DarkTheme.xaml
+│  │  ├─ LightTheme.xaml
+│  │  └─ SisBoltTheme.xaml
+│  └─ Views/
+│     ├─ MainWindow.xaml
+│     ├─ EditorView.xaml
+│     ├─ SettingsView.xaml
+│     ├─ ManualView.xaml
+│     └─ InputDialog.xaml.cs
+└─ installer/
+   └─ ListForge.iss
 ```
 
 ---
 
-## Arquitetura
+## Stack Técnica
 
-O ListForge segue uma organização simples, separando interface, regras de negócio, modelos, configuração e importação de arquivos.
-
-| Camada        | Responsabilidade                                        |
-| ------------- | ------------------------------------------------------- |
-| `UI/Views`    | Telas da aplicação                                      |
-| `UI/Themes`   | Temas visuais em XAML                                   |
-| `UI/Controls` | Controles customizados                                  |
-| `ViewModels`  | Estado da interface e comandos de interação             |
-| `Core`        | Processamento de listas, importação e regras de tamanho |
-| `Models`      | Estruturas de dados da aplicação                        |
-| `Config`      | Persistência de preferências, tamanhos e backups        |
-
-Essa separação facilita manutenção, evolução da interface e ajuste das regras de processamento sem misturar responsabilidades.
+| Área | Tecnologia |
+|---|---|
+| Linguagem | C# |
+| UI | WPF |
+| Runtime | .NET 8 |
+| JSON | Newtonsoft.Json |
+| PDF | PdfPig |
+| Word | DocumentFormat.OpenXml |
+| Excel | ClosedXML |
+| OCR | Tesseract |
+| Instalador | Inno Setup |
 
 ---
 
-## Dados de configuração
+## Diferenças em Relação à Versão Python
 
-As configurações do usuário são salvas em uma pasta própria da aplicação.
-
-Local padrão:
-
-```txt
-%APPDATA%\ListForge\
-```
-
-Arquivos e pastas principais:
-
-```txt
-config.json     Preferências gerais da aplicação
-sizes.json      Configuração dos grupos de tamanho
-backups\        Backups automáticos das listas editadas
-```
-
-Caso o local padrão não esteja disponível, a aplicação tenta utilizar outros diretórios graváveis do usuário ou do ambiente de execução.
+| Python / Tkinter | C# / WPF |
+|---|---|
+| Temas em dicionários Python | Temas em `ResourceDictionary` XAML |
+| Widgets customizados Tkinter | Controles customizados WPF |
+| Scripts de runtime de UI | `MainViewModel` com comandos |
+| Views em Python | Views em XAML |
+| Empacotamento estilo one-file | `dotnet publish` self-contained / single-file |
 
 ---
 
-## Configurações disponíveis
+## Boas Práticas do Repositório
 
-O usuário pode ajustar:
+O `.gitignore` evita versionar:
 
-* exibição da seção de JSON;
-* exibição dos botões de gerar e copiar JSON;
-* pasta padrão de saída;
-* nome padrão da lista;
-* modo padrão de caixa do texto;
-* separador padrão de entrada;
-* tema visual;
-* grupos de tamanho;
-* prefixos e sufixos de tamanho.
+- `bin/`
+- `obj/`
+- `.vs/`
+- builds publicados;
+- instaladores gerados;
+- arquivos `.pdb`;
+- arquivos temporários.
 
----
+Devem ser versionados:
 
-## Tesseract OCR
-
-Para que a leitura de imagens funcione corretamente, a pasta `tesseract/` deve estar disponível junto ao executável ou dentro do projeto durante o desenvolvimento.
-
-Estrutura esperada:
-
-```txt
-tesseract/
-├── tesseract.exe
-└── tessdata/
-    ├── por.traineddata
-    └── eng.traineddata
-```
-
-O ListForge procura o OCR nesta ordem:
-
-1. caminho definido pela variável de ambiente `TESSERACT_CMD`;
-2. pasta `tesseract/` ao lado do executável;
-3. instalação local em `C:\Program Files\Tesseract-OCR\`;
-4. instalação local em `C:\Program Files (x86)\Tesseract-OCR\`.
+- código fonte;
+- temas;
+- `Assets/logo.ico`;
+- `installer/ListForge.iss`;
+- documentação.
 
 ---
 
-## Pré-requisitos para desenvolvimento
+## Roadmap
 
-| Ferramenta    | Versão recomendada                         |
-| ------------- | ------------------------------------------ |
-| Windows       | 10 ou 11 x64                               |
-| .NET SDK      | 8.0 ou superior                            |
-| Visual Studio | 2022 ou superior                           |
-| Tesseract OCR | Incluso no projeto ou instalado no sistema |
+Ideias para próximas versões:
 
----
-
-## Como executar em desenvolvimento
-
-Restaure os pacotes:
-
-```bash
-dotnet restore ListForge.csproj
-```
-
-Compile em modo Debug:
-
-```bash
-dotnet build ListForge.csproj -c Debug
-```
-
-Execute a aplicação:
-
-```bash
-dotnet run --project ListForge.csproj
-```
-
----
-
-## Publicação
-
-Para gerar uma versão Release para Windows x64:
-
-```bash
-dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
-```
-
-A saída publicada será gerada dentro da pasta `bin/Release/`.
-
-Antes de distribuir, confira se os arquivos necessários do OCR foram incluídos corretamente no pacote final.
-
----
-
-## Dependências principais
-
-| Dependência            | Finalidade                 |
-| ---------------------- | -------------------------- |
-| Newtonsoft.Json        | Leitura e geração de JSON  |
-| Tesseract              | OCR de imagens             |
-| PdfPig                 | Extração de texto de PDFs  |
-| DocumentFormat.OpenXml | Leitura de documentos Word |
-| ClosedXML              | Leitura de planilhas Excel |
-
----
-
-## Fluxo básico de uso
-
-1. Abra, cole ou importe uma lista.
-2. Confira o conteúdo no editor.
-3. Ajuste o separador, se necessário.
-4. Use a limpeza de espaços quando a lista vier desalinhada.
-5. Processe a lista.
-6. Confira a saída organizada.
-7. Copie ou salve o resultado.
-8. Gere JSON quando o fluxo exigir dados estruturados.
-
----
-
-## Exemplo de entrada
-
-```txt
-JOAO,10,G
-MARIA,7,BLM
-PEDRO,15,12A
-ANA,22,2-G
-```
-
----
-
-## Exemplo de saída textual
-
-```txt
-ANA,22,G
-ANA,22,G
-JOAO,10,G
-MARIA,7,,BLM
-PEDRO,15,,,12A
-```
-
-A disposição das colunas depende dos grupos de tamanho ativos e dos campos extras encontrados na lista.
-
----
-
-## Exemplo de JSON gerado
-
-```json
-{
-  "title": "List",
-  "order_number": 0,
-  "client_name": "",
-  "orders": [
-    {
-      "Name": "JOAO",
-      "Nickname": "",
-      "Number": "10",
-      "BloodType": "",
-      "Gender": "MA",
-      "ShortSleeve": "G",
-      "LongSleeve": "",
-      "Short": "",
-      "Pants": "",
-      "Tanktop": "",
-      "Vest": ""
-    }
-  ],
-  "unique_name_chars": "",
-  "unique_nickname_chars": ""
-}
-```
-
----
-
-## Observações sobre entrada de dados
-
-Para obter melhores resultados, use uma linha por item e mantenha os campos principais separados de forma consistente.
-
-Formato recomendado:
-
-```txt
-Nome,Número,Tamanho
-```
-
-Também são aceitos campos adicionais após os campos principais, conforme a necessidade do fluxo.
-
-Exemplo:
-
-```txt
-Nome,Número,Tamanho,Apelido,TipoSanguíneo
-```
-
-Quando uma linha contém tamanho inválido ou não reconhecido, o ListForge informa o erro e indica a linha problemática sempre que possível.
-
----
-
-## Boas práticas
-
-* Revise listas importadas de PDF, Word, Excel ou imagem antes de processar.
-* Configure os grupos de tamanho antes de usar o sistema em produção.
-* Use nomes de arquivo claros ao salvar saídas.
-* Mantenha o OCR junto ao executável quando distribuir a aplicação.
-* Faça testes com listas reais antes de liberar uma nova versão para operadores.
-
----
-
-## Roadmap sugerido
-
-Possíveis evoluções futuras:
-
-* instalador automatizado para distribuição interna;
-* assinatura digital do executável;
-* atualização automática;
-* perfis de configuração por cliente ou setor;
-* histórico de listas processadas;
-* validação visual de linhas com erro;
-* exportação em formatos adicionais;
-* integração direta com outros sistemas de produção.
+- exportação com modelos configuráveis;
+- preview visual da estrutura JSON;
+- importação avançada de planilhas;
+- logs de erro dentro do app;
+- atualização automática;
+- instalador com verificação do .NET Runtime;
+- testes automatizados para o processamento de listas.
 
 ---
 
 ## Licença
 
-Este projeto é distribuído sob licença proprietária, salvo autorização expressa em contrário.
+Defina uma licença antes de publicar o projeto publicamente, por exemplo:
 
-O código-fonte, os executáveis, os recursos visuais e os arquivos auxiliares não podem ser copiados, revendidos, redistribuídos ou modificados por terceiros sem permissão do autor.
-
-Antes de publicar, vender ou transferir o projeto para outra empresa, revise esta seção conforme o modelo comercial escolhido.
-
----
-
-## Autor
-
-Desenvolvido por **Neuber Jone**.
-
----
-
-## Status
-
-O ListForge está em desenvolvimento ativo e deve ser validado com listas reais antes de uso definitivo em produção.
+- MIT;
+- Apache 2.0;
+- Proprietária / uso interno.
