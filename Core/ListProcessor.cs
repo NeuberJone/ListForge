@@ -252,7 +252,7 @@ public static class ListProcessor
     // ---------------------------------------------------------------
     private static List<RowFragment> ExplodeRowFragments(ParsedRow row, SizeConfig config)
     {
-        var groupedSingle = GroupRenderOrder.ToDictionary(g => g, _ => new List<string>());
+        var groupedColumns = GroupRenderOrder.ToDictionary(g => g, _ => new List<List<string>>());
         var exploded = new List<RowFragment>();
         var socks = new List<string>();
 
@@ -268,22 +268,25 @@ public static class ListProcessor
                 continue;
             }
 
-            if (qty > 1)
-            {
-                for (var i = 0; i < qty; i++)
-                    exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, [size], row.S2, row.S3), group, []));
-            }
-            else
-            {
-                groupedSingle[group].Add(size);
-            }
+            groupedColumns[group].Add(Enumerable.Repeat(size, qty).ToList());
         }
 
         foreach (var group in GroupRenderOrder)
         {
-            var sizes = groupedSingle[group];
-            if (sizes.Count > 0)
-                exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, sizes, row.S2, row.S3), group, []));
+            var columns = groupedColumns[group];
+            if (columns.Count == 0) continue;
+
+            var rowCount = columns.Max(c => c.Count);
+            for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+            {
+                var sizes = columns
+                    .Select(c => rowIndex < c.Count ? c[rowIndex] : "")
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+
+                if (sizes.Count > 0)
+                    exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, sizes, row.S2, row.S3), group, []));
+            }
         }
 
         if (exploded.Count == 0 && socks.Count > 0)
@@ -318,18 +321,20 @@ public static class ListProcessor
 
         var hasS2 = rows.Any(r => !string.IsNullOrEmpty(r.S2));
         var hasS3 = rows.Any(r => !string.IsNullOrEmpty(r.S3));
+        var normalizedRows = rows
+            .Select(row => ExplodeRowFragments(row, sizeConfig))
+            .Where(fragments => fragments.Count > 0)
+            .ToList();
+        var allFragments = normalizedRows.SelectMany(fragments => fragments).ToList();
+        if (allFragments.Count == 0) return "";
+
+        var widths = GroupColumnWidths(allFragments);
+        var activeGroups = GroupRenderOrder.Where(g => widths[g] > 0).ToList();
+        var sockWidth = allFragments.Max(f => f.Socks.Count);
         var outLines = new List<string>();
 
-        foreach (var sourceRow in rows)
+        foreach (var fragments in normalizedRows)
         {
-            var fragments = ExplodeRowFragments(sourceRow, sizeConfig);
-            if (fragments.Count == 0) continue;
-
-            var widths = GroupColumnWidths(fragments);
-            var activeGroups = GroupRenderOrder.Where(g => widths[g] > 0).ToList();
-
-            var sockWidth = fragments.Max(f => f.Socks.Count);
-
             foreach (var fragment in fragments)
             {
                 var row = fragment.Row;
