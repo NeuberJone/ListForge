@@ -21,8 +21,6 @@ As imagens abaixo demonstram o fluxo principal do ListForge. Para manter o repos
 | Processamento com JSON | Resultado textual e prévia JSON gerada | `docs/screenshots/02-json-preview.png` |
 | Configurações | Separador padrão, tema, opções de JSON e pasta de saída | `docs/screenshots/03-configuracoes.png` |
 | Grupos de tamanho | Configuração de tamanhos masculinos, femininos, infantis e meião | `docs/screenshots/04-grupos-de-tamanho.png` |
-| Importação de arquivos | Abertura/importação de formatos suportados ou lista carregada a partir de arquivo | `docs/screenshots/05-importacao-arquivos.png` |
-| Tema visual | Exemplo da interface com tema aplicado | `docs/screenshots/06-tema-visual.png` |
 
 > Use dados fictícios nas capturas para evitar exposição de clientes, pedidos, nomes reais ou informações internas de produção.
 
@@ -69,7 +67,7 @@ O núcleo de leitura de arquivos está em `Core/FileImporter.cs`. Os formatos re
 
 | Tipo | Extensões |
 |---|---|
-| Texto | `.txt`, `.csv`, `.list` |
+| Texto | `.txt`, `.csv` |
 | PDF | `.pdf` |
 | Word | `.docx`, `.doc` |
 | Excel | `.xlsx`, `.xlsm`, `.xls` |
@@ -420,7 +418,7 @@ Prévia JSON simplificada:
 - Prévia visual mais detalhada do JSON.
 - Modelos configuráveis de exportação.
 - Validações adicionais para arquivos de entrada.
-- Assistente de diagnóstico para Tesseract.
+- Ferramenta de diagnóstico para Tesseract.
 
 ## Changelog
 
