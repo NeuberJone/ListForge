@@ -11,6 +11,21 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 
 ---
 
+## Screenshots
+
+As imagens abaixo demonstram o fluxo principal do ListForge. Para manter o repositório organizado, salve as capturas em `docs/screenshots/` usando os nomes sugeridos.
+
+| Tela | Demonstra | Arquivo sugerido |
+|---|---|---|
+| Editor principal | Entrada da lista, saída processada e visão geral da aplicação | `docs/screenshots/01-editor-principal.png` |
+| Processamento com JSON | Resultado textual e prévia JSON gerada | `docs/screenshots/02-json-preview.png` |
+| Configurações | Separador padrão, tema, opções de JSON e pasta de saída | `docs/screenshots/03-configuracoes.png` |
+| Grupos de tamanho | Configuração de tamanhos masculinos, femininos, infantis e meião | `docs/screenshots/04-grupos-de-tamanho.png` |
+| Importação de arquivos | Abertura/importação de formatos suportados ou lista carregada a partir de arquivo | `docs/screenshots/05-importacao-arquivos.png` |
+| Tema visual | Exemplo da interface com tema aplicado | `docs/screenshots/06-tema-visual.png` |
+
+> Use dados fictícios nas capturas para evitar exposição de clientes, pedidos, nomes reais ou informações internas de produção.
+
 ## Visão geral
 
 O ListForge trabalha como uma estação de preparação de listas. O usuário pode colar dados manualmente, abrir arquivos, extrair conteúdo de documentos, reconhecer texto em imagens por OCR, limpar separadores, processar os registros e salvar o resultado.
@@ -40,7 +55,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 - Limpeza de espaços ao redor do separador.
 - Processamento com separador configurável.
 - Capitalização em modo original, maiúsculo ou minúsculo.
-- Aplicação em lote de tamanho e meião.
+- Aplicação em lote de tamanho e meião, útil para listas de uniformes esportivos e preenchimento de informações repetidas.
 - Validação de tamanhos por grupos configuráveis.
 - Geração de saída textual.
 - Geração e cópia de JSON.
@@ -398,7 +413,7 @@ Prévia JSON simplificada:
 - Atualize a versão em `ListForge.csproj` e `installer/ListForge.iss` antes de distribuir uma nova build.
 - Não versione `bin/`, `obj/`, `.vs/`, instaladores gerados ou arquivos temporários.
 
-## Roadmap sugerido
+## Roadmap
 
 - Testes automatizados para `ListProcessor` e `SizeHelper`.
 - Logs internos para erros de leitura e OCR.
@@ -413,11 +428,13 @@ As alterações relevantes por versão são documentadas em `CHANGELOG.md`.
 
 ## Licença
 
-Este projeto é disponibilizado publicamente apenas para fins de portfólio, avaliação técnica e demonstração.
+O ListForge é um software proprietário desenvolvido por Neuber Jone.
 
-O ListForge é um software proprietário. O código-fonte, executáveis, recursos visuais e materiais relacionados não podem ser copiados, redistribuídos, modificados ou utilizados comercialmente sem autorização prévia do autor.
+Este repositório é disponibilizado publicamente apenas para fins de portfólio, avaliação técnica e demonstração. O acesso ao código-fonte não concede permissão para uso comercial, uso interno em empresas, cópia, modificação, redistribuição, revenda, hospedagem, criação de derivados ou exploração comercial do software.
 
-Para uso comercial, implantação em empresa ou licenciamento, entre em contato com o autor.
+O uso comercial, implantação privada, distribuição de executáveis, licenciamento mensal, suporte, manutenção ou customização do ListForge dependem de autorização prévia e de uma licença ou contrato comercial específico.
+
+A aquisição de uma licença comercial não transfere a propriedade intelectual, o código-fonte, a marca, a identidade visual ou os direitos de exploração comercial do software, salvo acordo escrito em sentido contrário.
 
 Consulte também o arquivo `LICENSE.md`.
 
