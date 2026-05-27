@@ -421,13 +421,9 @@ public static class ListProcessor
                     ["Pants"] = "",
                     ["Tanktop"] = "",
                     ["Vest"] = "",
-                    ["Socks"] = string.Join(", ", fragment.Socks),
                 });
                 continue;
             }
-
-            var sockText = string.Join(", ", fragment.Socks);
-            var sockAttached = false;
 
             foreach (var tam in row.Tams)
             {
@@ -449,9 +445,7 @@ public static class ListProcessor
                         ["Pants"] = "",
                         ["Tanktop"] = "",
                         ["Vest"] = "",
-                        ["Socks"] = !sockAttached ? sockText : "",
                     });
-                    sockAttached = true;
                 }
             }
         }

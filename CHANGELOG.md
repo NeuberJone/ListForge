@@ -4,6 +4,14 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.9] - 2026-05-27
+
+### Alterado
+
+- Removido o campo `Socks` da geração de JSON.
+- Mantido o meião apenas na lista organizada, sem exportação para o objeto `orders`.
+- Atualizada a documentação para refletir que o JSON não inclui meião.
+
 ## [2.1.8] - 2026-05-27
 
 ### Corrigido
