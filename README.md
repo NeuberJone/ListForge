@@ -13,14 +13,31 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 
 ## Screenshots
 
-As imagens abaixo demonstram o fluxo principal do ListForge. Para manter o repositório organizado, salve as capturas em `docs/screenshots/` usando os nomes sugeridos.
+As imagens abaixo demonstram o fluxo principal do ListForge.
 
-| Tela | Demonstra | Arquivo sugerido |
-|---|---|---|
-| Editor principal | Entrada da lista, saída processada e visão geral da aplicação | `docs/screenshots/01-editor-principal.png` |
-| Processamento com JSON | Resultado textual e prévia JSON gerada | `docs/screenshots/02-json-preview.png` |
-| Configurações | Separador padrão, tema, opções de JSON e pasta de saída | `docs/screenshots/03-configuracoes.png` |
-| Grupos de tamanho | Configuração de tamanhos masculinos, femininos, infantis e meião | `docs/screenshots/04-grupos-de-tamanho.png` |
+### Editor principal
+
+Entrada da lista, saída processada e visão geral da aplicação.
+
+![Editor principal](docs/screenshots/01-editor-principal.png)
+
+### Processamento com JSON
+
+Resultado textual e prévia JSON gerada.
+
+![Processamento com JSON](docs/screenshots/02-json-preview.png)
+
+### Configurações
+
+Separador padrão, tema, opções de JSON e pasta de saída.
+
+![Configurações](docs/screenshots/03-configuracoes.png)
+
+### Grupos de tamanho
+
+Configuração de tamanhos masculinos, femininos, infantis e meião.
+
+![Grupos de tamanho](docs/screenshots/04-grupos-de-tamanho.png)
 
 ## Visão geral
 

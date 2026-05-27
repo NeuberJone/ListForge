@@ -11,7 +11,7 @@
         <StackPanel>
           <TextBlock Text="Manual" FontSize="15" FontWeight="Bold"/>
           <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}"
-                     Text="Este manual descreve o funcionamento atual do ListForge: como montar a entrada, como o programa interpreta cada linha, como extrair lista a partir de um link, como usar a saída organizada, o JSON e as configurações."/>
+Text="Este manual descreve o funcionamento atual do ListForge: como montar a entrada, como o programa interpreta cada linha, como extrair lista a partir de um link, como usar a saída organizada, o JSON, as configurações e a documentação com screenshots oficiais."/>
         </StackPanel>
       </Border>
 
