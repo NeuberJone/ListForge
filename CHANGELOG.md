@@ -4,6 +4,38 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.8] - 2026-05-27
+
+### Corrigido
+
+- Removida coluna vazia residual entre os tamanhos e o apelido quando a linha possui campos extras.
+- Mantidas colunas vazias internas do grupo de tamanho, sem adicionar preenchimento final antes de apelido ou tipo sanguíneo.
+- Corrigida a saída de entradas como `1,Amanda C.,(Cardoso),2-BLM,2-BLP` para terminar em `BLM,BLP,(Cardoso)`.
+
+## [2.1.7] - 2026-05-27
+
+### Corrigido
+
+- Removida a coluna vazia de tipo sanguíneo quando a lista possui apenas apelido como campo extra.
+- Mantida a ordem dos campos extras no final da saída: apelido primeiro e tipo sanguíneo somente quando existir terceira string.
+- Corrigida a saída de linhas como `Amanda C.,1,BLM,BLP,(Cardoso)`, sem vírgulas extras antes ou depois do apelido.
+
+## [2.1.6] - 2026-05-27
+
+### Corrigido
+
+- Ajustada a saída textual para tratar a segunda string como apelido e a terceira string como tipo sanguíneo.
+- Quando houver campos extras, a lista organizada passa a reservar apelido e tipo sanguíneo no final da linha, nessa ordem.
+- Evitado que uma linha com apenas apelido seja interpretada como tipo sanguíneo por falta da coluna final vazia.
+
+## [2.1.5] - 2026-05-26
+
+### Corrigido
+
+- Ajustado o alinhamento de colunas para linhas que possuem apenas um grupo de tamanho.
+- Mantida a separação por grupo quando a mesma linha original mistura tamanhos masculinos, femininos ou infantis.
+- Corrigida a saída de listas em que linhas femininas isoladas estavam herdando uma coluna vazia inicial de linhas masculinas/femininas mistas.
+
 ## [2.1.4] - 2026-05-26
 
 ### Corrigido

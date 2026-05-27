@@ -322,20 +322,28 @@ public static class ListProcessor
         var hasS2 = rows.Any(r => !string.IsNullOrEmpty(r.S2));
         var hasS3 = rows.Any(r => !string.IsNullOrEmpty(r.S3));
         var normalizedRows = rows
-            .Select(row => ExplodeRowFragments(row, sizeConfig))
-            .Where(fragments => fragments.Count > 0)
+            .Select(row =>
+            {
+                var fragments = ExplodeRowFragments(row, sizeConfig);
+                var rowGroups = GroupRenderOrder
+                    .Where(g => fragments.Any(f => f.Group == g))
+                    .ToList();
+                return (Fragments: fragments, RowGroups: rowGroups);
+            })
+            .Where(row => row.Fragments.Count > 0)
             .ToList();
-        var allFragments = normalizedRows.SelectMany(fragments => fragments).ToList();
+        var allFragments = normalizedRows.SelectMany(row => row.Fragments).ToList();
         if (allFragments.Count == 0) return "";
 
         var widths = GroupColumnWidths(allFragments);
         var activeGroups = GroupRenderOrder.Where(g => widths[g] > 0).ToList();
+        var apparelWidth = activeGroups.Sum(g => widths[g]);
         var sockWidth = allFragments.Max(f => f.Socks.Count);
         var outLines = new List<string>();
 
-        foreach (var fragments in normalizedRows)
+        foreach (var normalizedRow in normalizedRows)
         {
-            foreach (var fragment in fragments)
+            foreach (var fragment in normalizedRow.Fragments)
             {
                 var row = fragment.Row;
                 var cols = new List<string>
@@ -344,19 +352,25 @@ public static class ListProcessor
                     row.Number,
                 };
 
-                foreach (var group in activeGroups)
+                var apparelCols = new List<string>();
+
+                foreach (var group in normalizedRow.RowGroups)
                 {
                     if (group == fragment.Group)
                     {
                         var groupSizes = row.Tams.Select(s => SizeHelper.FormatSizeToken(s, sizeConfig)).ToList();
                         groupSizes.AddRange(Enumerable.Repeat("", widths[group] - groupSizes.Count));
-                        cols.AddRange(groupSizes);
+                        apparelCols.AddRange(groupSizes);
                     }
                     else
                     {
-                        cols.AddRange(Enumerable.Repeat("", widths[group]));
+                        apparelCols.AddRange(Enumerable.Repeat("", widths[group]));
                     }
                 }
+
+                if (!hasS2 && !hasS3)
+                    apparelCols.AddRange(Enumerable.Repeat("", Math.Max(0, apparelWidth - apparelCols.Count)));
+                cols.AddRange(apparelCols);
 
                 if (sockWidth > 0)
                 {

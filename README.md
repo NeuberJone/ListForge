@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.4-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.8-16A34A?style=for-the-badge)
 
 ---
 
@@ -95,10 +95,10 @@ O processamento principal está em `Core/ListProcessor.cs`. Cada linha é interp
 - nome;
 - número;
 - um ou mais tamanhos;
-- até dois campos extras;
+- até dois campos extras: apelido e tipo sanguíneo;
 - tamanhos com quantidade no formato `2-G`, `3-M` ou equivalente válido.
 
-Após a leitura, as linhas são ordenadas por nome e número. A saída textual distribui os tamanhos por grupos reconhecidos e mantém campos extras quando presentes.
+Após a leitura, as linhas são ordenadas por nome e número. A saída textual distribui os tamanhos por grupos reconhecidos, preserva colunas vazias internas quando necessário, compacta colunas finais antes dos campos extras e formata esses campos no final como apelido seguido de tipo sanguíneo quando esse terceiro campo existir.
 
 ## Suporte a quantidades por tamanho
 
@@ -302,18 +302,18 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Publicação
 
-O projeto está configurado para Windows x64 e versão `2.1.4`.
+O projeto está configurado para Windows x64 e versão `2.1.8`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.4\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.8\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.4\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.8\ListForge-Portable-OneFile
 ```
 
 Instalador:
@@ -322,10 +322,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.4\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.8\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.4\Installer
+bin\Release\dist\2.1.8\Installer
 ```
 
 ## Dependências principais
