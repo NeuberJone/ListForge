@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
+using ListForge.Config;
 
 namespace ListForge;
 
@@ -24,7 +25,7 @@ public partial class App : Application
     private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         var message = BuildExceptionMessage(e.Exception);
-        MessageBox.Show(message, "ListForge", MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageBox.Show(message, ConfigManager.AppTitle, MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
 

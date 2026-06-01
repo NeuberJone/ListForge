@@ -16,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
 using FileImporter = ListForge.Core.FileImporter;
+using TrialManager = ListForge.Core.TrialManager;
 
 namespace ListForge.ViewModels;
 
@@ -58,7 +59,9 @@ public class MainViewModel : INotifyPropertyChanged
     private string _replaceText = "";
     private bool _findMatchCase;
     private string _currentFileLabel = "Arquivo atual: (nova lista)";
-    private string _statusText = "Pronto.";
+    private string _statusText = ConfigManager.IsTrialBuild
+        ? $"Pronto. Trial: {TrialManager.RemainingProcessings}/{TrialManager.Limit} processamento(s) restante(s)."
+        : "Pronto.";
     private string _selectedOutputSection = "list";
     private string _selectedSockSize = "";
     private bool _showJsonSection;
@@ -462,6 +465,14 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (!TrialManager.HasCredits)
+        {
+            var message = "Limite de processamentos da versão Trial atingido.";
+            StatusText = message;
+            MessageBox.Show(message, ConfigManager.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         try
         {
             var rows = CoreProcessor.ProcessText(InputText, EditorSeparator, _sizeCfg);
@@ -476,6 +487,8 @@ public class MainViewModel : INotifyPropertyChanged
             var orders = CoreProcessor.BuildOrdersFromOrderlist(rows, _sizeCfg, caseMode);
             var preview = CoreProcessor.BuildJsonPreview(orders);
 
+            TrialManager.ConsumeSuccessfulProcessing();
+
             _rows = rows;
             _lastOrders = orders;
             _lastJson = preview;
@@ -484,7 +497,7 @@ public class MainViewModel : INotifyPropertyChanged
             JsonText = preview;
             SelectedOutputSection = "list";
 
-            StatusText = $"Processado: {rows.Count} linha(s) | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}";
+            StatusText = $"Processado: {rows.Count} linha(s) | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{TrialManager.StatusSuffix}";
         }
         catch (Exception ex)
         {

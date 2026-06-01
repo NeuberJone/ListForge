@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using ListForge.Config;
 using ListForge.ViewModels;
 
 namespace ListForge.UI.Views;
@@ -12,8 +13,14 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Title = ConfigManager.AppTitle;
         _vm = new MainViewModel();
         DataContext = _vm;
+
+        LogoTitle.Text = ConfigManager.AppTitle;
+        LogoSubtitle.Text = ConfigManager.IsTrialBuild
+            ? $"Versão Trial - limite de {ConfigManager.TrialProcessingLimit} processamentos"
+            : "Organização e transformação de listas";
 
         EditorViewControl.SetViewModel(_vm);
         SettingsViewControl.SetViewModel(_vm);

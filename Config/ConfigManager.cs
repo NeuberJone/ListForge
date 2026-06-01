@@ -7,12 +7,24 @@ namespace ListForge.Config;
 
 public static class ConfigManager
 {
-    public static readonly string AppName = "ListForge";
+    public const string AppName = "ListForge";
+
+#if TRIAL_BUILD
+    public const bool IsTrialBuild = true;
+    public const string EditionName = "Trial";
+#else
+    public const bool IsTrialBuild = false;
+    public const string EditionName = "Completo";
+#endif
+
+    public static readonly string AppTitle = IsTrialBuild ? $"{AppName} Trial" : AppName;
+    public static readonly int TrialProcessingLimit = ResolveTrialProcessingLimit();
 
     public static readonly string AppDir;
     public static readonly string ConfigPath;
     public static readonly string BackupDir;
     public static readonly string SizeConfigPath;
+    public static readonly string TrialStatePath;
 
     static ConfigManager()
     {
@@ -20,9 +32,16 @@ public static class ConfigManager
         ConfigPath = Path.Combine(AppDir, "config.json");
         BackupDir = Path.Combine(AppDir, "backups");
         SizeConfigPath = Path.Combine(AppDir, "sizes.json");
+        TrialStatePath = Path.Combine(AppDir, "trial-state.json");
 
         Directory.CreateDirectory(AppDir);
         Directory.CreateDirectory(BackupDir);
+    }
+
+    private static int ResolveTrialProcessingLimit()
+    {
+        var raw = Environment.GetEnvironmentVariable("LISTFORGE_TRIAL_PROCESSING_LIMIT");
+        return int.TryParse(raw, out var value) && value > 0 ? value : 10;
     }
 
     private static string ResolveWritableAppDir()

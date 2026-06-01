@@ -221,13 +221,6 @@ public static class ListProcessor
                 throw new ArgumentException($"Linha {i + 1}: {ex.Message}");
             }
         }
-
-        parsed.Sort((a, b) =>
-        {
-            var c = string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-            return c != 0 ? c : string.Compare(a.Number, b.Number, StringComparison.Ordinal);
-        });
-
         return parsed;
     }
 

@@ -4,6 +4,15 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.11] - 2026-05-31
+
+### Alterado
+
+- O processamento agora preserva a ordem original das linhas de entrada.
+- Adicionada build Trial separada, identificada no título/interface e limitada por créditos de processamento.
+- Cada processamento concluído com sucesso consome 1 crédito no Trial; entradas inválidas, erros de validação e cancelamentos não consomem crédito.
+- A build completa continua sem consumo de créditos e sem dependência do controle Trial.
+
 ## [2.1.9] - 2026-05-27
 
 ### Alterado

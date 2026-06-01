@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.9-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.11-16A34A?style=for-the-badge)
 
 ---
 
@@ -113,7 +113,7 @@ O processamento principal está em `Core/ListProcessor.cs`. Cada linha é interp
 - até dois campos extras: apelido e tipo sanguíneo;
 - tamanhos com quantidade no formato `2-G`, `3-M` ou equivalente válido.
 
-Após a leitura, as linhas são ordenadas por nome e número. A saída textual distribui os tamanhos por grupos reconhecidos, preserva colunas vazias internas quando necessário, compacta colunas finais antes dos campos extras e formata esses campos no final como apelido seguido de tipo sanguíneo quando esse terceiro campo existir.
+Após a leitura, as linhas mantêm a mesma ordem da entrada. A saída textual distribui os tamanhos por grupos reconhecidos, preserva colunas vazias internas quando necessário, compacta colunas finais antes dos campos extras e formata esses campos no final como apelido seguido de tipo sanguíneo quando esse terceiro campo existir.
 
 ## Suporte a quantidades por tamanho
 
@@ -128,6 +128,14 @@ CARLA,12,3-BLP
 ```
 
 No processamento, quantidades maiores que uma unidade são expandidas em linhas equivalentes para a saída e para o JSON.
+
+## Versão Trial
+
+A build Trial é gerada separadamente da versão completa e aparece como `ListForge Trial` no título/interface e no nome do executável.
+
+O Trial possui limite de processamentos de listas. Cada processamento concluído com sucesso consome 1 crédito. Erro de entrada, validação inválida, falha antes do processamento final ou cancelamento do usuário não consomem crédito.
+
+A versão completa não consome créditos e não depende do controle Trial. O limite padrão do Trial é 10 processamentos e pode ser ajustado pela variável de ambiente `LISTFORGE_TRIAL_PROCESSING_LIMIT`.
 
 ## Grupos de tamanho configuráveis
 
@@ -257,7 +265,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 - `UI/Themes` contém os dicionários de estilo.
 - `ViewModels/MainViewModel.cs` centraliza estado, comandos e integração entre UI, configuração e processamento.
 - `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
-- `Core/ListProcessor.cs` concentra interpretação, ordenação, geração de saída e JSON.
+- `Core/ListProcessor.cs` concentra interpretação, preservação da ordem de entrada, geração de saída e JSON.
 - `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
 - `Config/ConfigManager.cs` gerencia configurações, tamanhos e backups.
 - `Models` contém os objetos de configuração e linhas processadas.
@@ -318,18 +326,18 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Publicação
 
-O projeto está configurado para Windows x64 e versão `2.1.9`.
+O projeto está configurado para Windows x64 e versão `2.1.11`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.9\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.11\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.9\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.11\ListForge-Portable-OneFile
 ```
 
 Instalador:
@@ -338,10 +346,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.9\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.11\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.9\Installer
+bin\Release\dist\2.1.11\Installer
 ```
 
 ## Dependências principais
@@ -375,17 +383,17 @@ Entrada simples:
 JOAO,10,G
 MARIA,2,M
 PEDRO,8,2-P
-ANA,14,BLG,JUVENIL
+ANA,14,BLG
 ```
 
 Saída textual com separador vírgula:
 
 ```text
-ANA,14,BLG,JUVENIL
 JOAO,10,G
 MARIA,2,M
 PEDRO,8,P
 PEDRO,8,P
+ANA,14,BLG
 ```
 
 Prévia JSON simplificada:
