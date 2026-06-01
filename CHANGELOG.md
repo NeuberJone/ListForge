@@ -4,6 +4,14 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.14] - 2026-05-31
+
+### Alterado
+
+- Refatorado o núcleo de processamento para separar parsing, montagem de saída, geração de JSON, importação JSON e helpers de arquivo.
+- Mantida compatibilidade com a API pública de `ListProcessor`.
+- Preservado o comportamento existente validado pelos testes automatizados.
+
 ## [2.1.13] - 2026-05-31
 
 ### Adicionado

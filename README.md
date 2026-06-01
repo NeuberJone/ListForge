@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.13-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.14-16A34A?style=for-the-badge)
 
 ---
 
@@ -138,7 +138,9 @@ A pasta `tesseract/tessdata` deve acompanhar builds distribuídos quando o recon
 
 ## Processamento de listas
 
-O processamento principal está em `Core/ListProcessor.cs`. Cada linha é interpretada em partes separadas pelo separador ativo. O algoritmo identifica:
+O processamento principal é exposto por `Core/ListProcessor.cs`, que funciona como fachada de compatibilidade para o restante da aplicação. A lógica interna fica separada em arquivos menores: `ListParser.cs`, `ListOutputBuilder.cs`, `JsonOrderBuilder.cs`, `JsonListImporter.cs` e `FileNameHelper.cs`.
+
+Cada linha é interpretada em partes separadas pelo separador ativo. O algoritmo identifica:
 
 * nome;
 * número;
@@ -269,6 +271,11 @@ ListForge/
 │  └─ ConfigManager.cs
 ├─ Core/
 │  ├─ FileImporter.cs
+│  ├─ FileNameHelper.cs
+│  ├─ JsonListImporter.cs
+│  ├─ JsonOrderBuilder.cs
+│  ├─ ListOutputBuilder.cs
+│  ├─ ListParser.cs
 │  ├─ ListProcessor.cs
 │  ├─ SizeHelper.cs
 │  └─ TrialManager.cs
@@ -325,7 +332,12 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `UI/Themes` contém os dicionários de estilo.
 * `ViewModels/MainViewModel.cs` centraliza estado, comandos e integração entre UI, configuração e processamento.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
-* `Core/ListProcessor.cs` concentra interpretação, preservação da ordem de entrada, geração de saída e JSON.
+* `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
+* `Core/ListParser.cs` concentra separadores, limpeza por separador, parsing de linha e preservação da ordem de entrada.
+* `Core/ListOutputBuilder.cs` concentra a explosão de tamanhos, distribuição de grupos, meião e montagem da saída textual.
+* `Core/JsonOrderBuilder.cs` concentra a montagem de `orders`, prévia JSON e exportação JSON.
+* `Core/JsonListImporter.cs` concentra a extração de lista textual a partir de JSON.
+* `Core/FileNameHelper.cs` concentra sanitização de nomes e caminhos versionados.
 * `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
 * `Core/TrialManager.cs` concentra o controle de créditos da versão Trial.
 * `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
@@ -336,7 +348,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 
 * **WPF** foi escolhido para entregar uma aplicação desktop nativa para Windows.
 * **MVVM** organiza a separação entre interface, estado e comandos.
-* A lógica principal de processamento foi concentrada em `Core/ListProcessor.cs`, mantendo o tratamento das listas independente da interface.
+* A API pública de processamento é mantida em `Core/ListProcessor.cs`, enquanto as responsabilidades internas são separadas por área para reduzir acoplamento e facilitar testes.
 * A leitura de arquivos e OCR foi separada em `Core/FileImporter.cs`, reduzindo acoplamento com a tela principal.
 * As configurações são salvas em uma pasta gravável por usuário, evitando depender da pasta do executável.
 * Os tamanhos são configuráveis via `sizes.json`, permitindo adaptação a diferentes padrões de produção.
@@ -400,24 +412,24 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.13`.
+O projeto está configurado para Windows x64 e versão `2.1.14`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.13\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.14\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.13\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.14\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.13\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.14\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -426,10 +438,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.13\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.14\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.13\Installer
+bin\Release\dist\2.1.14\Installer
 ```
 
 ## Dependências principais
