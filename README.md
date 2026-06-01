@@ -1,15 +1,32 @@
 # ListForge
 
-**ListForge** é uma aplicação desktop oficial para Windows, desenvolvida em **C#**, **.NET 8** e **WPF**, voltada para edição, padronização, organização e exportação de listas de produção.
+**ListForge** é uma aplicação desktop para Windows, desenvolvida em **C#**, **.NET 8** e **WPF**, voltada para edição, padronização, organização e exportação de listas de produção.
 
-O projeto foi criado para reduzir retrabalho em operações que recebem listas em formatos variados, com nomes, números, tamanhos e informações extras fora de padrão. A aplicação centraliza a preparação da lista, valida tamanhos configuráveis, organiza a saída textual e gera uma estrutura JSON pronta para integração com outros fluxos.
+O projeto foi criado para reduzir retrabalho em operações que recebem listas em formatos variados, com nomes, números, tamanhos e informações extras fora de padrão. A aplicação centraliza a preparação de listas, valida tamanhos configuráveis, organiza a saída textual e gera uma estrutura JSON pronta para integração com outros fluxos.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge&logo=windows)
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-2.1.12-16A34A?style=for-the-badge)
 
 ---
+
+## Em resumo
+
+* Transforma listas despadronizadas em saídas organizadas e previsíveis.
+* Interpreta nomes, números, tamanhos e campos auxiliares.
+* Valida tamanhos configuráveis por grupos.
+* Expande quantidades por tamanho, como `2-G` ou `3-M`.
+* Importa conteúdo de texto, planilhas, PDFs, documentos, imagens e links JSON.
+* Gera saída textual e prévia JSON.
+* Mantém configurações por usuário e backups automáticos.
+* Possui versão completa e build Trial com limite de processamentos.
+
+## Público-alvo
+
+O ListForge foi pensado para fluxos de produção que recebem listas de nomes, números, tamanhos e informações auxiliares em formatos variados, especialmente em operações de uniformes, sublimação, personalização, preparação de pedidos e ambientes onde listas precisam ser revisadas antes de seguir para produção.
+
+O projeto também serve como demonstração técnica de uma aplicação desktop real, com interface WPF, arquitetura organizada, persistência de configurações, importação de múltiplos formatos, OCR, geração de JSON, instalador e controle de versão.
 
 ## Screenshots
 
@@ -29,7 +46,7 @@ Resultado textual e prévia JSON gerada.
 
 ### Configurações
 
-Separador padrão, tema, opções de JSON e pasta de saída.
+Separador padrão, tema, opções de JSON, pasta de saída e preferências de exibição.
 
 ![Configurações](docs/screenshots/03-configuracoes.png)
 
@@ -43,7 +60,7 @@ Configuração de tamanhos masculinos, femininos, infantis e meião.
 
 O ListForge trabalha como uma estação de preparação de listas. O usuário pode colar dados manualmente, abrir arquivos, extrair conteúdo de documentos, reconhecer texto em imagens por OCR, limpar separadores, processar os registros e salvar o resultado.
 
-A interface é organizada em áreas de edição, saída, JSON, configurações e manual. As preferências do usuário são persistidas localmente e incluem separador padrão, modo de capitalização, pasta de saída, nome padrão da lista, tema visual e grupos de tamanho.
+A interface é organizada em áreas de entrada, saída, prévia JSON, configurações e manual. As preferências do usuário são persistidas localmente e incluem separador padrão, modo de capitalização, pasta de saída, nome padrão da lista, tema visual, tamanho da fonte dos editores e grupos de tamanho.
 
 ## Problema que o projeto resolve
 
@@ -51,44 +68,58 @@ Listas de produção costumam chegar por mensagens, planilhas, PDFs, documentos,
 
 O ListForge resolve esse processo com uma ferramenta única para:
 
-- padronizar linhas de entrada;
-- validar tamanhos reconhecidos;
-- separar nome, número, tamanhos e campos auxiliares;
-- expandir quantidades por tamanho;
-- organizar a saída de forma previsível;
-- gerar texto e JSON;
-- manter backups de arquivos sobrescritos.
+* padronizar linhas de entrada;
+* validar tamanhos reconhecidos;
+* separar nome, número, tamanhos e campos auxiliares;
+* expandir quantidades por tamanho;
+* preservar ou organizar a saída conforme o fluxo de produção;
+* gerar texto e JSON;
+* manter backups de arquivos sobrescritos;
+* reduzir retrabalho manual na preparação das listas.
 
 ## Principais recursos
 
-- Editor de entrada com numeração de linhas.
-- Painéis separados para entrada, saída e JSON.
-- Abertura e salvamento de arquivos de texto.
-- Busca, substituição e destaque de ocorrências.
-- Limpeza de espaços ao redor do separador.
-- Processamento com separador configurável.
-- Capitalização em modo original, maiúsculo ou minúsculo.
-- Aplicação em lote de tamanho e meião, útil para listas de uniformes esportivos e preenchimento de informações repetidas.
-- Validação de tamanhos por grupos configuráveis.
-- Geração de saída textual.
-- Geração e cópia de JSON.
-- Backups automáticos ao sobrescrever arquivos.
-- Temas visuais selecionáveis.
-- Tamanho de fonte ajustável para entrada, saída e prévia JSON.
-- Configurações persistentes por usuário.
+### Edição e preparação
+
+* Editor de entrada com numeração de linhas.
+* Painéis separados para entrada, saída e JSON.
+* Abertura e salvamento de arquivos de texto.
+* Busca, substituição e destaque de ocorrências.
+* Limpeza de espaços ao redor do separador.
+* Capitalização em modo original, maiúsculo ou minúsculo.
+* Tamanho de fonte ajustável para entrada, saída e prévia JSON.
+* Atalho com `Ctrl` + scroll do mouse para aumentar ou diminuir a fonte dos editores.
+
+### Processamento
+
+* Processamento com separador configurável.
+* Validação de tamanhos por grupos configuráveis.
+* Expansão de quantidades por tamanho.
+* Aplicação em lote de tamanho e meião.
+* Interpretação de até dois campos extras, como apelido e tipo sanguíneo.
+* Preservação da ordem original de entrada.
+
+### Exportação e segurança
+
+* Geração de saída textual.
+* Geração, cópia e prévia de JSON.
+* Backups automáticos ao sobrescrever arquivos.
+* Configurações persistentes por usuário.
+* Temas visuais selecionáveis.
+* Versão Trial com limite de processamentos concluídos com sucesso.
 
 ## Importação de arquivos
 
 O núcleo de leitura de arquivos está em `Core/FileImporter.cs`. Os formatos reconhecidos pelo projeto são:
 
-| Tipo | Extensões |
-|---|---|
-| Texto | `.txt`, `.csv` |
-| PDF | `.pdf` |
-| Word | `.docx`, `.doc` |
-| Excel | `.xlsx`, `.xlsm`, `.xls` |
-| Imagens | `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tif`, `.tiff`, `.webp` |
-| JSON por link | URLs `http://` ou `https://` |
+| Tipo          | Extensões                                                 |
+| ------------- | --------------------------------------------------------- |
+| Texto         | `.txt`, `.csv`                                            |
+| PDF           | `.pdf`                                                    |
+| Word          | `.docx`, `.doc`                                           |
+| Excel         | `.xlsx`, `.xlsm`, `.xls`                                  |
+| Imagens       | `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tif`, `.tiff`, `.webp` |
+| JSON por link | URLs `http://` ou `https://`                              |
 
 Arquivos de texto são lidos com tentativas de codificação em UTF-8 com BOM, UTF-8, Windows-1252 e ISO-8859-1. PDFs são lidos com PdfPig. Documentos Word usam DocumentFormat.OpenXml. Planilhas usam ClosedXML.
 
@@ -108,13 +139,15 @@ A pasta `tesseract/tessdata` deve acompanhar builds distribuídos quando o recon
 
 O processamento principal está em `Core/ListProcessor.cs`. Cada linha é interpretada em partes separadas pelo separador ativo. O algoritmo identifica:
 
-- nome;
-- número;
-- um ou mais tamanhos;
-- até dois campos extras: apelido e tipo sanguíneo;
-- tamanhos com quantidade no formato `2-G`, `3-M` ou equivalente válido.
+* nome;
+* número;
+* um ou mais tamanhos;
+* até dois campos extras: apelido e tipo sanguíneo;
+* tamanhos com quantidade no formato `2-G`, `3-M` ou equivalente válido.
 
 Após a leitura, as linhas mantêm a mesma ordem da entrada. A saída textual distribui os tamanhos por grupos reconhecidos, preserva colunas vazias internas quando necessário, compacta colunas finais antes dos campos extras e formata esses campos no final como apelido seguido de tipo sanguíneo quando esse terceiro campo existir.
+
+Por padrão, o ListForge preserva a ordem original da lista informada. Caso uma ordenação adicional seja implementada ou habilitada no fluxo, ela deve ser tratada como uma opção explícita do usuário, sem alterar a responsabilidade principal do processamento: interpretar corretamente a entrada.
 
 ## Suporte a quantidades por tamanho
 
@@ -142,12 +175,12 @@ A versão completa não consome créditos e não depende do controle Trial. O li
 
 Os tamanhos ficam em `sizes.json` e são representados por `Models/SizeConfig.cs`. O padrão do sistema inclui quatro grupos:
 
-| Grupo | Uso |
-|---|---|
+| Grupo     | Uso                                                |
+| --------- | -------------------------------------------------- |
 | Masculino | tamanhos base como `PP`, `P`, `M`, `G`, `GG`, `XG` |
-| Feminino | tamanhos base combinados com prefixos, como `BLP` |
-| Infantil | tamanhos numéricos e sufixos, como `8A` |
-| Meião | opções como `JUVENIL`, `ADULTO` e `INFANTIL` |
+| Feminino  | tamanhos base combinados com prefixos, como `BLP`  |
+| Infantil  | tamanhos numéricos e sufixos, como `8A`            |
+| Meião     | opções como `JUVENIL`, `ADULTO` e `INFANTIL`       |
 
 Cada grupo permite configurar tamanhos base, prefixos e sufixos. O índice final de tamanhos é montado em `Core/SizeHelper.cs`.
 
@@ -157,7 +190,7 @@ O separador padrão é vírgula, mas pode ser alterado no editor ou nas configur
 
 O mesmo separador é usado para limpar espaços, interpretar a entrada e montar a saída textual.
 
-## Tamanho da fonte das listas
+## Tamanho da fonte dos editores
 
 O tamanho da fonte dos editores de Entrada / edição, Saída e Prévia JSON pode ser ajustado nas Configurações, na seção Exibição.
 
@@ -167,17 +200,17 @@ Também é possível alterar rapidamente pelo editor: posicione o mouse sobre a 
 
 O ListForge gera uma prévia JSON com o objeto `orders`. A estrutura inclui campos como:
 
-- `Name`;
-- `Nickname`;
-- `Number`;
-- `BloodType`;
-- `Gender`;
-- `ShortSleeve`;
-- `LongSleeve`;
-- `Short`;
-- `Pants`;
-- `Tanktop`;
-- `Vest`.
+* `Name`;
+* `Nickname`;
+* `Number`;
+* `BloodType`;
+* `Gender`;
+* `ShortSleeve`;
+* `LongSleeve`;
+* `Short`;
+* `Pants`;
+* `Tanktop`;
+* `Vest`.
 
 O meião é mantido na lista organizada, mas não é exportado como campo `Socks` no JSON.
 
@@ -199,11 +232,11 @@ Os backups ficam no diretório configurado por `ConfigManager.BackupDir`.
 
 O ListForge possui três temas:
 
-| Tema | Arquivo |
-|---|---|
-| ListForge Dark | `UI/Themes/DarkTheme.xaml` |
-| ListForge Light | `UI/Themes/LightTheme.xaml` |
-| SISBolt | `UI/Themes/SisBoltTheme.xaml` |
+| Tema            | Arquivo                       |
+| --------------- | ----------------------------- |
+| ListForge Dark  | `UI/Themes/DarkTheme.xaml`    |
+| ListForge Light | `UI/Themes/LightTheme.xaml`   |
+| SISBolt         | `UI/Themes/SisBoltTheme.xaml` |
 
 Os temas são carregados por `ResourceDictionary` e aplicados pela janela principal em tempo de execução.
 
@@ -217,6 +250,7 @@ ListForge/
 ├─ ListForge.csproj
 ├─ README.md
 ├─ LICENSE.md
+├─ CHANGELOG.md
 ├─ Assets/
 │  └─ logo.ico
 ├─ Config/
@@ -224,11 +258,13 @@ ListForge/
 ├─ Core/
 │  ├─ FileImporter.cs
 │  ├─ ListProcessor.cs
-│  └─ SizeHelper.cs
+│  ├─ SizeHelper.cs
+│  └─ TrialManager.cs
 ├─ Models/
 │  ├─ AppConfig.cs
 │  ├─ ParsedRow.cs
-│  └─ SizeConfig.cs
+│  ├─ SizeConfig.cs
+│  └─ TrialState.cs
 ├─ ViewModels/
 │  ├─ MainViewModel.cs
 │  └─ RelayCommand.cs
@@ -266,16 +302,28 @@ ListForge/
 
 O projeto segue uma organização simples baseada em WPF e MVVM:
 
-- `App.xaml` inicia a aplicação e declara recursos globais.
-- `UI/Views` contém janelas e telas.
-- `UI/Controls` contém controles reutilizáveis.
-- `UI/Themes` contém os dicionários de estilo.
-- `ViewModels/MainViewModel.cs` centraliza estado, comandos e integração entre UI, configuração e processamento.
-- `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
-- `Core/ListProcessor.cs` concentra interpretação, preservação da ordem de entrada, geração de saída e JSON.
-- `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
-- `Config/ConfigManager.cs` gerencia configurações, tamanhos e backups.
-- `Models` contém os objetos de configuração e linhas processadas.
+* `App.xaml` inicia a aplicação e declara recursos globais.
+* `UI/Views` contém janelas e telas.
+* `UI/Controls` contém controles reutilizáveis.
+* `UI/Themes` contém os dicionários de estilo.
+* `ViewModels/MainViewModel.cs` centraliza estado, comandos e integração entre UI, configuração e processamento.
+* `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
+* `Core/ListProcessor.cs` concentra interpretação, preservação da ordem de entrada, geração de saída e JSON.
+* `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
+* `Core/TrialManager.cs` concentra o controle de créditos da versão Trial.
+* `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
+* `Models` contém os objetos de configuração, linhas processadas e estado de Trial.
+
+## Decisões técnicas
+
+* **WPF** foi escolhido para entregar uma aplicação desktop nativa para Windows.
+* **MVVM** organiza a separação entre interface, estado e comandos.
+* A lógica principal de processamento foi concentrada em `Core/ListProcessor.cs`, mantendo o tratamento das listas independente da interface.
+* A leitura de arquivos e OCR foi separada em `Core/FileImporter.cs`, reduzindo acoplamento com a tela principal.
+* As configurações são salvas em uma pasta gravável por usuário, evitando depender da pasta do executável.
+* Os tamanhos são configuráveis via `sizes.json`, permitindo adaptação a diferentes padrões de produção.
+* O controle Trial foi isolado em `Core/TrialManager.cs`, para separar a regra comercial do restante do processamento.
+* O editor com numeração de linhas foi implementado como controle reutilizável em `UI/Controls/LineNumberedTextBox.cs`.
 
 ## Dados de configuração
 
@@ -290,11 +338,12 @@ As configurações são salvas em uma pasta gravável por usuário. A aplicaçã
 
 Arquivos principais:
 
-| Arquivo ou pasta | Função |
-|---|---|
-| `config.json` | preferências gerais da aplicação |
-| `sizes.json` | grupos de tamanho válidos |
-| `backups/` | cópias automáticas de arquivos sobrescritos |
+| Arquivo ou pasta   | Função                                      |
+| ------------------ | ------------------------------------------- |
+| `config.json`      | preferências gerais da aplicação            |
+| `sizes.json`       | grupos de tamanho válidos                   |
+| `trial-state.json` | estado de consumo da versão Trial           |
+| `backups/`         | cópias automáticas de arquivos sobrescritos |
 
 ## Tesseract OCR
 
@@ -302,18 +351,18 @@ O projeto inclui binários do Tesseract na pasta `tesseract`. O arquivo `ListFor
 
 Idiomas incluídos em `tesseract/tessdata`:
 
-- `por.traineddata`;
-- `eng.traineddata`;
-- `osd.traineddata`.
+* `por.traineddata`;
+* `eng.traineddata`;
+* `osd.traineddata`.
 
 ## Pré-requisitos para desenvolvimento
 
-| Ferramenta | Recomendação |
-|---|---|
-| Sistema operacional | Windows 10 ou Windows 11 x64 |
-| .NET SDK | 8.0 ou superior |
-| IDE | Visual Studio 2022 ou editor compatível |
-| Inno Setup | 6.x ou 7.x para gerar instalador |
+| Ferramenta          | Recomendação                            |
+| ------------------- | --------------------------------------- |
+| Sistema operacional | Windows 10 ou Windows 11 x64            |
+| .NET SDK            | 8.0 ou superior                         |
+| IDE                 | Visual Studio 2022 ou editor compatível |
+| Inno Setup          | 6.x ou 7.x para gerar instalador        |
 
 ## Como executar em desenvolvimento
 
@@ -331,7 +380,7 @@ Executável gerado em Debug:
 bin\Debug\net8.0-windows\ListForge.exe
 ```
 
-## Publicação
+## Build e distribuição
 
 O projeto está configurado para Windows x64 e versão `2.1.12`.
 
@@ -367,14 +416,14 @@ bin\Release\dist\2.1.12\Installer
 
 ## Dependências principais
 
-| Dependência | Uso |
-|---|---|
-| Newtonsoft.Json | leitura e geração de JSON |
-| Tesseract | OCR de imagens |
-| PdfPig | extração de texto de PDFs |
+| Dependência            | Uso                                  |
+| ---------------------- | ------------------------------------ |
+| Newtonsoft.Json        | leitura e geração de JSON            |
+| Tesseract              | OCR de imagens                       |
+| PdfPig                 | extração de texto de PDFs            |
 | DocumentFormat.OpenXml | extração de texto de documentos Word |
-| ClosedXML | extração de texto de planilhas Excel |
-| Inno Setup | geração do instalador Windows |
+| ClosedXML              | extração de texto de planilhas Excel |
+| Inno Setup             | geração do instalador Windows        |
 
 ## Fluxo básico de uso
 
@@ -438,23 +487,23 @@ Prévia JSON simplificada:
 
 ## Boas práticas
 
-- Revise os grupos de tamanho antes de processar listas com novos padrões.
-- Use separadores consistentes na entrada.
-- Prefira uma linha por pessoa ou item de produção.
-- Use o formato `quantidade-tamanho` para quantidades repetidas.
-- Mantenha a pasta `tesseract/tessdata` junto ao executável quando OCR for necessário.
-- Gere uma saída nova em vez de sobrescrever arquivos sem revisar o backup.
-- Atualize a versão em `ListForge.csproj` e `installer/ListForge.iss` antes de distribuir uma nova build.
-- Não versione `bin/`, `obj/`, `.vs/`, instaladores gerados ou arquivos temporários.
+* Revise os grupos de tamanho antes de processar listas com novos padrões.
+* Use separadores consistentes na entrada.
+* Prefira uma linha por pessoa ou item de produção.
+* Use o formato `quantidade-tamanho` para quantidades repetidas.
+* Mantenha a pasta `tesseract/tessdata` junto ao executável quando OCR for necessário.
+* Gere uma saída nova em vez de sobrescrever arquivos sem revisar o backup.
+* Atualize a versão em `ListForge.csproj` e `installer/ListForge.iss` antes de distribuir uma nova build.
+* Não versione `bin/`, `obj/`, `.vs/`, instaladores gerados ou arquivos temporários.
 
 ## Roadmap
 
-- Testes automatizados para `ListProcessor` e `SizeHelper`.
-- Logs internos para erros de leitura e OCR.
-- Prévia visual mais detalhada do JSON.
-- Modelos configuráveis de exportação.
-- Validações adicionais para arquivos de entrada.
-- Ferramenta de diagnóstico para Tesseract.
+* Testes automatizados para `ListProcessor` e `SizeHelper`.
+* Logs internos para erros de leitura e OCR.
+* Prévia visual mais detalhada do JSON.
+* Modelos configuráveis de exportação.
+* Validações adicionais para arquivos de entrada.
+* Ferramenta de diagnóstico para Tesseract.
 
 ## Changelog
 
@@ -478,4 +527,4 @@ Desenvolvido por **Neuber Jone**.
 
 ## Status
 
-Produto desktop oficial em desenvolvimento ativo e mantido como aplicação Windows para preparação e exportação de listas de produção.
+Produto desktop em desenvolvimento ativo, mantido como aplicação Windows para preparação, padronização e exportação de listas de produção.
