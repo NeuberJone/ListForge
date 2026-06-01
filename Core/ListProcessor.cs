@@ -22,6 +22,7 @@ public static class ListProcessor
     public static string NormalizeSeparator(string value)
     {
         var raw = (value ?? "").Trim();
+        // Legacy tab values remain accepted for compatibility with older saved settings.
         return raw is @"\t" or "TAB" or "tab" ? "\t" : (raw == "" ? "," : raw);
     }
 

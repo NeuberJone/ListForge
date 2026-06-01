@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.12-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.13-16A34A?style=for-the-badge)
 
 ---
 
@@ -21,6 +21,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 * Gera saída textual e prévia JSON.
 * Mantém configurações por usuário e backups automáticos.
 * Possui versão completa e build Trial com limite de processamentos.
+* Inclui testes automatizados para proteger regras críticas do núcleo.
 
 ## Público-alvo
 
@@ -186,9 +187,19 @@ Cada grupo permite configurar tamanhos base, prefixos e sufixos. O índice final
 
 ## Separadores personalizados
 
-O separador padrão é vírgula, mas pode ser alterado no editor ou nas configurações. O valor `\t`, `TAB` ou `tab` é tratado como tabulação.
+O separador padrão é vírgula, mas pode ser alterado no editor ou nas configurações para outro caractere simples usado no fluxo da lista.
 
 O mesmo separador é usado para limpar espaços, interpretar a entrada e montar a saída textual.
+
+## Testes automatizados
+
+O projeto de testes fica em `ListForge.Tests` e cobre partes rápidas e determinísticas do núcleo, sem depender de OCR. A suíte valida cenários de processamento, tamanhos, quantidade por tamanho, campos extras, meião, JSON, erros de entrada e leitura/escrita de texto simples.
+
+Para rodar os testes na raiz do projeto:
+
+```powershell
+dotnet test
+```
 
 ## Tamanho da fonte dos editores
 
@@ -248,6 +259,7 @@ ListForge/
 ├─ App.xaml.cs
 ├─ GlobalUsings.cs
 ├─ ListForge.csproj
+├─ ListForge.slnx
 ├─ README.md
 ├─ LICENSE.md
 ├─ CHANGELOG.md
@@ -265,6 +277,11 @@ ListForge/
 │  ├─ ParsedRow.cs
 │  ├─ SizeConfig.cs
 │  └─ TrialState.cs
+├─ ListForge.Tests/
+│  ├─ FileImporterTests.cs
+│  ├─ ListForge.Tests.csproj
+│  ├─ ListProcessorTests.cs
+│  └─ SizeHelperTests.cs
 ├─ ViewModels/
 │  ├─ MainViewModel.cs
 │  └─ RelayCommand.cs
@@ -313,6 +330,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Core/TrialManager.cs` concentra o controle de créditos da versão Trial.
 * `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
 * `Models` contém os objetos de configuração, linhas processadas e estado de Trial.
+* `ListForge.Tests` contém testes automatizados do núcleo determinístico.
 
 ## Decisões técnicas
 
@@ -382,24 +400,24 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.12`.
+O projeto está configurado para Windows x64 e versão `2.1.13`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.12\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.13\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.12\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.13\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.12\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.13\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -408,10 +426,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.12\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.13\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.12\Installer
+bin\Release\dist\2.1.13\Installer
 ```
 
 ## Dependências principais
@@ -498,7 +516,6 @@ Prévia JSON simplificada:
 
 ## Roadmap
 
-* Testes automatizados para `ListProcessor` e `SizeHelper`.
 * Logs internos para erros de leitura e OCR.
 * Prévia visual mais detalhada do JSON.
 * Modelos configuráveis de exportação.

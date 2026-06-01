@@ -4,6 +4,17 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.13] - 2026-05-31
+
+### Adicionado
+
+- Projeto `ListForge.Tests` com testes automatizados para o núcleo de processamento.
+- Cobertura para ordem original, quantidades, campos extras, meião, JSON, validação de entrada, tamanhos e importação de texto simples.
+
+### Alterado
+
+- Removidas as opções visíveis de tabulação como separador nas instruções de uso.
+
 ## [2.1.12] - 2026-05-31
 
 ### Adicionado
