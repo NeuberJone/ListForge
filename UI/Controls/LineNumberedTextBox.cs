@@ -12,6 +12,17 @@ namespace ListForge.UI.Controls;
 /// </summary>
 public class LineNumberedTextBox : Control
 {
+    static LineNumberedTextBox()
+    {
+        FontSizeProperty.OverrideMetadata(
+            typeof(LineNumberedTextBox),
+            new FrameworkPropertyMetadata(
+                13.0,
+                FrameworkPropertyMetadataOptions.Inherits,
+                OnFontSizeChanged,
+                CoerceFontSize));
+    }
+
     // ---------------------------------------------------------------
     // Parts
     // ---------------------------------------------------------------
@@ -74,6 +85,8 @@ public class LineNumberedTextBox : Control
 
     public LineNumberedTextBox()
     {
+        PreviewMouseWheel += OnPreviewMouseWheel;
+
         // Columns: gutter | separator | editor
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(GutterWidth) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
@@ -117,11 +130,12 @@ public class LineNumberedTextBox : Control
         _textBox.SetResourceReference(TextBox.CaretBrushProperty, "TextBrush");
         _textBox.SetResourceReference(TextBox.SelectionBrushProperty, "SelectionBrush");
         _textBox.SetResourceReference(TextBox.FontFamilyProperty, "MonoFont");
-        _textBox.FontSize = 13;
+        _textBox.FontSize = FontSize;
 
         _textBox.TextChanged += OnInnerTextChanged;
         _textBox.SizeChanged += (_, _) => UpdateGutter();
         _textBox.KeyDown += (s, e) => TextKeyDown?.Invoke(s, e);
+        _textBox.PreviewMouseWheel += OnPreviewMouseWheel;
 
         Grid.SetColumn(_textBox, 2);
         _root.Children.Add(_textBox);
@@ -179,6 +193,20 @@ public class LineNumberedTextBox : Control
             self._textBox.IsReadOnly = (bool)e.NewValue;
     }
 
+    private static void OnFontSizeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var self = (LineNumberedTextBox)d;
+        if (self._textBox != null)
+            self._textBox.FontSize = (double)e.NewValue;
+        self.UpdateGutter();
+    }
+
+    private static object CoerceFontSize(DependencyObject d, object baseValue)
+    {
+        var size = baseValue is double value ? value : 13;
+        return Math.Clamp(double.IsNaN(size) ? 13 : size, 8, 32);
+    }
+
     private void OnInnerTextChanged(object sender, TextChangedEventArgs e)
     {
         if (_suppressUpdate) return;
@@ -186,6 +214,16 @@ public class LineNumberedTextBox : Control
         SetValue(TextProperty, _textBox!.Text);
         _suppressUpdate = false;
         UpdateGutter();
+    }
+
+    private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+            return;
+
+        var delta = e.Delta > 0 ? 1 : -1;
+        SetCurrentValue(FontSizeProperty, Math.Clamp(FontSize + delta, 8, 32));
+        e.Handled = true;
     }
 
     // ---------------------------------------------------------------

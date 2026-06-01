@@ -12,5 +12,6 @@ public sealed class AppConfig
     public string DefaultCaseMode { get; set; } = "original";
     public string DefaultInputSeparator { get; set; } = ",";
     public string ThemeName { get; set; } = "ListForge Dark";
+    public double EditorFontSize { get; set; } = 13;
     public string LastOpenedFile { get; set; } = "";
 }

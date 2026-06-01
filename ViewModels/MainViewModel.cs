@@ -93,6 +93,7 @@ public class MainViewModel : INotifyPropertyChanged
     private string _defaultCaseLabel = "Original";
     private string _defaultSeparator = ",";
     private string _themeName = "ListForge Dark";
+    private double _editorFontSize = 13;
     private string _sizeSummary = "";
 
     public bool ShowJsonTab { get => _showJsonTab; set { Set(ref _showJsonTab, value); ShowJsonSection = value; } }
@@ -104,6 +105,20 @@ public class MainViewModel : INotifyPropertyChanged
     public string DefaultListName { get => _defaultListName; set => Set(ref _defaultListName, value); }
     public string DefaultCaseLabel { get => _defaultCaseLabel; set => Set(ref _defaultCaseLabel, value); }
     public string DefaultSeparator { get => _defaultSeparator; set => Set(ref _defaultSeparator, value); }
+    public double EditorFontSize
+    {
+        get => _editorFontSize;
+        set
+        {
+            var clamped = ClampEditorFontSize(value);
+            if (Math.Abs(_editorFontSize - clamped) < 0.01) return;
+            _editorFontSize = clamped;
+            Notify();
+
+            _cfg.EditorFontSize = clamped;
+            try { ConfigManager.SaveConfig(_cfg); } catch { }
+        }
+    }
     public string ThemeName
     {
         get => _themeName;
@@ -239,6 +254,7 @@ public class MainViewModel : INotifyPropertyChanged
         ThemeName = NormalizeThemeName(_cfg.ThemeName);
         EditorSeparator = _cfg.DefaultInputSeparator;
         EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
+        EditorFontSize = _cfg.EditorFontSize;
         ShowJsonSection = _cfg.ShowJsonTab;
     }
 
@@ -784,6 +800,7 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.DefaultCaseMode = LabelToCaseMode(DefaultCaseLabel);
         _cfg.DefaultInputSeparator = string.IsNullOrWhiteSpace(DefaultSeparator) ? "," : DefaultSeparator.Trim();
         _cfg.ThemeName = ThemeName;
+        _cfg.EditorFontSize = ClampEditorFontSize(EditorFontSize);
         _cfg.LastOpenedFile = _currentFile ?? "";
 
         ConfigManager.SaveConfig(_cfg);
@@ -809,6 +826,9 @@ public class MainViewModel : INotifyPropertyChanged
         LoadConfigIntoProperties();
         StatusText = "Configurações gerais restauradas para o padrão.";
     }
+
+    private static double ClampEditorFontSize(double value) =>
+        Math.Clamp(double.IsNaN(value) ? 13 : value, 8, 32);
 
     private void RestoreDefaultSizes()
     {

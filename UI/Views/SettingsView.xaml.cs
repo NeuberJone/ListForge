@@ -22,6 +22,10 @@ public partial class SettingsView : UserControl
             new Binding(nameof(vm.ShowGenerateJsonButton)) { Source = vm, Mode = BindingMode.TwoWay });
         ChkShowCopyJsonButton.SetBinding(CheckBox.IsCheckedProperty,
             new Binding(nameof(vm.ShowCopyJsonButton)) { Source = vm, Mode = BindingMode.TwoWay });
+        SldEditorFontSize.SetBinding(Slider.ValueProperty,
+            new Binding(nameof(vm.EditorFontSize)) { Source = vm, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+        TxtEditorFontSize.SetBinding(TextBlock.TextProperty,
+            new Binding(nameof(vm.EditorFontSize)) { Source = vm, StringFormat = "{0:0}px" });
 
         // ---- Output ----
         ChkUseDefaultOutputDir.SetBinding(CheckBox.IsCheckedProperty,

@@ -18,7 +18,27 @@
                     Content="Exibir botão Gerar JSON no editor"
                     Margin="0,0,0,8"/>
           <CheckBox x:Name="ChkShowCopyJsonButton"
-                    Content="Exibir botão Copiar JSON no editor"/>
+                    Content="Exibir botão Copiar JSON no editor"
+                    Margin="0,0,0,12"/>
+          <DockPanel LastChildFill="True">
+            <TextBlock DockPanel.Dock="Left"
+                       Text="Tamanho da fonte das listas:"
+                       VerticalAlignment="Center"
+                       Margin="0,0,12,0"/>
+            <TextBlock x:Name="TxtEditorFontSize"
+                       DockPanel.Dock="Right"
+                       Width="46"
+                       TextAlignment="Right"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       Margin="12,0,0,0"/>
+            <Slider x:Name="SldEditorFontSize"
+                    Minimum="8"
+                    Maximum="32"
+                    TickFrequency="1"
+                    IsSnapToTickEnabled="True"
+                    VerticalAlignment="Center"/>
+          </DockPanel>
         </StackPanel>
       </GroupBox>
 

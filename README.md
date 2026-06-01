@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.11-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.12-16A34A?style=for-the-badge)
 
 ---
 
@@ -74,6 +74,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 - Geração e cópia de JSON.
 - Backups automáticos ao sobrescrever arquivos.
 - Temas visuais selecionáveis.
+- Tamanho de fonte ajustável para entrada, saída e prévia JSON.
 - Configurações persistentes por usuário.
 
 ## Importação de arquivos
@@ -155,6 +156,12 @@ Cada grupo permite configurar tamanhos base, prefixos e sufixos. O índice final
 O separador padrão é vírgula, mas pode ser alterado no editor ou nas configurações. O valor `\t`, `TAB` ou `tab` é tratado como tabulação.
 
 O mesmo separador é usado para limpar espaços, interpretar a entrada e montar a saída textual.
+
+## Tamanho da fonte das listas
+
+O tamanho da fonte dos editores de Entrada / edição, Saída e Prévia JSON pode ser ajustado nas Configurações, na seção Exibição.
+
+Também é possível alterar rapidamente pelo editor: posicione o mouse sobre a entrada ou saída, segure `Ctrl` e role o scroll do mouse. `Ctrl` + scroll para cima aumenta a fonte; `Ctrl` + scroll para baixo diminui. O valor é aplicado aos três editores ao mesmo tempo, respeita o intervalo de 8 a 32 px e é salvo em `config.json`.
 
 ## Geração de JSON
 
@@ -326,18 +333,24 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Publicação
 
-O projeto está configurado para Windows x64 e versão `2.1.11`.
+O projeto está configurado para Windows x64 e versão `2.1.12`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.11\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.12\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.11\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.12\ListForge-Portable-OneFile
+```
+
+Publicação Trial em arquivo único:
+
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.12\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -346,10 +359,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.11\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.12\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.11\Installer
+bin\Release\dist\2.1.12\Installer
 ```
 
 ## Dependências principais

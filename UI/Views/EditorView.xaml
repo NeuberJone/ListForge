@@ -113,7 +113,9 @@
                        Text="Entrada / edi&#x00E7;&#x00E3;o"
                        FontSize="13" FontWeight="Bold"
                        Margin="12,10,12,6"/>
-            <ctrl:LineNumberedTextBox x:Name="LnbInput" Margin="0,0,0,0"/>
+            <ctrl:LineNumberedTextBox x:Name="LnbInput"
+                                      FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Margin="0,0,0,0"/>
           </DockPanel>
         </Border>
 
@@ -132,8 +134,14 @@
               <TabItem x:Name="TabJson" Header="Pr&#x00E9;via JSON" Tag="json"/>
             </TabControl>
 
-            <ctrl:LineNumberedTextBox x:Name="LnbOutput" IsReadOnly="True" Visibility="Visible"/>
-            <ctrl:LineNumberedTextBox x:Name="LnbJson" IsReadOnly="True" Visibility="Collapsed"/>
+            <ctrl:LineNumberedTextBox x:Name="LnbOutput"
+                                      FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsReadOnly="True"
+                                      Visibility="Visible"/>
+            <ctrl:LineNumberedTextBox x:Name="LnbJson"
+                                      FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsReadOnly="True"
+                                      Visibility="Collapsed"/>
           </DockPanel>
         </Border>
       </Grid>

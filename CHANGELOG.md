@@ -4,6 +4,14 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.12] - 2026-05-31
+
+### Adicionado
+
+- Controle de tamanho da fonte das listas na tela de Configurações.
+- Atalho `Ctrl` + scroll sobre entrada ou saída para ajustar a fonte dos editores.
+- Persistência do tamanho da fonte em `config.json`, com limite entre 8 e 32 px.
+
 ## [2.1.11] - 2026-05-31
 
 ### Alterado
