@@ -31,10 +31,14 @@ public static class TrialManager
 
         var state = LoadState();
         if (state.UsedProcessings >= Limit)
+        {
+            AppLogger.Warning("Trial", "Tentativa de processar sem créditos Trial disponíveis.");
             throw new InvalidOperationException("Limite de processamentos da versão Trial atingido.");
+        }
 
         state.UsedProcessings++;
         SaveState(state);
+        AppLogger.Info("Trial", $"Crédito Trial consumido. Usado: {state.UsedProcessings}/{Limit}.");
     }
 
     private static TrialState LoadState()
@@ -47,17 +51,26 @@ public static class TrialManager
             var json = File.ReadAllText(ConfigManager.TrialStatePath);
             return JsonConvert.DeserializeObject<TrialState>(json) ?? new TrialState();
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error("Trial", "Falha ao ler estado Trial. Usando estado vazio.", ex, ConfigManager.TrialStatePath);
             return new TrialState();
         }
     }
 
     private static void SaveState(TrialState state)
     {
-        Directory.CreateDirectory(ConfigManager.AppDir);
-        File.WriteAllText(
-            ConfigManager.TrialStatePath,
-            JsonConvert.SerializeObject(state, Formatting.Indented));
+        try
+        {
+            Directory.CreateDirectory(ConfigManager.AppDir);
+            File.WriteAllText(
+                ConfigManager.TrialStatePath,
+                JsonConvert.SerializeObject(state, Formatting.Indented));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Trial", "Falha ao salvar estado Trial.", ex, ConfigManager.TrialStatePath);
+            throw;
+        }
     }
 }

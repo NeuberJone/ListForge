@@ -257,6 +257,11 @@
         <Button Content="Restaurar tamanhos padrão"
                 Command="{Binding RestoreDefaultSizesCommand}"
                 Style="{StaticResource StdButton}"
+                Margin="0,0,10,0"
+                Padding="14,8"/>
+        <Button Content="Abrir pasta de logs"
+                Command="{Binding OpenLogsFolderCommand}"
+                Style="{StaticResource StdButton}"
                 Padding="14,8"/>
       </WrapPanel>
 

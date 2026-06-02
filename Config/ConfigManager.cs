@@ -23,6 +23,7 @@ public static class ConfigManager
     public static readonly string AppDir;
     public static readonly string ConfigPath;
     public static readonly string BackupDir;
+    public static readonly string LogDir;
     public static readonly string SizeConfigPath;
     public static readonly string TrialStatePath;
 
@@ -31,11 +32,13 @@ public static class ConfigManager
         AppDir = ResolveWritableAppDir();
         ConfigPath = Path.Combine(AppDir, "config.json");
         BackupDir = Path.Combine(AppDir, "backups");
+        LogDir = Path.Combine(AppDir, "logs");
         SizeConfigPath = Path.Combine(AppDir, "sizes.json");
         TrialStatePath = Path.Combine(AppDir, "trial-state.json");
 
         Directory.CreateDirectory(AppDir);
         Directory.CreateDirectory(BackupDir);
+        Directory.CreateDirectory(LogDir);
     }
 
     private static int ResolveTrialProcessingLimit()
@@ -97,16 +100,25 @@ public static class ConfigManager
             var json = File.ReadAllText(ConfigPath);
             return JsonConvert.DeserializeObject<AppConfig>(json) ?? new AppConfig();
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error("LoadConfig", "Falha ao ler config.json. Usando configuração padrão.", ex, ConfigPath);
             return new AppConfig();
         }
     }
 
     public static void SaveConfig(AppConfig cfg)
     {
-        File.WriteAllText(ConfigPath,
-            JsonConvert.SerializeObject(cfg, Formatting.Indented));
+        try
+        {
+            File.WriteAllText(ConfigPath,
+                JsonConvert.SerializeObject(cfg, Formatting.Indented));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("SaveConfig", "Falha ao salvar config.json.", ex, ConfigPath);
+            throw;
+        }
     }
 
     public static AppConfig ResetConfig()
@@ -137,8 +149,9 @@ public static class ConfigManager
             SaveSizeConfig(normalized);
             return normalized;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error("LoadSizeConfig", "Falha ao ler sizes.json. Restaurando tamanhos padrão.", ex, SizeConfigPath);
             var def = SizeConfig.Default();
             SaveSizeConfig(def);
             return def;
@@ -147,9 +160,17 @@ public static class ConfigManager
 
     public static void SaveSizeConfig(SizeConfig cfg)
     {
-        var normalized = SizeHelper.Normalize(cfg);
-        File.WriteAllText(SizeConfigPath,
-            JsonConvert.SerializeObject(normalized, Formatting.Indented));
+        try
+        {
+            var normalized = SizeHelper.Normalize(cfg);
+            File.WriteAllText(SizeConfigPath,
+                JsonConvert.SerializeObject(normalized, Formatting.Indented));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("SaveSizeConfig", "Falha ao salvar sizes.json.", ex, SizeConfigPath);
+            throw;
+        }
     }
 
     public static SizeConfig ResetSizeConfig()
@@ -171,7 +192,15 @@ public static class ConfigManager
         var ext = Path.GetExtension(sourceFile);
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var backupPath = Path.Combine(BackupDir, $"{stem}_{timestamp}{ext}");
-        File.Copy(sourceFile, backupPath, overwrite: false);
+        try
+        {
+            File.Copy(sourceFile, backupPath, overwrite: false);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("CreateBackup", "Falha ao criar backup de arquivo.", ex, sourceFile);
+            throw;
+        }
         return backupPath;
     }
 }

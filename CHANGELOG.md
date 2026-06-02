@@ -4,6 +4,15 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.15] - 2026-05-31
+
+### Adicionado
+
+- Sistema interno de logs diários em `%APPDATA%\ListForge\logs`.
+- Registro técnico de falhas de importação, OCR, salvamento de configurações, processamento e Trial.
+- Botão em Configurações para abrir a pasta de logs.
+- Suporte a diagnóstico sem exibir stack trace técnico ao usuário final.
+
 ## [2.1.14] - 2026-05-31
 
 ### Alterado

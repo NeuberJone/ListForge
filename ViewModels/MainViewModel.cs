@@ -15,6 +15,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
+using AppLogger = ListForge.Core.AppLogger;
 using FileImporter = ListForge.Core.FileImporter;
 using TrialManager = ListForge.Core.TrialManager;
 
@@ -116,7 +117,8 @@ public class MainViewModel : INotifyPropertyChanged
             Notify();
 
             _cfg.EditorFontSize = clamped;
-            try { ConfigManager.SaveConfig(_cfg); } catch { }
+            try { ConfigManager.SaveConfig(_cfg); }
+            catch (Exception ex) { AppLogger.Error("EditorFontSize", "Falha ao salvar tamanho da fonte no config.json.", ex, ConfigManager.ConfigPath); }
         }
     }
     public string ThemeName
@@ -130,7 +132,8 @@ public class MainViewModel : INotifyPropertyChanged
             Notify();
 
             _cfg.ThemeName = normalized;
-            try { ConfigManager.SaveConfig(_cfg); } catch { }
+            try { ConfigManager.SaveConfig(_cfg); }
+            catch (Exception ex) { AppLogger.Error("Theme", "Falha ao salvar tema no config.json.", ex, ConfigManager.ConfigPath); }
             RequestThemeChange?.Invoke(normalized);
         }
     }
@@ -171,6 +174,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ClearAllCommand { get; }
     public ICommand UndoCommand { get; }
     public ICommand OpenBackupsFolderCommand { get; }
+    public ICommand OpenLogsFolderCommand { get; }
     public ICommand CleanSpacesCommand { get; }
     public ICommand ResetSeparatorCommand { get; }
     public ICommand FindNextCommand { get; }
@@ -215,6 +219,7 @@ public class MainViewModel : INotifyPropertyChanged
         ClearAllCommand = new RelayCommand(ClearAll);
         UndoCommand = new RelayCommand(() => StatusText = "Use Ctrl+Z no editor.");
         OpenBackupsFolderCommand = new RelayCommand(OpenBackupsFolder);
+        OpenLogsFolderCommand = new RelayCommand(OpenLogsFolder);
         CleanSpacesCommand = new RelayCommand(CleanSpaces);
         ResetSeparatorCommand = new RelayCommand(() => { EditorSeparator = ","; StatusText = "Separador redefinido para \",\"."; });
         FindNextCommand = new RelayCommand(FindNext);
@@ -352,6 +357,7 @@ public class MainViewModel : INotifyPropertyChanged
             else
             {
                 MessageBox.Show("Formato não suportado.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppLogger.Warning("ImportFile", "Formato de arquivo não suportado.", path);
                 return;
             }
 
@@ -368,6 +374,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("ImportFile", "Falha ao importar arquivo.", ex, path);
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -391,6 +398,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("SaveInputFile", "Falha ao salvar entrada.", ex, _currentFile);
             MessageBox.Show($"Falha ao salvar.\n\n{ex.Message}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -417,6 +425,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("SaveInputAsFile", "Falha ao salvar entrada como novo arquivo.", ex, dlg.FileName);
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -424,7 +433,25 @@ public class MainViewModel : INotifyPropertyChanged
     private void OpenBackupsFolder()
     {
         try { System.Diagnostics.Process.Start("explorer.exe", ConfigManager.BackupDir); }
-        catch (Exception ex) { MessageBox.Show(ex.Message, ConfigManager.AppName); }
+        catch (Exception ex)
+        {
+            AppLogger.Error("OpenBackupsFolder", "Falha ao abrir pasta de backups.", ex, ConfigManager.BackupDir);
+            MessageBox.Show(ex.Message, ConfigManager.AppName);
+        }
+    }
+
+    private void OpenLogsFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(ConfigManager.LogDir);
+            System.Diagnostics.Process.Start("explorer.exe", ConfigManager.LogDir);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("OpenLogsFolder", "Falha ao abrir pasta de logs.", ex, ConfigManager.LogDir);
+            MessageBox.Show(ex.Message, ConfigManager.AppName);
+        }
     }
 
     // ---------------------------------------------------------------
@@ -441,6 +468,7 @@ public class MainViewModel : INotifyPropertyChanged
             !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             MessageBox.Show("O link precisa começar com http:// ou https://.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppLogger.Warning("ExtractFromLink", "Link rejeitado por formato inválido.");
             return;
         }
 
@@ -465,6 +493,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("ExtractFromLink", "Falha ao extrair lista do link.", ex);
             StatusText = $"Erro: {ex.Message}";
             MessageBox.Show($"Falha ao extrair a lista do link.\n\n{ex.Message}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -484,6 +513,7 @@ public class MainViewModel : INotifyPropertyChanged
         if (!TrialManager.HasCredits)
         {
             var message = "Limite de processamentos da versão Trial atingido.";
+            AppLogger.Warning("ProcessList", message);
             StatusText = message;
             MessageBox.Show(message, ConfigManager.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -494,6 +524,7 @@ public class MainViewModel : INotifyPropertyChanged
             var rows = CoreProcessor.ProcessText(InputText, EditorSeparator, _sizeCfg);
             if (rows.Count == 0)
             {
+                AppLogger.Warning("ProcessList", "Processamento não encontrou linhas válidas.");
                 MessageBox.Show("Nenhuma linha válida encontrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -517,6 +548,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("ProcessList", "Falha ao processar lista.", ex);
             GotoErrorLine(ex.Message);
             StatusText = $"Erro: {ex.Message}";
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
@@ -575,6 +607,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("SaveOutput", "Falha ao salvar saída organizada.", ex);
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -597,6 +630,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("GenerateJson", "Falha ao gerar JSON.", ex);
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -687,6 +721,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            AppLogger.Error("CleanSpaces", "Falha ao limpar espaços da entrada.", ex);
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -784,6 +819,7 @@ public class MainViewModel : INotifyPropertyChanged
         try { newSizeCfg = BuildSizeConfigFromUI(); }
         catch (Exception ex)
         {
+            AppLogger.Error("SaveSettings", "Falha ao validar configurações de tamanhos.", ex);
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
@@ -803,8 +839,17 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.EditorFontSize = ClampEditorFontSize(EditorFontSize);
         _cfg.LastOpenedFile = _currentFile ?? "";
 
-        ConfigManager.SaveConfig(_cfg);
-        ConfigManager.SaveSizeConfig(newSizeCfg);
+        try
+        {
+            ConfigManager.SaveConfig(_cfg);
+            ConfigManager.SaveSizeConfig(newSizeCfg);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("SaveSettings", "Falha ao salvar configurações.", ex);
+            MessageBox.Show("Falha ao salvar configurações.\n\n" + ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
         _sizeCfg = newSizeCfg;
         RefreshSizeSummary();
         RefreshSockSizeOptions();
@@ -822,9 +867,17 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void RestoreDefaultSettings()
     {
-        _cfg = ConfigManager.ResetConfig();
-        LoadConfigIntoProperties();
-        StatusText = "Configurações gerais restauradas para o padrão.";
+        try
+        {
+            _cfg = ConfigManager.ResetConfig();
+            LoadConfigIntoProperties();
+            StatusText = "Configurações gerais restauradas para o padrão.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("RestoreDefaultSettings", "Falha ao restaurar configurações gerais.", ex, ConfigManager.ConfigPath);
+            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private static double ClampEditorFontSize(double value) =>
@@ -832,11 +885,19 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void RestoreDefaultSizes()
     {
-        _sizeCfg = ConfigManager.ResetSizeConfig();
-        LoadSizeConfigIntoBindings();
-        RefreshSizeSummary();
-        RefreshSockSizeOptions();
-        StatusText = "Tamanhos restaurados para o padrão.";
+        try
+        {
+            _sizeCfg = ConfigManager.ResetSizeConfig();
+            LoadSizeConfigIntoBindings();
+            RefreshSizeSummary();
+            RefreshSockSizeOptions();
+            StatusText = "Tamanhos restaurados para o padrão.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("RestoreDefaultSizes", "Falha ao restaurar tamanhos padrão.", ex, ConfigManager.SizeConfigPath);
+            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private SizeConfig BuildSizeConfigFromUI()

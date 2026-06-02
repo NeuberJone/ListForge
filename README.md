@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.14-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.15-16A34A?style=for-the-badge)
 
 ---
 
@@ -22,6 +22,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 * Mantém configurações por usuário e backups automáticos.
 * Possui versão completa e build Trial com limite de processamentos.
 * Inclui testes automatizados para proteger regras críticas do núcleo.
+* Registra logs internos diários para suporte e diagnóstico.
 
 ## Público-alvo
 
@@ -105,6 +106,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 * Geração de saída textual.
 * Geração, cópia e prévia de JSON.
 * Backups automáticos ao sobrescrever arquivos.
+* Logs internos diários para diagnóstico técnico.
 * Configurações persistentes por usuário.
 * Temas visuais selecionáveis.
 * Versão Trial com limite de processamentos concluídos com sucesso.
@@ -203,6 +205,24 @@ Para rodar os testes na raiz do projeto:
 dotnet test
 ```
 
+## Logs internos
+
+O ListForge cria logs diários para ajudar no suporte e diagnóstico de erros em versões distribuídas. Os arquivos ficam em:
+
+```text
+%APPDATA%\ListForge\logs
+```
+
+Na prática, a aplicação usa o diretório gravável resolvido por `ConfigManager.AppDir` e cria a subpasta `logs`. O nome do arquivo segue o padrão:
+
+```text
+listforge-YYYY-MM-DD.log
+```
+
+Os logs registram falhas técnicas de importação de arquivos, OCR, salvamento de configurações, processamento de listas, consumo/bloqueio Trial e exceções inesperadas da aplicação. As entradas incluem data/hora, nível, versão, edição, contexto, mensagem, exceção e stack trace quando houver.
+
+Por padrão, o conteúdo completo das listas processadas não é registrado. Caminhos de arquivos podem aparecer no log quando ajudam no diagnóstico. A tela Configurações possui o botão **Abrir pasta de logs**.
+
 ## Tamanho da fonte dos editores
 
 O tamanho da fonte dos editores de Entrada / edição, Saída e Prévia JSON pode ser ajustado nas Configurações, na seção Exibição.
@@ -270,6 +290,7 @@ ListForge/
 ├─ Config/
 │  └─ ConfigManager.cs
 ├─ Core/
+│  ├─ AppLogger.cs
 │  ├─ FileImporter.cs
 │  ├─ FileNameHelper.cs
 │  ├─ JsonListImporter.cs
@@ -286,6 +307,7 @@ ListForge/
 │  └─ TrialState.cs
 ├─ ListForge.Tests/
 │  ├─ FileImporterTests.cs
+│  ├─ AppLoggerTests.cs
 │  ├─ ListForge.Tests.csproj
 │  ├─ ListProcessorTests.cs
 │  └─ SizeHelperTests.cs
@@ -332,6 +354,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `UI/Themes` contém os dicionários de estilo.
 * `ViewModels/MainViewModel.cs` centraliza estado, comandos e integração entre UI, configuração e processamento.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
+* `Core/AppLogger.cs` registra logs internos diários para suporte e diagnóstico.
 * `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
 * `Core/ListParser.cs` concentra separadores, limpeza por separador, parsing de linha e preservação da ordem de entrada.
 * `Core/ListOutputBuilder.cs` concentra a explosão de tamanhos, distribuição de grupos, meião e montagem da saída textual.
@@ -354,6 +377,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * Os tamanhos são configuráveis via `sizes.json`, permitindo adaptação a diferentes padrões de produção.
 * O controle Trial foi isolado em `Core/TrialManager.cs`, para separar a regra comercial do restante do processamento.
 * O editor com numeração de linhas foi implementado como controle reutilizável em `UI/Controls/LineNumberedTextBox.cs`.
+* O logging interno usa arquivos locais diários, sem dependências externas, e falhas ao escrever logs são ignoradas de forma segura.
 
 ## Dados de configuração
 
@@ -374,6 +398,7 @@ Arquivos principais:
 | `sizes.json`       | grupos de tamanho válidos                   |
 | `trial-state.json` | estado de consumo da versão Trial           |
 | `backups/`         | cópias automáticas de arquivos sobrescritos |
+| `logs/`            | logs internos diários para diagnóstico      |
 
 ## Tesseract OCR
 
@@ -412,24 +437,24 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.14`.
+O projeto está configurado para Windows x64 e versão `2.1.15`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.14\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.15\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.14\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.15\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.14\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.15\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -438,10 +463,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.14\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.15\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.14\Installer
+bin\Release\dist\2.1.15\Installer
 ```
 
 ## Dependências principais
