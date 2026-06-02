@@ -70,10 +70,10 @@ public static class TrialManager
             var state = DeserializeState(raw);
             return state.UsedProcessings < 0 ? InvalidState() : state;
         }
-        catch (Exception ex)
+        catch
         {
-            AppLogger.Error("Trial", "Possível estado Trial inválido ou corrompido.");
-            AppLogger.Warning("Trial", $"Falha técnica ao ler estado interno do Trial: {ex.GetType().Name}.");
+            AppLogger.Error("Trial", "Falha ao ler estado interno do Trial.");
+            AppLogger.Warning("Trial", "Possível estado Trial inválido ou corrompido.");
             return InvalidState();
         }
     }
@@ -87,10 +87,9 @@ public static class TrialManager
             var protectedBytes = ProtectedData.Protect(raw, StateEntropy, DataProtectionScope.CurrentUser);
             File.WriteAllBytes(ConfigManager.TrialStatePath, protectedBytes);
         }
-        catch (Exception ex)
+        catch
         {
             AppLogger.Error("Trial", "Falha ao salvar estado interno do Trial.");
-            AppLogger.Warning("Trial", $"Falha técnica ao salvar estado interno do Trial: {ex.GetType().Name}.");
             throw;
         }
     }
@@ -111,10 +110,9 @@ public static class TrialManager
             AppLogger.Info("Trial", "Estado Trial migrado para armazenamento interno.");
             return LegacyMigrationResult.Migrated;
         }
-        catch (Exception ex)
+        catch
         {
             AppLogger.Error("Trial", "Falha ao migrar estado interno do Trial.");
-            AppLogger.Warning("Trial", $"Falha técnica ao migrar estado interno do Trial: {ex.GetType().Name}.");
             return LegacyMigrationResult.Failed;
         }
     }

@@ -78,6 +78,8 @@ public class TrialManagerTests
         Assert.DoesNotContain(ConfigManager.TrialStatePath, logText);
         Assert.DoesNotContain(ConfigManager.InternalStateDir, logText);
         Assert.DoesNotContain(Path.GetFileName(ConfigManager.TrialStatePath), logText);
+        Assert.DoesNotContain("Cryptographic", logText);
+        Assert.DoesNotContain("ProtectedData", logText);
     }
 
     [Fact]
@@ -89,6 +91,33 @@ public class TrialManagerTests
 
         Assert.Equal(int.MaxValue, TrialManager.RemainingProcessings);
         Assert.False(File.Exists(ConfigManager.TrialStatePath));
+    }
+
+    [Fact]
+    public void AboutSupportTextDoesNotIncludeSensitiveTrialStatePath()
+    {
+        using var env = TrialTestEnvironment.Create(limit: 4);
+        var info = new AboutInfo(
+            ConfigManager.AppName,
+            "2.1.21",
+            "Trial",
+            "Não definido",
+            true,
+            4,
+            4,
+            "Neuber Jone",
+            "GitHub: https://github.com/NeuberJone",
+            ConfigManager.AppDir,
+            ConfigManager.LogDir,
+            "Windows");
+
+        var text = AboutInfoBuilder.BuildSupportText(info);
+
+        Assert.Contains(ConfigManager.AppDir, text);
+        Assert.Contains(ConfigManager.LogDir, text);
+        Assert.DoesNotContain(ConfigManager.TrialStatePath, text);
+        Assert.DoesNotContain(ConfigManager.InternalStateDir, text);
+        Assert.DoesNotContain(Path.GetFileName(ConfigManager.TrialStatePath), text);
     }
 
     private sealed class TrialTestEnvironment : IDisposable

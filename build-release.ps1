@@ -117,6 +117,7 @@ Update-TextFile -Path $readmePath -Update {
         $escapedOld = [regex]::Escape($oldVersion)
         $updated = $updated -replace "bin\\Release\\dist\\$escapedOld", "bin\Release\dist\$Version"
         $updated = $updated -replace 'versão `[0-9]+\.[0-9]+\.[0-9]+`', "versão ``$Version``"
+        $updated = $updated -replace 'O projeto está configurado para Windows x64 e versão `[^`]+`\.', "O projeto está configurado para Windows x64 e versão ``$Version``."
     }
     $updated
 }

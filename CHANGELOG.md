@@ -4,6 +4,12 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.21] - 2026-06-02
+
+### Corrigido
+
+- Revisada a exposição de detalhes internos do estado Trial em logs, documentação e informações de suporte.
+
 ## [2.1.20] - 2026-06-02
 
 ### Alterado
