@@ -12,6 +12,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 - Script auxiliar para validar artefatos e preparar publicação de release no GitHub.
 - Função para gerar pacote de suporte com logs recentes e informações técnicas seguras para diagnóstico.
 - Workflow de CI no GitHub Actions para validar build e testes automaticamente.
+- Testes de integração para validar o fluxo principal de pré-validação, processamento, ordenação, saída textual, JSON e Trial.
 
 ### Alterado
 

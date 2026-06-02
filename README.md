@@ -22,7 +22,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 * Gera saída textual e prévia JSON.
 * Mantém configurações por usuário e backups automáticos.
 * Possui versão completa e build Trial com limite de processamentos.
-* Inclui testes automatizados para proteger regras críticas do núcleo.
+* Inclui testes automatizados e testes de integração para proteger regras críticas do núcleo e do fluxo principal.
 * Registra logs internos diários para suporte e diagnóstico.
 * Possui tela Sobre com versão, edição, caminhos e informações de suporte.
 
