@@ -11,6 +11,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 - Documentação do fluxo de publicação de releases no GitHub com tag versionada e artefatos anexados.
 - Script auxiliar para validar artefatos e preparar publicação de release no GitHub.
 - Função para gerar pacote de suporte com logs recentes e informações técnicas seguras para diagnóstico.
+- Workflow de CI no GitHub Actions para validar build e testes automaticamente.
 
 ### Alterado
 

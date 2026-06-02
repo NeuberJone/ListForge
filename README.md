@@ -8,6 +8,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-2.1.23-16A34A?style=for-the-badge)
+[![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
 
