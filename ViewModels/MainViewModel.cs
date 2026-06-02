@@ -5,7 +5,9 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using ListForge.Config;
@@ -161,6 +163,23 @@ public class MainViewModel : INotifyPropertyChanged
     public bool DefaultListNameEnabled => !UseDefaultListName;
 
     // ---------------------------------------------------------------
+    // Bound properties — about
+    // ---------------------------------------------------------------
+    public string AboutProductName => ConfigManager.AppName;
+    public string AboutVersion => ResolveAppVersion();
+    public string AboutEdition => ConfigManager.EditionName;
+    public string AboutLicensedTo => "Não definido";
+    public string AboutAuthor => "Neuber Jone";
+    public string AboutContact => "GitHub: https://github.com/NeuberJone";
+    public string AboutConfigPath => ConfigManager.AppDir;
+    public string AboutLogsPath => ConfigManager.LogDir;
+    public bool AboutIsTrial => ConfigManager.IsTrialBuild;
+    public string AboutTrialStatus => ConfigManager.IsTrialBuild
+        ? $"Créditos restantes: {TrialManager.RemainingProcessings}/{TrialManager.Limit} processamento(s)"
+        : "Versão completa: sem limite de créditos Trial.";
+    public string AboutLicenseSummary => "Software proprietário. O uso comercial, redistribuição ou customização dependem de autorização prévia.";
+
+    // ---------------------------------------------------------------
     // Size group vars (for settings UI)
     // ---------------------------------------------------------------
     public Dictionary<string, SizeGroupBindings> SizeGroupBindings { get; } = new()
@@ -194,7 +213,9 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ClearAllCommand { get; }
     public ICommand UndoCommand { get; }
     public ICommand OpenBackupsFolderCommand { get; }
+    public ICommand OpenConfigFolderCommand { get; }
     public ICommand OpenLogsFolderCommand { get; }
+    public ICommand CopyAboutInfoCommand { get; }
     public ICommand CleanSpacesCommand { get; }
     public ICommand ResetSeparatorCommand { get; }
     public ICommand FindNextCommand { get; }
@@ -239,7 +260,9 @@ public class MainViewModel : INotifyPropertyChanged
         ClearAllCommand = new RelayCommand(ClearAll);
         UndoCommand = new RelayCommand(() => StatusText = "Use Ctrl+Z no editor.");
         OpenBackupsFolderCommand = new RelayCommand(OpenBackupsFolder);
+        OpenConfigFolderCommand = new RelayCommand(OpenConfigFolder);
         OpenLogsFolderCommand = new RelayCommand(OpenLogsFolder);
+        CopyAboutInfoCommand = new RelayCommand(CopyAboutInfo);
         CleanSpacesCommand = new RelayCommand(CleanSpaces);
         ResetSeparatorCommand = new RelayCommand(() => { EditorSeparator = ","; StatusText = "Separador redefinido para \",\"."; });
         FindNextCommand = new RelayCommand(FindNext);
@@ -261,6 +284,11 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public event Action<string>? RequestThemeChange;
+
+    public void RefreshAboutInfo()
+    {
+        Notify(nameof(AboutTrialStatus));
+    }
 
     // ---------------------------------------------------------------
     // Config loading
@@ -318,6 +346,25 @@ public class MainViewModel : INotifyPropertyChanged
         "Decrescente" => ListForge.Core.ListSortMode.Descending,
         _ => ListForge.Core.ListSortMode.Original,
     };
+
+    private static string ResolveAppVersion()
+    {
+        var version = typeof(MainViewModel).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion;
+
+        if (string.IsNullOrWhiteSpace(version))
+            version = typeof(MainViewModel).Assembly.GetName().Version?.ToString();
+
+        if (string.IsNullOrWhiteSpace(version))
+            return "não identificada";
+
+        var plusIndex = version.IndexOf('+');
+        if (plusIndex >= 0)
+            version = version[..plusIndex];
+
+        return version.EndsWith(".0", StringComparison.Ordinal) ? version[..^2] : version;
+    }
 
     private static string NormalizeThemeName(string? themeName) => themeName switch
     {
@@ -467,6 +514,20 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    private void OpenConfigFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(ConfigManager.AppDir);
+            System.Diagnostics.Process.Start("explorer.exe", ConfigManager.AppDir);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("OpenConfigFolder", "Falha ao abrir pasta de configuração.", ex, ConfigManager.AppDir);
+            MessageBox.Show(ex.Message, ConfigManager.AppName);
+        }
+    }
+
     private void OpenLogsFolder()
     {
         try
@@ -478,6 +539,35 @@ public class MainViewModel : INotifyPropertyChanged
         {
             AppLogger.Error("OpenLogsFolder", "Falha ao abrir pasta de logs.", ex, ConfigManager.LogDir);
             MessageBox.Show(ex.Message, ConfigManager.AppName);
+        }
+    }
+
+    private void CopyAboutInfo()
+    {
+        try
+        {
+            var info = new ListForge.Core.AboutInfo(
+                AboutProductName,
+                AboutVersion,
+                AboutEdition,
+                AboutLicensedTo,
+                ConfigManager.IsTrialBuild,
+                ConfigManager.IsTrialBuild ? TrialManager.RemainingProcessings : 0,
+                ConfigManager.IsTrialBuild ? TrialManager.Limit : 0,
+                AboutAuthor,
+                AboutContact,
+                AboutConfigPath,
+                AboutLogsPath,
+                RuntimeInformation.OSDescription);
+
+            Clipboard.SetText(ListForge.Core.AboutInfoBuilder.BuildSupportText(info));
+            AppLogger.Info("About", "Informações da tela Sobre copiadas.");
+            StatusText = "Informações do produto copiadas.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("About", "Falha ao copiar informações da tela Sobre.", ex);
+            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -581,6 +671,7 @@ public class MainViewModel : INotifyPropertyChanged
             var preview = CoreProcessor.BuildJsonPreview(orders);
 
             TrialManager.ConsumeSuccessfulProcessing();
+            RefreshAboutInfo();
 
             _rows = rows;
             _lastOrders = orders;

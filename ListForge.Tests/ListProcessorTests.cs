@@ -117,6 +117,52 @@ public class ListProcessorTests
     }
 
     [Fact]
+    public void AboutInfoBuilder_IncludesTrialCreditsWhenTrial()
+    {
+        var info = new AboutInfo(
+            "ListForge",
+            "2.1.19",
+            "Trial",
+            "Não definido",
+            true,
+            3,
+            10,
+            "Neuber Jone",
+            "GitHub: https://github.com/NeuberJone",
+            @"C:\Users\user\AppData\Roaming\ListForge",
+            @"C:\Users\user\AppData\Roaming\ListForge\logs",
+            "Windows 11");
+
+        var text = AboutInfoBuilder.BuildSupportText(info);
+
+        Assert.Contains("Créditos Trial: 3/10", text);
+        Assert.Contains("Edição: Trial", text);
+    }
+
+    [Fact]
+    public void AboutInfoBuilder_UsesCompleteEditionMessageWhenNotTrial()
+    {
+        var info = new AboutInfo(
+            "ListForge",
+            "2.1.19",
+            "Completo",
+            "Não definido",
+            false,
+            0,
+            0,
+            "Neuber Jone",
+            "GitHub: https://github.com/NeuberJone",
+            @"C:\ListForge",
+            @"C:\ListForge\logs",
+            "Windows");
+
+        var text = AboutInfoBuilder.BuildSupportText(info);
+
+        Assert.Contains("Versão completa: sem limite de créditos Trial.", text);
+        Assert.DoesNotContain("Créditos Trial:", text);
+    }
+
+    [Fact]
     public void BuildOutput_ExpandsQuantitySizeTokens()
     {
         var rows = ListProcessor.ProcessText("PEDRO,8,2-G", ",", Config);

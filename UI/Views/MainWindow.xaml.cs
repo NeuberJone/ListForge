@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using ListForge.Config;
+using ListForge.Core;
 using ListForge.ViewModels;
 
 namespace ListForge.UI.Views;
@@ -24,6 +25,7 @@ public partial class MainWindow : Window
 
         EditorViewControl.SetViewModel(_vm);
         SettingsViewControl.SetViewModel(_vm);
+        AboutViewControl.SetViewModel(_vm);
 
         StatusLabel.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
             new System.Windows.Data.Binding(nameof(_vm.StatusText)) { Source = _vm });
@@ -49,22 +51,32 @@ public partial class MainWindow : Window
         EditorViewControl.Visibility = key == "editor" ? Visibility.Visible : Visibility.Collapsed;
         SettingsViewControl.Visibility = key == "settings" ? Visibility.Visible : Visibility.Collapsed;
         ManualViewControl.Visibility = key == "manual" ? Visibility.Visible : Visibility.Collapsed;
+        AboutViewControl.Visibility = key == "about" ? Visibility.Visible : Visibility.Collapsed;
+
+        if (key == "about")
+        {
+            _vm.RefreshAboutInfo();
+            AppLogger.Info("About", "Tela Sobre aberta.");
+        }
 
         TopbarTitle.Text = key switch
         {
             "settings" => "Configurações",
             "manual" => "Manual",
+            "about" => "Sobre",
             _ => "Editor",
         };
 
         BtnNavEditor.Style = (Style)FindResource(key == "editor" ? "SidebarButtonActive" : "SidebarButton");
         BtnNavSettings.Style = (Style)FindResource(key == "settings" ? "SidebarButtonActive" : "SidebarButton");
         BtnNavManual.Style = (Style)FindResource(key == "manual" ? "SidebarButtonActive" : "SidebarButton");
+        BtnNavAbout.Style = (Style)FindResource(key == "about" ? "SidebarButtonActive" : "SidebarButton");
     }
 
     private void NavEditor_Click(object sender, RoutedEventArgs e) => ShowScreen("editor");
     private void NavSettings_Click(object sender, RoutedEventArgs e) => ShowScreen("settings");
     private void NavManual_Click(object sender, RoutedEventArgs e) => ShowScreen("manual");
+    private void NavAbout_Click(object sender, RoutedEventArgs e) => ShowScreen("about");
 
     // ---------------------------------------------------------------
     // Theme
@@ -124,12 +136,15 @@ public partial class MainWindow : Window
         EditorViewControl = new EditorView();
         SettingsViewControl = new SettingsView();
         ManualViewControl = new ManualView();
+        AboutViewControl = new AboutView();
 
         EditorViewControl.SetViewModel(_vm);
         SettingsViewControl.SetViewModel(_vm);
+        AboutViewControl.SetViewModel(_vm);
 
         ViewsHost.Children.Add(EditorViewControl);
         ViewsHost.Children.Add(SettingsViewControl);
         ViewsHost.Children.Add(ManualViewControl);
+        ViewsHost.Children.Add(AboutViewControl);
     }
 }

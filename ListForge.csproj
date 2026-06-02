@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -11,9 +11,9 @@
     <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
-    <Version>2.1.18</Version>
-    <FileVersion>2.1.18.0</FileVersion>
-    <AssemblyVersion>2.1.18.0</AssemblyVersion>
+    <Version>2.1.19</Version>
+    <FileVersion>2.1.19.0</FileVersion>
+    <AssemblyVersion>2.1.19.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>

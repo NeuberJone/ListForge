@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.18-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.19-16A34A?style=for-the-badge)
 
 ---
 
@@ -23,6 +23,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 * Possui versão completa e build Trial com limite de processamentos.
 * Inclui testes automatizados para proteger regras críticas do núcleo.
 * Registra logs internos diários para suporte e diagnóstico.
+* Possui tela Sobre com versão, edição, caminhos e informações de suporte.
 
 ## Público-alvo
 
@@ -249,6 +250,20 @@ Os logs registram falhas técnicas de importação de arquivos, OCR, salvamento 
 
 Por padrão, o conteúdo completo das listas processadas não é registrado. Caminhos de arquivos podem aparecer no log quando ajudam no diagnóstico. A tela Configurações possui o botão **Abrir pasta de logs**.
 
+## Tela Sobre
+
+A tela Sobre exibe informações úteis para identificação da instalação e suporte:
+
+* produto e versão atual, obtida da metadata do assembly;
+* edição Completo ou Trial;
+* status da versão Trial, com créditos restantes e limite de processamentos quando aplicável;
+* campo Licenciado para, preparado para uso futuro;
+* autor e contato;
+* pasta de configuração e pasta de logs usadas pelo aplicativo;
+* resumo curto de licença/propriedade.
+
+Ela também possui ações para copiar as informações do produto para suporte, abrir a pasta de configuração e abrir a pasta de logs.
+
 ## Tamanho da fonte dos editores
 
 O tamanho da fonte dos editores de Entrada / edição, Saída e Prévia JSON pode ser ajustado nas Configurações, na seção Exibição.
@@ -463,7 +478,7 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.18`.
+O projeto está configurado para Windows x64 e versão `2.1.19`.
 
 ### Script de release
 
@@ -496,19 +511,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.18\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.19\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.18\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.19\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.18\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.19\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -517,10 +532,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.18\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.19\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.18\Installer
+bin\Release\dist\2.1.19\Installer
 ```
 
 ## Dependências principais
