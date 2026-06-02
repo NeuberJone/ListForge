@@ -49,6 +49,10 @@ public class LineNumberedTextBox : Control
         DependencyProperty.Register(nameof(UndoLimit), typeof(int), typeof(LineNumberedTextBox),
             new PropertyMetadata(200));
 
+    public static readonly DependencyProperty HighlightedLineNumbersProperty =
+        DependencyProperty.Register(nameof(HighlightedLineNumbers), typeof(IEnumerable<int>), typeof(LineNumberedTextBox),
+            new PropertyMetadata(Array.Empty<int>(), OnHighlightedLineNumbersChanged));
+
     public string Text
     {
         get => (string)GetValue(TextProperty);
@@ -65,6 +69,12 @@ public class LineNumberedTextBox : Control
     {
         get => (int)GetValue(UndoLimitProperty);
         set => SetValue(UndoLimitProperty, value);
+    }
+
+    public IEnumerable<int> HighlightedLineNumbers
+    {
+        get => (IEnumerable<int>)GetValue(HighlightedLineNumbersProperty);
+        set => SetValue(HighlightedLineNumbersProperty, value);
     }
 
     // ---------------------------------------------------------------
@@ -201,6 +211,12 @@ public class LineNumberedTextBox : Control
         self.UpdateGutter();
     }
 
+    private static void OnHighlightedLineNumbersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var self = (LineNumberedTextBox)d;
+        self.UpdateGutter();
+    }
+
     private static object CoerceFontSize(DependencyObject d, object baseValue)
     {
         var size = baseValue is double value ? value : 13;
@@ -253,6 +269,9 @@ public class LineNumberedTextBox : Control
 
         var mutedBrush = (TryFindResource("TextMutedBrush") as Brush)
             ?? new SolidColorBrush(Color.FromRgb(0x8E, 0xA3, 0xC7));
+        var highlightBrush = (TryFindResource("WarningBrush") as Brush)
+            ?? new SolidColorBrush(Color.FromRgb(0xF5, 0xB8, 0x4B));
+        var highlightedLines = new HashSet<int>(HighlightedLineNumbers ?? Array.Empty<int>());
 
         for (int i = firstLine; i <= lastLine; i++)
         {
@@ -270,11 +289,12 @@ public class LineNumberedTextBox : Control
             var tb = new TextBlock
             {
                 Text = (i + 1).ToString(),
-                Foreground = mutedBrush,
+                Foreground = highlightedLines.Contains(i + 1) ? highlightBrush : mutedBrush,
                 FontFamily = _textBox.FontFamily,
                 FontSize = _textBox.FontSize,
                 Width = GutterWidth - 8,
                 TextAlignment = TextAlignment.Right,
+                FontWeight = highlightedLines.Contains(i + 1) ? FontWeights.Bold : FontWeights.Normal,
             };
 
             Canvas.SetLeft(tb, 0);

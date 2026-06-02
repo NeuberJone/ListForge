@@ -7,6 +7,8 @@ namespace ListForge.Core;
 
 public static class ListParser
 {
+    public sealed record ValidationIssue(int LineNumber, string Message);
+
     public static string NormalizeSeparator(string value)
     {
         var raw = (value ?? "").Trim();
@@ -88,6 +90,41 @@ public static class ListParser
             }
         }
         return parsed;
+    }
+
+    public static List<ValidationIssue> ValidateText(string text, string inputSeparator, SizeConfig sizeConfig)
+    {
+        var issues = new List<ValidationIssue>();
+        var lines = (text ?? "").Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+        var sep = NormalizeSeparator(inputSeparator);
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var raw = lines[i].Trim();
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+
+            var parts = raw.Split(sep)
+                .Select(p => p.Trim())
+                .Where(p => !string.IsNullOrEmpty(p))
+                .ToList();
+
+            var sizeCount = parts.Count(part => IsSize(part, sizeConfig));
+            if (sizeCount > 6)
+            {
+                issues.Add(new ValidationIssue(i + 1, "mais de 6 tamanhos"));
+                continue;
+            }
+
+            if (sizeCount == 0)
+            {
+                var message = parts.Count >= 3
+                    ? "tamanho não reconhecido"
+                    : "sem tamanho";
+                issues.Add(new ValidationIssue(i + 1, message));
+            }
+        }
+
+        return issues;
     }
 
     public static string CleanTextBySeparator(string text, string separator)

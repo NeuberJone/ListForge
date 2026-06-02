@@ -96,4 +96,18 @@ public class ListProcessorTests
 
         Assert.Contains("Linha 2", ex.Message);
     }
+
+    [Fact]
+    public void ValidateText_ReturnsLineIssuesBeforeProcessing()
+    {
+        var issues = ListProcessor.ValidateText(
+            "ANA,10,G\nSEM TAM,20\nBIA,12,ZZ\nCARLA,1,P,M,G,GG,PP,XG,XGG",
+            ",",
+            Config);
+
+        Assert.Equal(3, issues.Count);
+        Assert.Equal((2, "sem tamanho"), (issues[0].LineNumber, issues[0].Message));
+        Assert.Equal((3, "tamanho não reconhecido"), (issues[1].LineNumber, issues[1].Message));
+        Assert.Equal((4, "mais de 6 tamanhos"), (issues[2].LineNumber, issues[2].Message));
+    }
 }

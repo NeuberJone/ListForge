@@ -67,7 +67,17 @@ public class MainViewModel : INotifyPropertyChanged
     private string _selectedSockSize = "";
     private bool _showJsonSection;
 
-    public string InputText { get => _inputText; set => Set(ref _inputText, value); }
+    public string InputText
+    {
+        get => _inputText;
+        set
+        {
+            if (EqualityComparer<string>.Default.Equals(_inputText, value)) return;
+            _inputText = value;
+            Notify();
+            ClearValidationHighlights();
+        }
+    }
     public string OutputText { get => _outputText; set => Set(ref _outputText, value); }
     public string JsonText { get => _jsonText; set => Set(ref _jsonText, value); }
     public string EditorSeparator { get => _editorSeparator; set => Set(ref _editorSeparator, value); }
@@ -80,6 +90,13 @@ public class MainViewModel : INotifyPropertyChanged
     public string SelectedOutputSection { get => _selectedOutputSection; set => Set(ref _selectedOutputSection, value); }
     public string SelectedSockSize { get => _selectedSockSize; set => Set(ref _selectedSockSize, value); }
     public bool ShowJsonSection { get => _showJsonSection; set => Set(ref _showJsonSection, value); }
+
+    private IReadOnlyList<int> _validationHighlightLines = Array.Empty<int>();
+    public IReadOnlyList<int> ValidationHighlightLines
+    {
+        get => _validationHighlightLines;
+        private set => Set(ref _validationHighlightLines, value);
+    }
 
     // ---------------------------------------------------------------
     // Bound properties — settings
@@ -510,17 +527,34 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (!TrialManager.HasCredits)
-        {
-            var message = "Limite de processamentos da versão Trial atingido.";
-            AppLogger.Warning("ProcessList", message);
-            StatusText = message;
-            MessageBox.Show(message, ConfigManager.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         try
         {
+            var validationIssues = CoreProcessor.ValidateText(InputText, EditorSeparator, _sizeCfg);
+            if (validationIssues.Count > 0)
+            {
+                ValidationHighlightLines = validationIssues.Select(issue => issue.LineNumber).ToArray();
+                var summary = string.Join("\n", validationIssues
+                    .Take(12)
+                    .Select(issue => $"Linha {issue.LineNumber}: {issue.Message}"));
+                if (validationIssues.Count > 12)
+                    summary += $"\n... e mais {validationIssues.Count - 12} linha(s).";
+
+                AppLogger.Warning("ValidateInput", $"Pré-validação encontrou {validationIssues.Count} problema(s).");
+                RequestScrollToLine?.Invoke(validationIssues[0].LineNumber);
+                StatusText = $"Pré-validação: {validationIssues.Count} problema(s) encontrado(s).";
+                MessageBox.Show(summary, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!TrialManager.HasCredits)
+            {
+                var message = "Limite de processamentos da versão Trial atingido.";
+                AppLogger.Warning("ProcessList", message);
+                StatusText = message;
+                MessageBox.Show(message, ConfigManager.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var rows = CoreProcessor.ProcessText(InputText, EditorSeparator, _sizeCfg);
             if (rows.Count == 0)
             {
@@ -543,6 +577,7 @@ public class MainViewModel : INotifyPropertyChanged
             OutputText = organized;
             JsonText = preview;
             SelectedOutputSection = "list";
+            ClearValidationHighlights();
 
             StatusText = $"Processado: {rows.Count} linha(s) | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{TrialManager.StatusSuffix}";
         }
@@ -559,7 +594,9 @@ public class MainViewModel : INotifyPropertyChanged
     {
         var m = System.Text.RegularExpressions.Regex.Match(message, @"[Ll]inha\s+(\d+)");
         if (!m.Success) return;
-        RequestScrollToLine?.Invoke(int.Parse(m.Groups[1].Value));
+        var lineNumber = int.Parse(m.Groups[1].Value);
+        ValidationHighlightLines = [lineNumber];
+        RequestScrollToLine?.Invoke(lineNumber);
     }
 
     public event Action<int>? RequestScrollToLine;
@@ -704,8 +741,12 @@ public class MainViewModel : INotifyPropertyChanged
         _currentFile = null;
         CurrentFileLabel = "Arquivo atual: (nova lista)";
         ClearSearchHighlight(keepStatus: true);
+        ClearValidationHighlights();
         StatusText = "Campos limpos.";
     }
+
+    private void ClearValidationHighlights() =>
+        ValidationHighlightLines = Array.Empty<int>();
 
     private void CleanSpaces()
     {

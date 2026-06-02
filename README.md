@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.15-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.16-16A34A?style=for-the-badge)
 
 ---
 
@@ -95,6 +95,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 ### Processamento
 
 * Processamento com separador configurável.
+* Pré-validação visual da entrada antes do processamento.
 * Validação de tamanhos por grupos configuráveis.
 * Expansão de quantidades por tamanho.
 * Aplicação em lote de tamanho e meião.
@@ -153,6 +154,18 @@ Cada linha é interpretada em partes separadas pelo separador ativo. O algoritmo
 Após a leitura, as linhas mantêm a mesma ordem da entrada. A saída textual distribui os tamanhos por grupos reconhecidos, preserva colunas vazias internas quando necessário, compacta colunas finais antes dos campos extras e formata esses campos no final como apelido seguido de tipo sanguíneo quando esse terceiro campo existir.
 
 Por padrão, o ListForge preserva a ordem original da lista informada. Caso uma ordenação adicional seja implementada ou habilitada no fluxo, ela deve ser tratada como uma opção explícita do usuário, sem alterar a responsabilidade principal do processamento: interpretar corretamente a entrada.
+
+## Pré-validação da entrada
+
+Antes de processar a lista, o ListForge faz uma pré-validação das linhas preenchidas. Quando encontra problemas, o processamento é interrompido e a aplicação mostra um resumo como:
+
+```text
+Linha 7: tamanho não reconhecido
+Linha 12: sem tamanho
+Linha 18: mais de 6 tamanhos
+```
+
+As linhas apontadas ficam destacadas na numeração da entrada para facilitar a revisão. Erros de pré-validação não consomem crédito da versão Trial, porque o processamento final não é executado.
 
 ## Suporte a quantidades por tamanho
 
@@ -437,24 +450,24 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.15`.
+O projeto está configurado para Windows x64 e versão `2.1.16`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.15\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.16\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.15\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.16\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.15\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.16\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -463,10 +476,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.15\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.16\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.15\Installer
+bin\Release\dist\2.1.16\Installer
 ```
 
 ## Dependências principais

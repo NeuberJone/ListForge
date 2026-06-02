@@ -46,6 +46,9 @@ public static class ListProcessor
     public static List<ParsedRow> ProcessText(string text, string inputSeparator, SizeConfig sizeConfig) =>
         ListParser.ProcessText(text, inputSeparator, sizeConfig);
 
+    public static List<ListParser.ValidationIssue> ValidateText(string text, string inputSeparator, SizeConfig sizeConfig) =>
+        ListParser.ValidateText(text, inputSeparator, sizeConfig);
+
     public static string CleanTextBySeparator(string text, string separator) =>
         ListParser.CleanTextBySeparator(text, separator);
 

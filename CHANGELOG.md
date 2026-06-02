@@ -4,6 +4,14 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.16] - 2026-06-02
+
+### Adicionado
+
+- Pré-validação visual da entrada antes do processamento.
+- Lista de problemas por linha para tamanho não reconhecido, linha sem tamanho e limite de mais de 6 tamanhos.
+- Destaque na numeração das linhas problemáticas para facilitar revisão antes de consumir processamento Trial.
+
 ## [2.1.15] - 2026-05-31
 
 ### Adicionado
