@@ -56,6 +56,19 @@ function Assert-UnderDirectory {
     }
 }
 
+function Get-ReleaseRelativePath {
+    param(
+        [string]$BasePath,
+        [string]$TargetPath
+    )
+
+    $fullBase = [System.IO.Path]::GetFullPath($BasePath).TrimEnd('\') + '\'
+    $fullTarget = [System.IO.Path]::GetFullPath($TargetPath)
+    $baseUri = [System.Uri]::new($fullBase)
+    $targetUri = [System.Uri]::new($fullTarget)
+    [System.Uri]::UnescapeDataString($baseUri.MakeRelativeUri($targetUri).ToString()).Replace('/', '\')
+}
+
 if ($Version -notmatch '^\d+\.\d+\.\d+$') {
     throw "Versão inválida. Use o formato X.Y.Z, por exemplo: 2.1.16"
 }
@@ -73,6 +86,7 @@ $installableDir = Join-Path $versionDist "ListForge-Installable"
 $portableDir = Join-Path $versionDist "ListForge-Portable-OneFile"
 $trialDir = Join-Path $versionDist "ListForge-Trial-OneFile"
 $installerDir = Join-Path $versionDist "Installer"
+$checksumsPath = Join-Path $versionDist "SHA256SUMS.txt"
 
 $script:ExecutedCommands = [System.Collections.Generic.List[string]]::new()
 $script:UpdatedFiles = [System.Collections.Generic.List[string]]::new()
@@ -212,6 +226,15 @@ if ($missingArtifacts.Count -gt 0) {
     throw "Artefato(s) obrigatório(s) ausente(s):`n$($missingArtifacts -join "`n")"
 }
 
+Write-Step "Gerando checksums SHA256"
+$checksumLines = foreach ($artifact in $expectedArtifacts) {
+    $relativePath = Get-ReleaseRelativePath -BasePath $versionDist -TargetPath $artifact
+    $hash = (Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash.ToUpperInvariant()
+    "$hash $relativePath"
+}
+
+Set-Content -LiteralPath $checksumsPath -Value $checksumLines -Encoding ASCII
+
 Write-Host ""
 Write-Host "Release gerado com sucesso." -ForegroundColor Green
 Write-Host "Versão: $Version"
@@ -224,6 +247,9 @@ $script:ExecutedCommands | ForEach-Object { Write-Host " - $_" }
 Write-Host ""
 Write-Host "Artefatos finais:"
 $expectedArtifacts | ForEach-Object { Write-Host " - $_" }
+Write-Host ""
+Write-Host "Checksums:"
+Write-Host " - $checksumsPath"
 Write-Host ""
 Write-Host "Testes: concluídos com sucesso."
 Write-Host "Instalador: gerado com sucesso."

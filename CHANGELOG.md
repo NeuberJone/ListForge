@@ -4,6 +4,12 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.22] - 2026-06-02
+
+### Adicionado
+
+- Geração de `SHA256SUMS.txt` no script de release para validar os artefatos distribuídos.
+
 ## [2.1.21] - 2026-06-02
 
 ### Corrigido
