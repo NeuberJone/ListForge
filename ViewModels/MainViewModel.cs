@@ -5,13 +5,12 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using ListForge.Config;
 using ListForge.Models;
+using ListForge.Services;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -19,12 +18,15 @@ using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
 using AppLogger = ListForge.Core.AppLogger;
 using FileImporter = ListForge.Core.FileImporter;
+using TextSearchHelper = ListForge.Core.TextSearchHelper;
 using TrialManager = ListForge.Core.TrialManager;
 
 namespace ListForge.ViewModels;
 
 public class MainViewModel : INotifyPropertyChanged
 {
+    private readonly AboutService _aboutService = new();
+
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
     // ---------------------------------------------------------------
@@ -165,19 +167,17 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     // Bound properties — about
     // ---------------------------------------------------------------
-    public string AboutProductName => ConfigManager.AppName;
-    public string AboutVersion => ResolveAppVersion();
-    public string AboutEdition => ConfigManager.EditionName;
-    public string AboutLicensedTo => "Não definido";
-    public string AboutAuthor => "Neuber Jone";
-    public string AboutContact => "GitHub: https://github.com/NeuberJone";
-    public string AboutConfigPath => ConfigManager.AppDir;
-    public string AboutLogsPath => ConfigManager.LogDir;
-    public bool AboutIsTrial => ConfigManager.IsTrialBuild;
-    public string AboutTrialStatus => ConfigManager.IsTrialBuild
-        ? $"Créditos restantes: {TrialManager.RemainingProcessings}/{TrialManager.Limit} processamento(s)"
-        : "Versão completa: sem limite de créditos Trial.";
-    public string AboutLicenseSummary => "Software proprietário. O uso comercial, redistribuição ou customização dependem de autorização prévia.";
+    public string AboutProductName => _aboutService.ProductName;
+    public string AboutVersion => _aboutService.Version;
+    public string AboutEdition => _aboutService.Edition;
+    public string AboutLicensedTo => _aboutService.LicensedTo;
+    public string AboutAuthor => _aboutService.Author;
+    public string AboutContact => _aboutService.Contact;
+    public string AboutConfigPath => _aboutService.ConfigPath;
+    public string AboutLogsPath => _aboutService.LogsPath;
+    public bool AboutIsTrial => _aboutService.IsTrial;
+    public string AboutTrialStatus => _aboutService.TrialStatus;
+    public string AboutLicenseSummary => _aboutService.LicenseSummary;
 
     // ---------------------------------------------------------------
     // Size group vars (for settings UI)
@@ -347,25 +347,6 @@ public class MainViewModel : INotifyPropertyChanged
         _ => ListForge.Core.ListSortMode.Original,
     };
 
-    private static string ResolveAppVersion()
-    {
-        var version = typeof(MainViewModel).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-            .InformationalVersion;
-
-        if (string.IsNullOrWhiteSpace(version))
-            version = typeof(MainViewModel).Assembly.GetName().Version?.ToString();
-
-        if (string.IsNullOrWhiteSpace(version))
-            return "não identificada";
-
-        var plusIndex = version.IndexOf('+');
-        if (plusIndex >= 0)
-            version = version[..plusIndex];
-
-        return version.EndsWith(".0", StringComparison.Ordinal) ? version[..^2] : version;
-    }
-
     private static string NormalizeThemeName(string? themeName) => themeName switch
     {
         "SISBolt" or "SisBolt Dark" => "SISBolt",
@@ -506,61 +487,36 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void OpenBackupsFolder()
     {
-        try { System.Diagnostics.Process.Start("explorer.exe", ConfigManager.BackupDir); }
-        catch (Exception ex)
-        {
-            AppLogger.Error("OpenBackupsFolder", "Falha ao abrir pasta de backups.", ex, ConfigManager.BackupDir);
-            MessageBox.Show(ex.Message, ConfigManager.AppName);
-        }
+        FolderService.OpenFolder(
+            ConfigManager.BackupDir,
+            "OpenBackupsFolder",
+            "Falha ao abrir pasta de backups.",
+            message => MessageBox.Show(message, ConfigManager.AppName));
     }
 
     private void OpenConfigFolder()
     {
-        try
-        {
-            Directory.CreateDirectory(ConfigManager.AppDir);
-            System.Diagnostics.Process.Start("explorer.exe", ConfigManager.AppDir);
-        }
-        catch (Exception ex)
-        {
-            AppLogger.Error("OpenConfigFolder", "Falha ao abrir pasta de configuração.", ex, ConfigManager.AppDir);
-            MessageBox.Show(ex.Message, ConfigManager.AppName);
-        }
+        FolderService.OpenFolder(
+            ConfigManager.AppDir,
+            "OpenConfigFolder",
+            "Falha ao abrir pasta de configuração.",
+            message => MessageBox.Show(message, ConfigManager.AppName));
     }
 
     private void OpenLogsFolder()
     {
-        try
-        {
-            Directory.CreateDirectory(ConfigManager.LogDir);
-            System.Diagnostics.Process.Start("explorer.exe", ConfigManager.LogDir);
-        }
-        catch (Exception ex)
-        {
-            AppLogger.Error("OpenLogsFolder", "Falha ao abrir pasta de logs.", ex, ConfigManager.LogDir);
-            MessageBox.Show(ex.Message, ConfigManager.AppName);
-        }
+        FolderService.OpenFolder(
+            ConfigManager.LogDir,
+            "OpenLogsFolder",
+            "Falha ao abrir pasta de logs.",
+            message => MessageBox.Show(message, ConfigManager.AppName));
     }
 
     private void CopyAboutInfo()
     {
         try
         {
-            var info = new ListForge.Core.AboutInfo(
-                AboutProductName,
-                AboutVersion,
-                AboutEdition,
-                AboutLicensedTo,
-                ConfigManager.IsTrialBuild,
-                ConfigManager.IsTrialBuild ? TrialManager.RemainingProcessings : 0,
-                ConfigManager.IsTrialBuild ? TrialManager.Limit : 0,
-                AboutAuthor,
-                AboutContact,
-                AboutConfigPath,
-                AboutLogsPath,
-                RuntimeInformation.OSDescription);
-
-            Clipboard.SetText(ListForge.Core.AboutInfoBuilder.BuildSupportText(info));
+            Clipboard.SetText(_aboutService.BuildSupportText());
             AppLogger.Info("About", "Informações da tela Sobre copiadas.");
             StatusText = "Informações do produto copiadas.";
         }
@@ -896,7 +852,7 @@ public class MainViewModel : INotifyPropertyChanged
         if (_searchCurrentIdx < 0) _searchCurrentIdx = 0;
 
         var (start, len) = _searchMatches[_searchCurrentIdx];
-        InputText = InputText[..start] + ReplaceText + InputText[(start + len)..];
+        InputText = TextSearchHelper.ReplaceAt(InputText, start, len, ReplaceText);
         BuildSearchMatches();
         _searchCurrentIdx = Math.Min(_searchCurrentIdx, _searchMatches.Count - 1);
         SearchHighlightChanged?.Invoke(this, EventArgs.Empty);
@@ -905,8 +861,7 @@ public class MainViewModel : INotifyPropertyChanged
     private void ReplaceAll()
     {
         if (string.IsNullOrEmpty(FindText)) return;
-        var comp = FindMatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        InputText = InputText.Replace(FindText, ReplaceText, comp);
+        InputText = TextSearchHelper.ReplaceAll(InputText, FindText, ReplaceText, FindMatchCase);
         BuildSearchMatches();
         StatusText = "Substituição concluída.";
         SearchHighlightChanged?.Invoke(this, EventArgs.Empty);
@@ -922,23 +877,8 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void BuildSearchMatches()
     {
-        _searchMatches = [];
+        _searchMatches = TextSearchHelper.FindMatches(InputText, FindText, FindMatchCase);
         _searchCurrentIdx = -1;
-
-        var term = FindText ?? "";
-        if (string.IsNullOrEmpty(term)) return;
-
-        var text = InputText ?? "";
-        var comp = FindMatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        var idx = 0;
-
-        while (true)
-        {
-            var pos = text.IndexOf(term, idx, comp);
-            if (pos < 0) break;
-            _searchMatches.Add((pos, term.Length));
-            idx = pos + term.Length;
-        }
 
         if (_searchMatches.Count > 0) _searchCurrentIdx = 0;
     }

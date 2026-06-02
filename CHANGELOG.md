@@ -11,6 +11,11 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 - Documentação do fluxo de publicação de releases no GitHub com tag versionada e artefatos anexados.
 - Script auxiliar para validar artefatos e preparar publicação de release no GitHub.
 
+### Alterado
+
+- Refatoradas responsabilidades do MainViewModel para serviços/helpers menores, mantendo o comportamento da interface.
+- Preservados fluxos de processamento, importação, configurações, logs, Trial e tela Sobre.
+
 ## [2.1.22] - 2026-06-02
 
 ### Adicionado

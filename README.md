@@ -347,11 +347,15 @@ ListForge/
 │  ├─ AppConfig.cs
 │  ├─ ParsedRow.cs
 │  └─ SizeConfig.cs
+├─ Services/
+│  ├─ AboutService.cs
+│  └─ FolderService.cs
 ├─ ListForge.Tests/
 │  ├─ FileImporterTests.cs
 │  ├─ AppLoggerTests.cs
 │  ├─ ListForge.Tests.csproj
 │  ├─ ListProcessorTests.cs
+│  ├─ TextSearchHelperTests.cs
 │  └─ SizeHelperTests.cs
 ├─ ViewModels/
 │  ├─ MainViewModel.cs
@@ -394,7 +398,8 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `UI/Views` contém janelas e telas.
 * `UI/Controls` contém controles reutilizáveis.
 * `UI/Themes` contém os dicionários de estilo.
-* `ViewModels/MainViewModel.cs` centraliza estado, comandos e integração entre UI, configuração e processamento.
+* `ViewModels/MainViewModel.cs` coordena estado, comandos e integração entre UI, configuração e processamento.
+* `Services` contém serviços pequenos usados pela UI, como informações da tela Sobre e abertura de pastas.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/AppLogger.cs` registra logs internos diários para suporte e diagnóstico.
 * `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
@@ -404,6 +409,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Core/JsonListImporter.cs` concentra a extração de lista textual a partir de JSON.
 * `Core/FileNameHelper.cs` concentra sanitização de nomes e caminhos versionados.
 * `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
+* `Core/TextSearchHelper.cs` concentra busca e substituição de texto usada pelo editor.
 * `Core/TrialManager.cs` concentra o controle de créditos da versão Trial.
 * `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
 * `Models` contém os objetos de configuração e linhas processadas.
