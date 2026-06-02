@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.22-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.23-16A34A?style=for-the-badge)
 
 ---
 
@@ -264,7 +264,15 @@ A tela Sobre exibe informações úteis para identificação da instalação e s
 * pasta de configuração e pasta de logs usadas pelo aplicativo;
 * resumo curto de licença/propriedade.
 
-Ela também possui ações para copiar as informações do produto para suporte, abrir a pasta de configuração e abrir a pasta de logs.
+Ela também possui ações para copiar as informações do produto para suporte, gerar pacote de suporte, abrir a pasta de configuração e abrir a pasta de logs.
+
+## Pacote de suporte
+
+A tela Sobre possui a ação **Gerar pacote de suporte**, que cria um arquivo `.zip` para diagnóstico técnico.
+
+O pacote inclui informações do produto, resumo seguro de configurações, tamanhos configurados e logs recentes. Ele não inclui conteúdo completo da entrada, saída organizada, JSON de listas reais, arquivos de listas do usuário nem estado interno do Trial.
+
+Ao gerar o pacote, escolha a pasta de destino. Antes de enviar o arquivo para suporte, revise o ZIP se houver informações sensíveis nos logs, como caminhos de arquivos locais.
 
 ## Tamanho da fonte dos editores
 
@@ -349,12 +357,14 @@ ListForge/
 │  └─ SizeConfig.cs
 ├─ Services/
 │  ├─ AboutService.cs
-│  └─ FolderService.cs
+│  ├─ FolderService.cs
+│  └─ SupportPackageService.cs
 ├─ ListForge.Tests/
 │  ├─ FileImporterTests.cs
 │  ├─ AppLoggerTests.cs
 │  ├─ ListForge.Tests.csproj
 │  ├─ ListProcessorTests.cs
+│  ├─ SupportPackageServiceTests.cs
 │  ├─ TextSearchHelperTests.cs
 │  └─ SizeHelperTests.cs
 ├─ ViewModels/
@@ -518,19 +528,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.22\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.23\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.22\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.23\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.22\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.23\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -539,16 +549,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.22\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.23\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.22\Installer
+bin\Release\dist\2.1.23\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.22\SHA256SUMS.txt
+bin\Release\dist\2.1.23\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.

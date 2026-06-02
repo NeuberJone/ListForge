@@ -1,15 +1,16 @@
-# Changelog
+﻿# Changelog
 
 Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
-## [Unreleased]
+## [2.1.23] - 2026-06-02
 
 ### Adicionado
 
 - Documentação do fluxo de publicação de releases no GitHub com tag versionada e artefatos anexados.
 - Script auxiliar para validar artefatos e preparar publicação de release no GitHub.
+- Função para gerar pacote de suporte com logs recentes e informações técnicas seguras para diagnóstico.
 
 ### Alterado
 

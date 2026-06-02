@@ -26,6 +26,7 @@ namespace ListForge.ViewModels;
 public class MainViewModel : INotifyPropertyChanged
 {
     private readonly AboutService _aboutService = new();
+    private readonly SupportPackageService _supportPackageService = new();
 
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
@@ -216,6 +217,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand OpenConfigFolderCommand { get; }
     public ICommand OpenLogsFolderCommand { get; }
     public ICommand CopyAboutInfoCommand { get; }
+    public ICommand GenerateSupportPackageCommand { get; }
     public ICommand CleanSpacesCommand { get; }
     public ICommand ResetSeparatorCommand { get; }
     public ICommand FindNextCommand { get; }
@@ -263,6 +265,7 @@ public class MainViewModel : INotifyPropertyChanged
         OpenConfigFolderCommand = new RelayCommand(OpenConfigFolder);
         OpenLogsFolderCommand = new RelayCommand(OpenLogsFolder);
         CopyAboutInfoCommand = new RelayCommand(CopyAboutInfo);
+        GenerateSupportPackageCommand = new RelayCommand(GenerateSupportPackage);
         CleanSpacesCommand = new RelayCommand(CleanSpaces);
         ResetSeparatorCommand = new RelayCommand(() => { EditorSeparator = ","; StatusText = "Separador redefinido para \",\"."; });
         FindNextCommand = new RelayCommand(FindNext);
@@ -524,6 +527,29 @@ public class MainViewModel : INotifyPropertyChanged
         {
             AppLogger.Error("About", "Falha ao copiar informações da tela Sobre.", ex);
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void GenerateSupportPackage()
+    {
+        var dlg = new OpenFolderDialog { Title = "Escolha onde salvar o pacote de suporte" };
+        if (dlg.ShowDialog() != true)
+            return;
+
+        try
+        {
+            var packagePath = _supportPackageService.Generate(dlg.FolderName, _aboutService.BuildInfo());
+            StatusText = $"Pacote de suporte gerado: {Path.GetFileName(packagePath)}";
+            MessageBox.Show(
+                $"Pacote de suporte gerado com sucesso.\n\n{packagePath}\n\nAntes de enviar, revise o arquivo se houver informações sensíveis.",
+                ConfigManager.AppName,
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("SupportPackage", "Falha ao gerar pacote de suporte.", ex);
+            MessageBox.Show("Falha ao gerar pacote de suporte.\n\n" + ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

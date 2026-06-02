@@ -90,6 +90,10 @@
                     Command="{Binding CopyAboutInfoCommand}"
                     Style="{StaticResource AccentButton}"
                     Margin="0,0,8,0"/>
+            <Button Content="Gerar pacote de suporte"
+                    Command="{Binding GenerateSupportPackageCommand}"
+                    Style="{StaticResource StdButton}"
+                    Margin="0,0,8,0"/>
             <Button Content="Abrir pasta de configuração"
                     Command="{Binding OpenConfigFolderCommand}"
                     Style="{StaticResource StdButton}"
