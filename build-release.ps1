@@ -116,7 +116,7 @@ Update-TextFile -Path $readmePath -Update {
     if ($oldVersion -match '^\d+\.\d+\.\d+$') {
         $escapedOld = [regex]::Escape($oldVersion)
         $updated = $updated -replace "bin\\Release\\dist\\$escapedOld", "bin\Release\dist\$Version"
-        $updated = $updated -replace "versão ``$escapedOld``", "versão ``$Version``"
+        $updated = $updated -replace 'versão `[0-9]+\.[0-9]+\.[0-9]+`', "versão ``$Version``"
     }
     $updated
 }

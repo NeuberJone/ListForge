@@ -2,6 +2,9 @@ using System.IO;
 using ListForge.Core;
 using ListForge.Models;
 using Newtonsoft.Json;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("ListForge.Tests")]
 
 namespace ListForge.Config;
 
@@ -20,25 +23,36 @@ public static class ConfigManager
     public static readonly string AppTitle = IsTrialBuild ? $"{AppName} Trial" : AppName;
     public static readonly int TrialProcessingLimit = ResolveTrialProcessingLimit();
 
-    public static readonly string AppDir;
-    public static readonly string ConfigPath;
-    public static readonly string BackupDir;
-    public static readonly string LogDir;
-    public static readonly string SizeConfigPath;
-    public static readonly string TrialStatePath;
+    public static string AppDir { get; private set; }
+    public static string ConfigPath { get; private set; } = "";
+    public static string BackupDir { get; private set; } = "";
+    public static string LogDir { get; private set; } = "";
+    public static string SizeConfigPath { get; private set; } = "";
+    internal static string InternalStateDir { get; private set; } = "";
+    internal static string TrialStatePath { get; private set; } = "";
+    internal static string LegacyTrialStatePath { get; private set; } = "";
 
     static ConfigManager()
     {
         AppDir = ResolveWritableAppDir();
+        ApplyAppDirectories(AppDir, ResolveWritableInternalStateDir());
+    }
+
+    private static void ApplyAppDirectories(string appDir, string internalStateDir)
+    {
+        AppDir = appDir;
         ConfigPath = Path.Combine(AppDir, "config.json");
         BackupDir = Path.Combine(AppDir, "backups");
         LogDir = Path.Combine(AppDir, "logs");
         SizeConfigPath = Path.Combine(AppDir, "sizes.json");
-        TrialStatePath = Path.Combine(AppDir, "trial-state.json");
+        LegacyTrialStatePath = Path.Combine(AppDir, "trial-state.json");
+        InternalStateDir = internalStateDir;
+        TrialStatePath = Path.Combine(InternalStateDir, "runtime.dat");
 
         Directory.CreateDirectory(AppDir);
         Directory.CreateDirectory(BackupDir);
         Directory.CreateDirectory(LogDir);
+        Directory.CreateDirectory(InternalStateDir);
     }
 
     private static int ResolveTrialProcessingLimit()
@@ -71,6 +85,31 @@ public static class ConfigManager
         return Path.Combine(Path.GetTempPath(), AppName);
     }
 
+    private static string ResolveWritableInternalStateDir()
+    {
+        var candidates = new[]
+        {
+            Environment.GetEnvironmentVariable("LOCALAPPDATA"),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Environment.GetEnvironmentVariable("APPDATA"),
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            AppContext.BaseDirectory,
+            Environment.CurrentDirectory,
+        };
+
+        foreach (var root in candidates)
+        {
+            if (string.IsNullOrWhiteSpace(root))
+                continue;
+
+            var dir = Path.Combine(root, AppName, ".state");
+            if (CanUseDirectory(dir))
+                return dir;
+        }
+
+        return Path.Combine(Path.GetTempPath(), AppName, ".state");
+    }
+
     private static bool CanUseDirectory(string dir)
     {
         try
@@ -85,6 +124,11 @@ public static class ConfigManager
         {
             return false;
         }
+    }
+
+    internal static void SetDirectoriesForTesting(string appDir, string internalStateDir)
+    {
+        ApplyAppDirectories(appDir, internalStateDir);
     }
 
     // ---------------------------------------------------------------

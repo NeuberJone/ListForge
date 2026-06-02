@@ -97,7 +97,7 @@ Text="Além da Lista organizada, o programa também monta uma Prévia JSON, gera
 
       <Expander Header="Versão Trial" Margin="0,0,0,6">
         <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
-Text="A versão Trial é identificada como ListForge Trial no título/interface e no nome do executável.&#x0a;&#x0a;Ela possui limite de processamentos. Cada processamento concluído com sucesso consome 1 crédito. Erro de entrada, validação inválida, falha antes do processamento final ou cancelamento do usuário não consomem crédito.&#x0a;&#x0a;A versão completa não consome créditos e não depende do controle Trial."/>
+Text="A versão Trial é identificada como ListForge Trial no título/interface e no nome do executável.&#x0a;&#x0a;Ela possui limite de processamentos. Cada processamento concluído com sucesso consome 1 crédito. Erro de entrada, validação inválida, falha antes do processamento final ou cancelamento do usuário não consomem crédito.&#x0a;&#x0a;A versão completa não consome créditos e não depende do controle Trial. O armazenamento interno de estado da versão Trial foi aprimorado."/>
       </Expander>
       <Expander Header="Logs internos" Margin="0,0,0,6">
         <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"

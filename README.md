@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.19-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.20-16A34A?style=for-the-badge)
 
 ---
 
@@ -203,6 +203,8 @@ O Trial possui limite de processamentos de listas. Cada processamento concluído
 
 A versão completa não consome créditos e não depende do controle Trial. O limite padrão do Trial é 10 processamentos e pode ser ajustado pela variável de ambiente `LISTFORGE_TRIAL_PROCESSING_LIMIT`.
 
+O armazenamento interno de estado da versão Trial foi aprimorado para separar dados internos dos arquivos de configuração exibidos ao usuário.
+
 ## Grupos de tamanho configuráveis
 
 Os tamanhos ficam em `sizes.json` e são representados por `Models/SizeConfig.cs`. O padrão do sistema inclui quatro grupos:
@@ -344,8 +346,7 @@ ListForge/
 ├─ Models/
 │  ├─ AppConfig.cs
 │  ├─ ParsedRow.cs
-│  ├─ SizeConfig.cs
-│  └─ TrialState.cs
+│  └─ SizeConfig.cs
 ├─ ListForge.Tests/
 │  ├─ FileImporterTests.cs
 │  ├─ AppLoggerTests.cs
@@ -405,7 +406,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
 * `Core/TrialManager.cs` concentra o controle de créditos da versão Trial.
 * `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
-* `Models` contém os objetos de configuração, linhas processadas e estado de Trial.
+* `Models` contém os objetos de configuração e linhas processadas.
 * `ListForge.Tests` contém testes automatizados do núcleo determinístico.
 
 ## Decisões técnicas
@@ -437,7 +438,6 @@ Arquivos principais:
 | ------------------ | ------------------------------------------- |
 | `config.json`      | preferências gerais da aplicação            |
 | `sizes.json`       | grupos de tamanho válidos                   |
-| `trial-state.json` | estado de consumo da versão Trial           |
 | `backups/`         | cópias automáticas de arquivos sobrescritos |
 | `logs/`            | logs internos diários para diagnóstico      |
 
@@ -478,7 +478,7 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.19`.
+O projeto está configurado para Windows x64 e versão `2.1.20`.
 
 ### Script de release
 
@@ -511,19 +511,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.19\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.20\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.19\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.20\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.19\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.20\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -532,10 +532,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.19\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.20\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.19\Installer
+bin\Release\dist\2.1.20\Installer
 ```
 
 ## Dependências principais
