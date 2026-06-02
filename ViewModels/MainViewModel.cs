@@ -17,7 +17,6 @@ using Newtonsoft.Json.Linq;
 using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
 using AppLogger = ListForge.Core.AppLogger;
-using FileImporter = ListForge.Core.FileImporter;
 using TextSearchHelper = ListForge.Core.TextSearchHelper;
 using TrialManager = ListForge.Core.TrialManager;
 
@@ -29,6 +28,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly SupportPackageService _supportPackageService = new();
     private readonly ProcessingWorkflowService _processingWorkflowService = new();
     private readonly OutputExportService _outputExportService = new();
+    private readonly FileImportService _fileImportService = new();
 
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
@@ -375,68 +375,40 @@ public class MainViewModel : INotifyPropertyChanged
         if (dlg.ShowDialog() != true) return;
 
         var path = dlg.FileName;
-        var ext = Path.GetExtension(path).ToLowerInvariant();
+        var result = _fileImportService.ImportInputFile(path);
 
-        try
+        if (!result.Success || result.Value == null)
         {
-            if (FileImporter.TextExtensions.Contains(ext))
-            {
-                InputText = FileImporter.ReadTextFile(path);
-                _currentFile = path;
-                CurrentFileLabel = $"Arquivo atual: {path}";
-                _cfg.LastOpenedFile = path;
-                ConfigManager.SaveConfig(_cfg);
-                StatusText = $"Lista carregada: {Path.GetFileName(path)}";
-                ClearSearchHighlight(keepStatus: true);
-                return;
-            }
-
-            string imported;
-            string warning;
-
-            if (FileImporter.PdfExtensions.Contains(ext))
-            {
-                imported = FileImporter.ReadPdfText(path);
-                warning = "Texto extraído do PDF.\n\nConfira o conteúdo antes de processar.";
-            }
-            else if (FileImporter.WordExtensions.Contains(ext))
-            {
-                imported = FileImporter.ReadDocxText(path);
-                warning = "Texto extraído do Word.\n\nConfira o conteúdo antes de processar.";
-            }
-            else if (FileImporter.ExcelExtensions.Contains(ext))
-            {
-                imported = FileImporter.ReadExcelText(path);
-                warning = "Texto extraído da planilha.\n\nConfira o conteúdo antes de processar.";
-            }
-            else if (FileImporter.ImageExtensions.Contains(ext))
-            {
-                imported = FileImporter.OcrImageToText(path);
-                warning = "Texto extraído da imagem via OCR.\n\nConfira o conteúdo — OCR não é 100% confiável.";
-            }
+            if (result.Exception != null)
+                AppLogger.Error("ImportFile", result.TechnicalMessage, result.Exception, path);
             else
-            {
-                MessageBox.Show("Formato não suportado.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-                AppLogger.Warning("ImportFile", "Formato de arquivo não suportado.", path);
-                return;
-            }
+                AppLogger.Warning("ImportFile", result.TechnicalMessage, path);
 
-            var normalized = FileImporter.NormalizeImportedText(imported);
-            if (string.IsNullOrWhiteSpace(normalized))
-                throw new InvalidOperationException("Não foi possível obter conteúdo útil desse arquivo.");
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
-            InputText = normalized;
+        var imported = result.Value;
+        InputText = imported.Text;
+
+        if (imported.IsPlainText)
+        {
+            _currentFile = path;
+            CurrentFileLabel = $"Arquivo atual: {path}";
+            _cfg.LastOpenedFile = path;
+            ConfigManager.SaveConfig(_cfg);
+        }
+        else
+        {
             _currentFile = null;
             CurrentFileLabel = $"Importado de: {Path.GetFileName(path)}";
-            StatusText = $"Conteúdo importado: {Path.GetFileName(path)}";
-            ClearSearchHighlight(keepStatus: true);
-            MessageBox.Show(warning, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        catch (Exception ex)
-        {
-            AppLogger.Error("ImportFile", "Falha ao importar arquivo.", ex, path);
-            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+
+        StatusText = imported.StatusMessage;
+        ClearSearchHighlight(keepStatus: true);
+
+        if (!string.IsNullOrWhiteSpace(imported.ReviewMessage))
+            MessageBox.Show(imported.ReviewMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void SaveInputFile()
@@ -447,11 +419,28 @@ public class MainViewModel : INotifyPropertyChanged
         {
             if (File.Exists(_currentFile))
             {
-                var onDisk = FileImporter.ReadTextFile(_currentFile);
-                if (onDisk != InputText)
+                var readResult = _fileImportService.ReadTextFile(_currentFile);
+                if (!readResult.Success)
+                {
+                    if (readResult.Exception != null)
+                        AppLogger.Error("SaveInputFile", readResult.TechnicalMessage, readResult.Exception, _currentFile);
+                    MessageBox.Show(readResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                if (readResult.Value != InputText)
                     ConfigManager.CreateBackup(_currentFile);
             }
-            FileImporter.WriteTextFile(_currentFile, InputText);
+
+            var saveResult = _fileImportService.SaveTextFile(_currentFile, InputText);
+            if (!saveResult.Success)
+            {
+                if (saveResult.Exception != null)
+                    AppLogger.Error("SaveInputFile", saveResult.TechnicalMessage, saveResult.Exception, _currentFile);
+                MessageBox.Show($"Falha ao salvar.\n\n{saveResult.Exception?.Message ?? saveResult.UserMessage}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             _cfg.LastOpenedFile = _currentFile;
             ConfigManager.SaveConfig(_cfg);
             StatusText = $"Entrada salva: {Path.GetFileName(_currentFile)}";
@@ -476,7 +465,16 @@ public class MainViewModel : INotifyPropertyChanged
         try
         {
             if (File.Exists(dlg.FileName)) ConfigManager.CreateBackup(dlg.FileName);
-            FileImporter.WriteTextFile(dlg.FileName, InputText);
+
+            var result = _fileImportService.SaveTextFile(dlg.FileName, InputText);
+            if (!result.Success)
+            {
+                if (result.Exception != null)
+                    AppLogger.Error("SaveInputAsFile", result.TechnicalMessage, result.Exception, dlg.FileName);
+                MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             _currentFile = dlg.FileName;
             CurrentFileLabel = $"Arquivo atual: {dlg.FileName}";
             _cfg.LastOpenedFile = dlg.FileName;
@@ -538,21 +536,22 @@ public class MainViewModel : INotifyPropertyChanged
         if (dlg.ShowDialog() != true)
             return;
 
-        try
+        var result = _supportPackageService.Generate(dlg.FolderName, _aboutService.BuildInfo());
+        if (!result.Success || result.Value == null)
         {
-            var packagePath = _supportPackageService.Generate(dlg.FolderName, _aboutService.BuildInfo());
-            StatusText = $"Pacote de suporte gerado: {Path.GetFileName(packagePath)}";
-            MessageBox.Show(
-                $"Pacote de suporte gerado com sucesso.\n\n{packagePath}\n\nAntes de enviar, revise o arquivo se houver informações sensíveis.",
-                ConfigManager.AppName,
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            if (result.Exception != null)
+                AppLogger.Error("SupportPackage", result.TechnicalMessage, result.Exception);
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
-        catch (Exception ex)
-        {
-            AppLogger.Error("SupportPackage", "Falha ao gerar pacote de suporte.", ex);
-            MessageBox.Show("Falha ao gerar pacote de suporte.\n\n" + ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+
+        var packagePath = result.Value;
+        StatusText = $"Pacote de suporte gerado: {Path.GetFileName(packagePath)}";
+        MessageBox.Show(
+            $"Pacote de suporte gerado com sucesso.\n\n{packagePath}\n\nAntes de enviar, revise o arquivo se houver informações sensíveis.",
+            ConfigManager.AppName,
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
     }
 
     // ---------------------------------------------------------------
@@ -721,17 +720,18 @@ public class MainViewModel : INotifyPropertyChanged
         var name = ResolveOutputName();
         if (name == null) return;
 
-        try
+        var result = _outputExportService.SaveOutputText(OutputText, dir, name);
+        if (!result.Success || result.Value == null)
         {
-            var path = _outputExportService.SaveOutputText(OutputText, dir, name);
-            StatusText = $"Saída salva: {Path.GetFileName(path)}";
-            MessageBox.Show($"Saída salva:\n{path}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+            if (result.Exception != null)
+                AppLogger.Error("SaveOutput", result.TechnicalMessage, result.Exception);
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
-        catch (Exception ex)
-        {
-            AppLogger.Error("SaveOutput", "Falha ao salvar saída organizada.", ex);
-            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+
+        var path = result.Value;
+        StatusText = $"Saída salva: {Path.GetFileName(path)}";
+        MessageBox.Show($"Saída salva:\n{path}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void GenerateJson()
@@ -743,18 +743,19 @@ public class MainViewModel : INotifyPropertyChanged
         var name = ResolveOutputName();
         if (name == null) return;
 
-        try
+        var result = _outputExportService.SaveJson(_lastOrders, dir, name);
+        if (!result.Success || result.Value == null)
         {
-            var path = _outputExportService.SaveJson(_lastOrders, dir, name);
-            StatusText = $"JSON gerado: {Path.GetFileName(path)}";
-            MessageBox.Show($"JSON gerado:\n{path}\n\nRegistros: {_lastOrders.Count}",
-                ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+            if (result.Exception != null)
+                AppLogger.Error("GenerateJson", result.TechnicalMessage, result.Exception);
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
-        catch (Exception ex)
-        {
-            AppLogger.Error("GenerateJson", "Falha ao gerar JSON.", ex);
-            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+
+        var path = result.Value;
+        StatusText = $"JSON gerado: {Path.GetFileName(path)}";
+        MessageBox.Show($"JSON gerado:\n{path}\n\nRegistros: {_lastOrders.Count}",
+            ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private string? ResolveOutputDir()

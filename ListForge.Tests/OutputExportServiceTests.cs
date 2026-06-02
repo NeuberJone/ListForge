@@ -16,10 +16,12 @@ public class OutputExportServiceTests
             var first = service.SaveOutputText("ANA,10,G", dir, "lista");
             var second = service.SaveOutputText("BIA,11,M", dir, "lista");
 
-            Assert.Equal("lista.txt", Path.GetFileName(first));
-            Assert.Equal("lista_v2.txt", Path.GetFileName(second));
-            Assert.Equal("ANA,10,G", File.ReadAllText(first));
-            Assert.Equal("BIA,11,M", File.ReadAllText(second));
+            Assert.True(first.Success);
+            Assert.True(second.Success);
+            Assert.Equal("lista.txt", Path.GetFileName(first.Value));
+            Assert.Equal("lista_v2.txt", Path.GetFileName(second.Value));
+            Assert.Equal("ANA,10,G", File.ReadAllText(first.Value!));
+            Assert.Equal("BIA,11,M", File.ReadAllText(second.Value!));
         }
         finally
         {
@@ -35,12 +37,13 @@ public class OutputExportServiceTests
 
         try
         {
-            var path = service.SaveJson(
+            var result = service.SaveJson(
                 [new Dictionary<string, string> { ["Name"] = "ANA", ["Number"] = "10" }],
                 dir,
                 "lista");
 
-            var root = JObject.Parse(File.ReadAllText(path));
+            Assert.True(result.Success);
+            var root = JObject.Parse(File.ReadAllText(result.Value!));
             Assert.Equal("List", (string?)root["title"]);
             Assert.Equal("ANA", (string?)root["orders"]?[0]?["Name"]);
             Assert.Equal("10", (string?)root["orders"]?[0]?["Number"]);

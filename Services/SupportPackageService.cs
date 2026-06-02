@@ -12,7 +12,23 @@ public sealed class SupportPackageService
 {
     private const int MaxLogFiles = 5;
 
-    public string Generate(string outputDirectory, AboutInfo aboutInfo)
+    public OperationResult<string> Generate(string outputDirectory, AboutInfo aboutInfo)
+    {
+        try
+        {
+            return OperationResult<string>.Ok(GeneratePackage(outputDirectory, aboutInfo));
+        }
+        catch (Exception ex)
+        {
+            return OperationResult<string>.Fail(
+                $"Falha ao gerar pacote de suporte.\n\n{ex.Message}",
+                "Falha ao gerar pacote de suporte.",
+                ex,
+                "SupportPackageFailed");
+        }
+    }
+
+    private static string GeneratePackage(string outputDirectory, AboutInfo aboutInfo)
     {
         Directory.CreateDirectory(outputDirectory);
 

@@ -14,10 +14,11 @@ public class SupportPackageServiceTests
         using var env = SupportPackageTestEnvironment.Create();
         var service = new SupportPackageService();
 
-        var packagePath = service.Generate(env.OutputDir, env.AboutInfo);
+        var result = service.Generate(env.OutputDir, env.AboutInfo);
 
-        Assert.True(File.Exists(packagePath));
-        using var archive = ZipFile.OpenRead(packagePath);
+        Assert.True(result.Success);
+        Assert.True(File.Exists(result.Value));
+        using var archive = ZipFile.OpenRead(result.Value!);
         Assert.Contains(archive.Entries, entry => entry.FullName == "support-info.txt");
         Assert.Contains(archive.Entries, entry => entry.FullName == "config-summary.txt");
         Assert.Contains(archive.Entries, entry => entry.FullName == "sizes-summary.txt");
@@ -38,9 +39,10 @@ public class SupportPackageServiceTests
         File.WriteAllText(Path.Combine(ConfigManager.AppDir, "lista-real.txt"), "ANA,10,G");
         var service = new SupportPackageService();
 
-        var packagePath = service.Generate(env.OutputDir, env.AboutInfo);
+        var result = service.Generate(env.OutputDir, env.AboutInfo);
 
-        using var archive = ZipFile.OpenRead(packagePath);
+        Assert.True(result.Success);
+        using var archive = ZipFile.OpenRead(result.Value!);
         var entryNames = archive.Entries.Select(entry => entry.FullName).ToArray();
         Assert.Contains("logs/listforge-2026-06-01.log", entryNames);
         Assert.Contains("logs/listforge-2026-06-02.log", entryNames);
@@ -61,9 +63,10 @@ public class SupportPackageServiceTests
         });
         var service = new SupportPackageService();
 
-        var packagePath = service.Generate(env.OutputDir, env.AboutInfo);
+        var result = service.Generate(env.OutputDir, env.AboutInfo);
 
-        using var archive = ZipFile.OpenRead(packagePath);
+        Assert.True(result.Success);
+        using var archive = ZipFile.OpenRead(result.Value!);
         var configSummary = ReadEntry(archive, "config-summary.txt");
         Assert.DoesNotContain("SecretOutput", configSummary);
         Assert.DoesNotContain("secret-list.csv", configSummary);
@@ -76,9 +79,10 @@ public class SupportPackageServiceTests
         using var env = SupportPackageTestEnvironment.Create();
         var service = new SupportPackageService();
 
-        var packagePath = service.Generate(env.OutputDir, env.AboutInfo);
+        var result = service.Generate(env.OutputDir, env.AboutInfo);
 
-        using var archive = ZipFile.OpenRead(packagePath);
+        Assert.True(result.Success);
+        using var archive = ZipFile.OpenRead(result.Value!);
         Assert.DoesNotContain(archive.Entries, entry => entry.FullName.StartsWith("logs/", StringComparison.Ordinal));
     }
 

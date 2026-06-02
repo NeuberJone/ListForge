@@ -350,6 +350,7 @@ ListForge/
 │  ├─ ListOutputBuilder.cs
 │  ├─ ListParser.cs
 │  ├─ ListProcessor.cs
+│  ├─ OperationResult.cs
 │  ├─ SizeHelper.cs
 │  └─ TrialManager.cs
 ├─ Models/
@@ -358,15 +359,19 @@ ListForge/
 │  └─ SizeConfig.cs
 ├─ Services/
 │  ├─ AboutService.cs
+│  ├─ FileImportService.cs
 │  ├─ FolderService.cs
 │  ├─ OutputExportService.cs
 │  ├─ ProcessingWorkflowService.cs
 │  └─ SupportPackageService.cs
 ├─ ListForge.Tests/
 │  ├─ FileImporterTests.cs
+│  ├─ FileImportServiceTests.cs
 │  ├─ AppLoggerTests.cs
 │  ├─ ListForge.Tests.csproj
 │  ├─ ListProcessorTests.cs
+│  ├─ OperationResultTests.cs
+│  ├─ OutputExportServiceTests.cs
 │  ├─ SupportPackageServiceTests.cs
 │  ├─ TextSearchHelperTests.cs
 │  └─ SizeHelperTests.cs
@@ -414,6 +419,8 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `ViewModels/MainViewModel.cs` coordena estado, comandos e integração entre UI, configuração e processamento.
 * `Services` contém serviços pequenos usados pela UI, como informações da tela Sobre e abertura de pastas.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
+* `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
+* `Services/FileImportService.cs`, `Services/OutputExportService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados para facilitar testes, mensagens amigáveis e logging técnico.
 * `Core/AppLogger.cs` registra logs internos diários para suporte e diagnóstico.
 * `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
 * `Core/ListParser.cs` concentra separadores, limpeza por separador, parsing de linha e preservação da ordem de entrada.
