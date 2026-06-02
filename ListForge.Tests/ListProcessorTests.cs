@@ -22,6 +22,101 @@ public class ListProcessorTests
     }
 
     [Fact]
+    public void SortRows_OriginalKeepsInputOrder()
+    {
+        var rows = ListProcessor.ProcessText(
+            "CARLA,12,G\nANA,7,M\nBRUNO,3,P",
+            ",",
+            Config);
+
+        var sorted = ListProcessor.SortRows(rows, ListSortMode.Original);
+
+        Assert.Equal(["CARLA", "ANA", "BRUNO"], sorted.Select(r => r.Name));
+    }
+
+    [Fact]
+    public void SortRows_AscendingSortsByName()
+    {
+        var rows = ListProcessor.ProcessText(
+            "CARLA,12,G\nANA,7,M\nBRUNO,3,P",
+            ",",
+            Config);
+
+        var sorted = ListProcessor.SortRows(rows, ListSortMode.Ascending);
+
+        Assert.Equal(["ANA", "BRUNO", "CARLA"], sorted.Select(r => r.Name));
+    }
+
+    [Fact]
+    public void SortRows_AscendingSortsEqualNamesByNumericNumber()
+    {
+        var rows = ListProcessor.ProcessText(
+            "ANA,10,G\nANA,2,M\nANA,1,P",
+            ",",
+            Config);
+
+        var sorted = ListProcessor.SortRows(rows, ListSortMode.Ascending);
+
+        Assert.Equal(["1", "2", "10"], sorted.Select(r => r.Number));
+    }
+
+    [Fact]
+    public void SortRows_DescendingSortsByName()
+    {
+        var rows = ListProcessor.ProcessText(
+            "CARLA,12,G\nANA,7,M\nBRUNO,3,P",
+            ",",
+            Config);
+
+        var sorted = ListProcessor.SortRows(rows, ListSortMode.Descending);
+
+        Assert.Equal(["CARLA", "BRUNO", "ANA"], sorted.Select(r => r.Name));
+    }
+
+    [Fact]
+    public void SortRows_DescendingSortsEqualNamesByNumericNumber()
+    {
+        var rows = ListProcessor.ProcessText(
+            "ANA,10,G\nANA,2,M\nANA,1,P",
+            ",",
+            Config);
+
+        var sorted = ListProcessor.SortRows(rows, ListSortMode.Descending);
+
+        Assert.Equal(["10", "2", "1"], sorted.Select(r => r.Number));
+    }
+
+    [Fact]
+    public void SortRows_PreservesRelativeOrderForTotalTies()
+    {
+        var rows = ListProcessor.ProcessText(
+            "ANA,10,G\nANA,10,M\nANA,10,P",
+            ",",
+            Config);
+
+        var sorted = ListProcessor.SortRows(rows, ListSortMode.Ascending);
+
+        Assert.Equal(["G", "M", "P"], sorted.Select(r => r.Tams.Single()));
+    }
+
+    [Fact]
+    public void BuildOutputAndJsonRespectSortedRows()
+    {
+        var rows = ListProcessor.ProcessText(
+            "CARLA,12,G\nANA,10,M\nANA,2,P",
+            ",",
+            Config);
+        var sorted = ListProcessor.SortRows(rows, ListSortMode.Ascending);
+
+        var output = ListProcessor.BuildOutput(sorted, Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(sorted, Config);
+
+        Assert.Equal("ANA,2,P\nANA,10,M\nCARLA,12,G", output);
+        Assert.Equal(["ANA", "ANA", "CARLA"], orders.Select(order => order["Name"]));
+        Assert.Equal(["2", "10", "12"], orders.Select(order => order["Number"]));
+    }
+
+    [Fact]
     public void BuildOutput_ExpandsQuantitySizeTokens()
     {
         var rows = ListProcessor.ProcessText("PEDRO,8,2-G", ",", Config);

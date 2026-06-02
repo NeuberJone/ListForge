@@ -51,6 +51,14 @@ public partial class EditorView : UserControl
                 Mode = System.Windows.Data.BindingMode.TwoWay,
             });
 
+        CmbSortMode.ItemsSource = vm.SortLabels;
+        CmbSortMode.SetBinding(ComboBox.SelectedItemProperty,
+            new System.Windows.Data.Binding(nameof(vm.EditorSortLabel))
+            {
+                Source = vm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+            });
+
         CmbBulkSock.ItemsSource = vm.SockSizeOptions;
         CmbBulkSock.SetBinding(ComboBox.SelectedItemProperty,
             new System.Windows.Data.Binding(nameof(vm.SelectedSockSize))

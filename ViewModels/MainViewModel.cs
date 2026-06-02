@@ -56,6 +56,7 @@ public class MainViewModel : INotifyPropertyChanged
     private string _jsonText = "";
     private string _editorSeparator = ",";
     private string _editorCaseLabel = "Original";
+    private string _editorSortLabel = "Original";
     private string _findText = "";
     private string _replaceText = "";
     private bool _findMatchCase;
@@ -82,6 +83,7 @@ public class MainViewModel : INotifyPropertyChanged
     public string JsonText { get => _jsonText; set => Set(ref _jsonText, value); }
     public string EditorSeparator { get => _editorSeparator; set => Set(ref _editorSeparator, value); }
     public string EditorCaseLabel { get => _editorCaseLabel; set => Set(ref _editorCaseLabel, value); }
+    public string EditorSortLabel { get => _editorSortLabel; set => Set(ref _editorSortLabel, value); }
     public string FindText { get => _findText; set { Set(ref _findText, value); ClearSearchHighlight(keepStatus: true); } }
     public string ReplaceText { get => _replaceText; set => Set(ref _replaceText, value); }
     public bool FindMatchCase { get => _findMatchCase; set { Set(ref _findMatchCase, value); ClearSearchHighlight(keepStatus: true); } }
@@ -173,6 +175,7 @@ public class MainViewModel : INotifyPropertyChanged
     // Collections for ComboBoxes
     // ---------------------------------------------------------------
     public ObservableCollection<string> CaseLabels { get; } = ["Original", "Tudo maiúsculo", "Tudo minúsculo"];
+    public ObservableCollection<string> SortLabels { get; } = ["Original", "Crescente", "Decrescente"];
     public ObservableCollection<string> ThemeNames { get; } = ["ListForge Dark", "ListForge Light", "SISBolt"];
     public ObservableCollection<string> SockSizeOptions { get; } = [];
 
@@ -307,6 +310,13 @@ public class MainViewModel : INotifyPropertyChanged
         "Tudo maiúsculo" => "upper",
         "Tudo minúsculo" => "lower",
         _ => "original",
+    };
+
+    private static ListForge.Core.ListSortMode LabelToSortMode(string label) => label switch
+    {
+        "Crescente" => ListForge.Core.ListSortMode.Ascending,
+        "Decrescente" => ListForge.Core.ListSortMode.Descending,
+        _ => ListForge.Core.ListSortMode.Original,
     };
 
     private static string NormalizeThemeName(string? themeName) => themeName switch
@@ -564,6 +574,8 @@ public class MainViewModel : INotifyPropertyChanged
             }
 
             var caseMode = LabelToCaseMode(EditorCaseLabel);
+            var sortMode = LabelToSortMode(EditorSortLabel);
+            rows = CoreProcessor.SortRows(rows, sortMode);
             var organized = CoreProcessor.BuildOutput(rows, _sizeCfg, caseMode);
             var orders = CoreProcessor.BuildOrdersFromOrderlist(rows, _sizeCfg, caseMode);
             var preview = CoreProcessor.BuildJsonPreview(orders);
@@ -579,7 +591,7 @@ public class MainViewModel : INotifyPropertyChanged
             SelectedOutputSection = "list";
             ClearValidationHighlights();
 
-            StatusText = $"Processado: {rows.Count} linha(s) | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{TrialManager.StatusSuffix}";
+            StatusText = $"Processado: {rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{TrialManager.StatusSuffix}";
         }
         catch (Exception ex)
         {

@@ -63,7 +63,9 @@
             <Button Content="Padr&#x00E3;o (,)" Command="{Binding ResetSeparatorCommand}" Style="{StaticResource StdButton}" Margin="0,0,14,0"/>
             <Button Content="Remover espa&#x00E7;os" Command="{Binding CleanSpacesCommand}" Style="{StaticResource StdButton}" Margin="0,0,22,0"/>
             <TextBlock Text="Capitaliza&#x00E7;&#x00E3;o" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <ComboBox x:Name="CmbCaseMode" Width="220"/>
+            <ComboBox x:Name="CmbCaseMode" Width="220" Margin="0,0,22,0"/>
+            <TextBlock Text="Ordena&#x00E7;&#x00E3;o" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="CmbSortMode" Width="140"/>
           </WrapPanel>
 
           <WrapPanel Margin="0,10,0,0">

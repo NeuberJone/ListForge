@@ -49,6 +49,9 @@ public static class ListProcessor
     public static List<ListParser.ValidationIssue> ValidateText(string text, string inputSeparator, SizeConfig sizeConfig) =>
         ListParser.ValidateText(text, inputSeparator, sizeConfig);
 
+    public static List<ParsedRow> SortRows(IEnumerable<ParsedRow> rows, ListSortMode sortMode) =>
+        ListRowSorter.SortRows(rows, sortMode);
+
     public static string CleanTextBySeparator(string text, string separator) =>
         ListParser.CleanTextBySeparator(text, separator);
 

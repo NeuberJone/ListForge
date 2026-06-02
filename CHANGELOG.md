@@ -4,6 +4,14 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.17] - 2026-06-02
+
+### Adicionado
+
+- Opção de ordenação da lista processada nos modos Original, Crescente e Decrescente.
+- Modo Original mantido como padrão para preservar a ordem da entrada.
+- Ordenação por nome com desempate numérico por número quando aplicável.
+
 ## [2.1.16] - 2026-06-02
 
 ### Adicionado

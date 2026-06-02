@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.16-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.17-16A34A?style=for-the-badge)
 
 ---
 
@@ -96,6 +96,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 
 * Processamento com separador configurável.
 * Pré-validação visual da entrada antes do processamento.
+* Ordenação opcional da lista processada em modo Original, Crescente ou Decrescente.
 * Validação de tamanhos por grupos configuráveis.
 * Expansão de quantidades por tamanho.
 * Aplicação em lote de tamanho e meião.
@@ -154,6 +155,18 @@ Cada linha é interpretada em partes separadas pelo separador ativo. O algoritmo
 Após a leitura, as linhas mantêm a mesma ordem da entrada. A saída textual distribui os tamanhos por grupos reconhecidos, preserva colunas vazias internas quando necessário, compacta colunas finais antes dos campos extras e formata esses campos no final como apelido seguido de tipo sanguíneo quando esse terceiro campo existir.
 
 Por padrão, o ListForge preserva a ordem original da lista informada. Caso uma ordenação adicional seja implementada ou habilitada no fluxo, ela deve ser tratada como uma opção explícita do usuário, sem alterar a responsabilidade principal do processamento: interpretar corretamente a entrada.
+
+## Ordenação da lista
+
+No painel Preparação da lista, a opção Ordenação controla a ordem usada depois da leitura da entrada e antes da montagem da Lista organizada e do JSON.
+
+Opções disponíveis:
+
+* Original: mantém a ordem digitada ou importada. É o padrão ao abrir o app.
+* Crescente: ordena por nome de A-Z e, em nomes iguais, por número crescente.
+* Decrescente: ordena por nome de Z-A e, em nomes iguais, por número decrescente.
+
+Quando o número pode ser lido como valor numérico, a comparação é numérica. Assim, `2` vem antes de `10` no modo Crescente. Se o número não for numérico, o ListForge usa comparação textual como alternativa. A ordenação escolhida afeta a saída textual e a prévia/geração de JSON.
 
 ## Pré-validação da entrada
 
@@ -450,24 +463,24 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.16`.
+O projeto está configurado para Windows x64 e versão `2.1.17`.
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.16\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.17\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.16\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.17\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.16\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.17\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -476,10 +489,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.16\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.17\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.16\Installer
+bin\Release\dist\2.1.17\Installer
 ```
 
 ## Dependências principais
