@@ -5,6 +5,7 @@ using System.Linq;
 using ListForge.Config;
 using ListForge.Core;
 using ListForge.Models;
+using ListForge.Services;
 using Newtonsoft.Json.Linq;
 
 namespace ListForge.Tests;
@@ -20,10 +21,11 @@ public class MainFlowIntegrationTests
             "CARLA,12,G\nANA,7,M,NINA,O+",
             ListSortMode.Original);
 
-        Assert.Empty(result.Issues);
-        Assert.Equal("CARLA,12,G,,\nANA,7,M,NINA,O+", result.Output);
-        Assert.Equal(["CARLA", "ANA"], result.JsonNames);
-        Assert.Equal(["12", "7"], result.JsonNumbers);
+        Assert.Equal(ProcessingWorkflowStatus.Success, result.Status);
+        Assert.Empty(result.ValidationIssues);
+        Assert.Equal("CARLA,12,G,,\nANA,7,M,NINA,O+", result.OutputText);
+        Assert.Equal(["CARLA", "ANA"], JsonNames(result));
+        Assert.Equal(["12", "7"], JsonNumbers(result));
         Assert.Equal("NINA", result.Orders[1]["Nickname"]);
         Assert.Equal("O+", result.Orders[1]["BloodType"]);
     }
@@ -35,8 +37,8 @@ public class MainFlowIntegrationTests
             "CARLA,12,G\nANA,7,M\nBRUNO,3,P",
             ListSortMode.Original);
 
-        Assert.Equal("CARLA,12,G\nANA,7,M\nBRUNO,3,P", result.Output);
-        Assert.Equal(["CARLA", "ANA", "BRUNO"], result.JsonNames);
+        Assert.Equal("CARLA,12,G\nANA,7,M\nBRUNO,3,P", result.OutputText);
+        Assert.Equal(["CARLA", "ANA", "BRUNO"], JsonNames(result));
     }
 
     [Fact]
@@ -46,9 +48,9 @@ public class MainFlowIntegrationTests
             "CARLA,12,G\nANA,7,M\nBRUNO,3,P",
             ListSortMode.Ascending);
 
-        Assert.Equal("ANA,7,M\nBRUNO,3,P\nCARLA,12,G", result.Output);
-        Assert.Equal(["ANA", "BRUNO", "CARLA"], result.JsonNames);
-        Assert.Equal(["7", "3", "12"], result.JsonNumbers);
+        Assert.Equal("ANA,7,M\nBRUNO,3,P\nCARLA,12,G", result.OutputText);
+        Assert.Equal(["ANA", "BRUNO", "CARLA"], JsonNames(result));
+        Assert.Equal(["7", "3", "12"], JsonNumbers(result));
     }
 
     [Fact]
@@ -58,9 +60,9 @@ public class MainFlowIntegrationTests
             "CARLA,12,G\nANA,7,M\nBRUNO,3,P",
             ListSortMode.Descending);
 
-        Assert.Equal("CARLA,12,G\nBRUNO,3,P\nANA,7,M", result.Output);
-        Assert.Equal(["CARLA", "BRUNO", "ANA"], result.JsonNames);
-        Assert.Equal(["12", "3", "7"], result.JsonNumbers);
+        Assert.Equal("CARLA,12,G\nBRUNO,3,P\nANA,7,M", result.OutputText);
+        Assert.Equal(["CARLA", "BRUNO", "ANA"], JsonNames(result));
+        Assert.Equal(["12", "3", "7"], JsonNumbers(result));
     }
 
     [Fact]
@@ -70,10 +72,11 @@ public class MainFlowIntegrationTests
             "ANA,10,G\nBIA,12,ZZ\nCARLA,1,P",
             ListSortMode.Original);
 
-        var issue = Assert.Single(result.Issues);
+        Assert.Equal(ProcessingWorkflowStatus.ValidationFailed, result.Status);
+        var issue = Assert.Single(result.ValidationIssues);
         Assert.Equal(2, issue.LineNumber);
         Assert.Equal("tamanho não reconhecido", issue.Message);
-        Assert.Empty(result.Output);
+        Assert.Empty(result.OutputText);
         Assert.Empty(result.Orders);
     }
 
@@ -84,8 +87,8 @@ public class MainFlowIntegrationTests
             "ANA,10,2-G,NINA,O+",
             ListSortMode.Original);
 
-        Assert.Equal("ANA,10,G,NINA,O+\nANA,10,G,NINA,O+", result.Output);
-        Assert.Equal(["ANA", "ANA"], result.JsonNames);
+        Assert.Equal("ANA,10,G,NINA,O+\nANA,10,G,NINA,O+", result.OutputText);
+        Assert.Equal(["ANA", "ANA"], JsonNames(result));
         Assert.All(result.Orders, order =>
         {
             Assert.Equal("NINA", order["Nickname"]);
@@ -101,7 +104,7 @@ public class MainFlowIntegrationTests
             "JOANA,10,JUVENIL",
             ListSortMode.Original);
 
-        Assert.Equal("JOANA,10,JUVENIL", result.Output);
+        Assert.Equal("JOANA,10,JUVENIL", result.OutputText);
         Assert.DoesNotContain("JUVENIL", result.JsonPreview);
         Assert.DoesNotContain(result.Orders, order => order.ContainsKey("Socks"));
         Assert.Equal("", result.Orders.Single()["ShortSleeve"]);
@@ -114,10 +117,10 @@ public class MainFlowIntegrationTests
 
         var result = RunMainFlow(
             "ANA,10,G\nSEM TAM,20",
-            ListSortMode.Original,
-            consumeTrialCredit: true);
+            ListSortMode.Original);
 
-        Assert.Single(result.Issues);
+        Assert.Equal(ProcessingWorkflowStatus.ValidationFailed, result.Status);
+        Assert.Single(result.ValidationIssues);
         Assert.Equal(2, TrialManager.RemainingProcessings);
         Assert.False(File.Exists(ConfigManager.TrialStatePath));
     }
@@ -129,10 +132,10 @@ public class MainFlowIntegrationTests
 
         var result = RunMainFlow(
             "ANA,10,G",
-            ListSortMode.Original,
-            consumeTrialCredit: true);
+            ListSortMode.Original);
 
-        Assert.Empty(result.Issues);
+        Assert.Equal(ProcessingWorkflowStatus.Success, result.Status);
+        Assert.Empty(result.ValidationIssues);
         Assert.Equal(1, TrialManager.RemainingProcessings);
         Assert.True(File.Exists(ConfigManager.TrialStatePath));
     }
@@ -141,12 +144,11 @@ public class MainFlowIntegrationTests
     public void TrialMode_BlocksMainFlowWhenCreditsAreExhausted()
     {
         using var env = MainFlowTestEnvironment.Create(isTrial: true, limit: 1);
-        _ = RunMainFlow("ANA,10,G", ListSortMode.Original, consumeTrialCredit: true);
+        _ = RunMainFlow("ANA,10,G", ListSortMode.Original);
 
-        var ex = Assert.Throws<InvalidOperationException>(() =>
-            RunMainFlow("BIA,11,M", ListSortMode.Original, consumeTrialCredit: true));
+        var blocked = RunMainFlow("BIA,11,M", ListSortMode.Original);
 
-        Assert.Contains("Limite de processamentos", ex.Message);
+        Assert.Equal(ProcessingWorkflowStatus.TrialLimitReached, blocked.Status);
         Assert.Equal(0, TrialManager.RemainingProcessings);
     }
 
@@ -157,61 +159,37 @@ public class MainFlowIntegrationTests
 
         var result = RunMainFlow(
             "ANA,10,G",
-            ListSortMode.Original,
-            consumeTrialCredit: true);
+            ListSortMode.Original);
 
-        Assert.Empty(result.Issues);
+        Assert.Equal(ProcessingWorkflowStatus.Success, result.Status);
+        Assert.Empty(result.ValidationIssues);
         Assert.Equal(int.MaxValue, TrialManager.RemainingProcessings);
         Assert.False(File.Exists(ConfigManager.TrialStatePath));
     }
 
-    private static MainFlowResult RunMainFlow(
-        string input,
-        ListSortMode sortMode,
-        bool consumeTrialCredit = false)
+    private static ProcessingWorkflowResult RunMainFlow(string input, ListSortMode sortMode)
     {
-        var issues = ListProcessor.ValidateText(input, ",", Config);
-        if (issues.Count > 0)
-            return new MainFlowResult(issues, "", [], "");
-
-        if (consumeTrialCredit && !TrialManager.HasCredits)
-            throw new InvalidOperationException("Limite de processamentos da versão Trial atingido.");
-
-        var rows = ListProcessor.ProcessText(input, ",", Config);
-        rows = ListProcessor.SortRows(rows, sortMode);
-
-        var output = ListProcessor.BuildOutput(rows, Config);
-        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
-        var preview = ListProcessor.BuildJsonPreview(orders);
-
-        if (consumeTrialCredit)
-            TrialManager.ConsumeSuccessfulProcessing();
-
-        return new MainFlowResult(issues, output, orders, preview);
+        var service = new ProcessingWorkflowService();
+        return service.Execute(new ProcessingWorkflowRequest(input, ",", Config, "original", sortMode));
     }
 
-    private sealed record MainFlowResult(
-        IReadOnlyList<ListParser.ValidationIssue> Issues,
-        string Output,
-        List<Dictionary<string, string>> Orders,
-        string JsonPreview)
-    {
-        public string[] JsonNames => ReadOrdersFromPreview()
+    private static string[] JsonNames(ProcessingWorkflowResult result) =>
+        ReadOrdersFromPreview(result)
             .Select(order => (string?)order["Name"] ?? "")
             .ToArray();
 
-        public string[] JsonNumbers => ReadOrdersFromPreview()
+    private static string[] JsonNumbers(ProcessingWorkflowResult result) =>
+        ReadOrdersFromPreview(result)
             .Select(order => (string?)order["Number"] ?? "")
             .ToArray();
 
-        private IEnumerable<JObject> ReadOrdersFromPreview()
-        {
-            if (string.IsNullOrWhiteSpace(JsonPreview))
-                return [];
+    private static IEnumerable<JObject> ReadOrdersFromPreview(ProcessingWorkflowResult result)
+    {
+        if (string.IsNullOrWhiteSpace(result.JsonPreview))
+            return [];
 
-            var root = JObject.Parse(JsonPreview);
-            return root["orders"]?.Children<JObject>() ?? [];
-        }
+        var root = JObject.Parse(result.JsonPreview);
+        return root["orders"]?.Children<JObject>() ?? [];
     }
 
     private sealed class MainFlowTestEnvironment : IDisposable

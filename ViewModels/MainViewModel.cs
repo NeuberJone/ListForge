@@ -27,6 +27,8 @@ public class MainViewModel : INotifyPropertyChanged
 {
     private readonly AboutService _aboutService = new();
     private readonly SupportPackageService _supportPackageService = new();
+    private readonly ProcessingWorkflowService _processingWorkflowService = new();
+    private readonly OutputExportService _outputExportService = new();
 
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
@@ -603,17 +605,24 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     private void ProcessAndPreview()
     {
-        if (string.IsNullOrWhiteSpace(InputText))
-        {
-            MessageBox.Show("Cole ou abra uma lista na entrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         try
         {
-            var validationIssues = CoreProcessor.ValidateText(InputText, EditorSeparator, _sizeCfg);
-            if (validationIssues.Count > 0)
+            var result = _processingWorkflowService.Execute(new ProcessingWorkflowRequest(
+                InputText,
+                EditorSeparator,
+                _sizeCfg,
+                LabelToCaseMode(EditorCaseLabel),
+                LabelToSortMode(EditorSortLabel)));
+
+            if (result.Status == ProcessingWorkflowStatus.EmptyInput)
             {
+                MessageBox.Show("Cole ou abra uma lista na entrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (result.Status == ProcessingWorkflowStatus.ValidationFailed)
+            {
+                var validationIssues = result.ValidationIssues;
                 ValidationHighlightLines = validationIssues.Select(issue => issue.LineNumber).ToArray();
                 var summary = string.Join("\n", validationIssues
                     .Take(12)
@@ -628,7 +637,7 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            if (!TrialManager.HasCredits)
+            if (result.Status == ProcessingWorkflowStatus.TrialLimitReached)
             {
                 var message = "Limite de processamentos da versão Trial atingido.";
                 AppLogger.Warning("ProcessList", message);
@@ -637,34 +646,25 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            var rows = CoreProcessor.ProcessText(InputText, EditorSeparator, _sizeCfg);
-            if (rows.Count == 0)
+            if (result.Status == ProcessingWorkflowStatus.NoRows)
             {
                 AppLogger.Warning("ProcessList", "Processamento não encontrou linhas válidas.");
                 MessageBox.Show("Nenhuma linha válida encontrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var caseMode = LabelToCaseMode(EditorCaseLabel);
-            var sortMode = LabelToSortMode(EditorSortLabel);
-            rows = CoreProcessor.SortRows(rows, sortMode);
-            var organized = CoreProcessor.BuildOutput(rows, _sizeCfg, caseMode);
-            var orders = CoreProcessor.BuildOrdersFromOrderlist(rows, _sizeCfg, caseMode);
-            var preview = CoreProcessor.BuildJsonPreview(orders);
-
-            TrialManager.ConsumeSuccessfulProcessing();
             RefreshAboutInfo();
 
-            _rows = rows;
-            _lastOrders = orders;
-            _lastJson = preview;
+            _rows = result.Rows;
+            _lastOrders = result.Orders;
+            _lastJson = result.JsonPreview;
 
-            OutputText = organized;
-            JsonText = preview;
+            OutputText = result.OutputText;
+            JsonText = result.JsonPreview;
             SelectedOutputSection = "list";
             ClearValidationHighlights();
 
-            StatusText = $"Processado: {rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{TrialManager.StatusSuffix}";
+            StatusText = $"Processado: {result.Rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{TrialManager.StatusSuffix}";
         }
         catch (Exception ex)
         {
@@ -723,7 +723,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var path = CoreProcessor.ExportOutputText(OutputText, dir, name);
+            var path = _outputExportService.SaveOutputText(OutputText, dir, name);
             StatusText = $"Saída salva: {Path.GetFileName(path)}";
             MessageBox.Show($"Saída salva:\n{path}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -745,7 +745,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var path = CoreProcessor.ExportJson(_lastOrders, dir, name);
+            var path = _outputExportService.SaveJson(_lastOrders, dir, name);
             StatusText = $"JSON gerado: {Path.GetFileName(path)}";
             MessageBox.Show($"JSON gerado:\n{path}\n\nRegistros: {_lastOrders.Count}",
                 ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
