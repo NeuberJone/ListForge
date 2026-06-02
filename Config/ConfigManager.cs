@@ -1,8 +1,8 @@
 using System.IO;
+using System.Runtime.CompilerServices;
 using ListForge.Core;
 using ListForge.Models;
 using Newtonsoft.Json;
-using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("ListForge.Tests")]
 

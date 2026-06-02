@@ -14,9 +14,9 @@ using ListForge.Services;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using AppLogger = ListForge.Core.AppLogger;
 using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
-using AppLogger = ListForge.Core.AppLogger;
 using TextSearchHelper = ListForge.Core.TextSearchHelper;
 using TrialManager = ListForge.Core.TrialManager;
 

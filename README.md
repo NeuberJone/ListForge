@@ -235,6 +235,17 @@ Para rodar os testes na raiz do projeto:
 dotnet test
 ```
 
+## Qualidade de código
+
+O projeto usa `.editorconfig` para manter indentação, organização de `using`, preferências simples de C# e regras conservadoras dos analyzers do .NET.
+
+Comandos recomendados antes de enviar alterações:
+
+```powershell
+dotnet format ListForge.slnx
+dotnet test
+```
+
 ## Logs internos
 
 O ListForge cria logs diários para ajudar no suporte e diagnóstico de erros em versões distribuídas. Os arquivos ficam em:

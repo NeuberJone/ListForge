@@ -5,6 +5,8 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>8.0</AnalysisLevel>
     <UseWPF>true</UseWPF>
     <AssemblyName>ListForge</AssemblyName>
     <RootNamespace>ListForge</RootNamespace>

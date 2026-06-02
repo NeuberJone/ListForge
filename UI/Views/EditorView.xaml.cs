@@ -113,8 +113,8 @@ public partial class EditorView : UserControl
             }
         };
 
-        TabJson.Visibility      = vm.ShowJsonSection      ? Visibility.Visible : Visibility.Collapsed;
-        BtnCopyJson.Visibility  = vm.ShowCopyJsonButton   ? Visibility.Visible : Visibility.Collapsed;
+        TabJson.Visibility = vm.ShowJsonSection ? Visibility.Visible : Visibility.Collapsed;
+        BtnCopyJson.Visibility = vm.ShowCopyJsonButton ? Visibility.Visible : Visibility.Collapsed;
         BtnGenerateJson.Visibility = vm.ShowGenerateJsonButton ? Visibility.Visible : Visibility.Collapsed;
 
         // ---- Search highlight ----
@@ -228,7 +228,7 @@ public partial class EditorView : UserControl
         var tag = tab.Tag as string ?? "list";
 
         LnbOutput.Visibility = tag == "list" ? Visibility.Visible : Visibility.Collapsed;
-        LnbJson.Visibility   = tag == "json" ? Visibility.Visible : Visibility.Collapsed;
+        LnbJson.Visibility = tag == "json" ? Visibility.Visible : Visibility.Collapsed;
 
         if (_vm != null) _vm.SelectedOutputSection = tag;
     }
@@ -250,7 +250,7 @@ public partial class EditorView : UserControl
         if (_vm == null) return;
 
         var matches = _vm.SearchMatches;
-        var idx     = _vm.SearchCurrentIdx;
+        var idx = _vm.SearchCurrentIdx;
 
         if (matches.Count == 0 || idx < 0 || idx >= matches.Count)
         {
