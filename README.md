@@ -1,4 +1,4 @@
-# ListForge
+﻿# ListForge
 
 **ListForge** é uma aplicação desktop para Windows, desenvolvida em **C#**, **.NET 8** e **WPF**, voltada para edição, padronização, organização e exportação de listas de produção.
 
@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.17-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.18-16A34A?style=for-the-badge)
 
 ---
 
@@ -463,24 +463,52 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.17`.
+O projeto está configurado para Windows x64 e versão `2.1.18`.
+
+### Script de release
+
+Para reduzir inconsistências entre versão do projeto, instalador, documentação e artefatos finais, use o script de release na raiz do repositório:
+
+```powershell
+.\build-release.ps1 -Version 2.1.16
+```
+
+O script:
+
+* atualiza versões em `ListForge.csproj`, `installer/ListForge.iss` e trechos de build/distribuição do `README.md`;
+* roda `dotnet restore`, `dotnet build`, `dotnet test` e `dotnet build -c Release`;
+* publica a versão instalável;
+* publica o onefile oficial/completo;
+* publica o onefile Trial;
+* gera o instalador com Inno Setup;
+* coloca todos os artefatos em `bin\Release\dist\X.Y.Z`.
+
+Por padrão, o script não sobrescreve uma pasta de versão já existente. Para recriar somente a pasta da versão atual, use `-Force`. Ele nunca apaga o `dist` inteiro nem pastas de versões anteriores.
+
+Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmente:
+
+```powershell
+.\build-release.ps1 -Version 2.1.16 -InnoSetupPath "C:\Program Files\Inno Setup 7\ISCC.exe"
+```
+
+### Comandos manuais
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.17\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.18\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.17\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.18\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.17\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.18\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -489,10 +517,10 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.17\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.18\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.17\Installer
+bin\Release\dist\2.1.18\Installer
 ```
 
 ## Dependências principais

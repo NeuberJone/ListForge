@@ -1,5 +1,5 @@
-#define MyAppName "ListForge"
-#define MyAppVersion "2.1.17"
+﻿#define MyAppName "ListForge"
+#define MyAppVersion "2.1.18"
 #define MyAppPublisher "Neuber Jone"
 #define MyAppExeName "ListForge.exe"
 #define SourceDir "..\bin\Release\dist\" + MyAppVersion + "\ListForge-Installable"

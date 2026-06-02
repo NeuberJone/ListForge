@@ -4,6 +4,12 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.18] - 2026-06-02
+
+### Adicionado
+
+- Script `build-release.ps1` para automatizar atualização de versão, testes, publicação e geração dos artefatos de release.
+
 ## [2.1.17] - 2026-06-02
 
 ### Adicionado
