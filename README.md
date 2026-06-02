@@ -478,7 +478,7 @@ bin\Debug\net8.0-windows\ListForge.exe
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.21`.
+O projeto está configurado para Windows x64 e versão `2.1.22`.
 
 ### Script de release
 
@@ -546,6 +546,44 @@ bin\Release\dist\2.1.22\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
+
+## Publicação de release no GitHub
+
+Antes de publicar uma release no GitHub, gere e confira a distribuição local:
+
+```powershell
+.\build-release.ps1 -Version X.Y.Z
+```
+
+Depois confira os artefatos em `bin\Release\dist\X.Y.Z`, incluindo o instalador, os dois onefiles e `SHA256SUMS.txt`.
+
+O fluxo recomendado é:
+
+```powershell
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+Em seguida, crie a release no GitHub usando a tag `vX.Y.Z`, revise as notas com base na seção correspondente do `CHANGELOG.md` e anexe:
+
+* `ListForge-Portable-OneFile\ListForge-vX.Y.Z.exe`;
+* `ListForge-Trial-OneFile\ListForge-Trial-vX.Y.Z.exe`;
+* `Installer\ListForge-Setup-X.Y.Z.exe`;
+* `SHA256SUMS.txt`.
+
+O script auxiliar abaixo valida os artefatos locais, prepara notas a partir do changelog e mostra os comandos de publicação sem criar uma release automaticamente:
+
+```powershell
+.\create-github-release.ps1 -Version X.Y.Z
+```
+
+Para publicar usando GitHub CLI, revise os dados exibidos, confirme que a tag já existe e execute explicitamente:
+
+```powershell
+.\create-github-release.ps1 -Version X.Y.Z -Create
+```
+
+O script não armazena tokens nem credenciais. Se usar `gh`, ele depende apenas da autenticação local já configurada.
 
 ## Dependências principais
 
