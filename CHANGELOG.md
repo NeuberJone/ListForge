@@ -18,6 +18,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 
 ### Alterado
 
+- Atualizada documentação técnica para refletir arquitetura atual, testes, CI, release, suporte e serviços internos.
 - Pacote de suporte agora permite controlar inclusão de logs recentes e reforça aviso de revisão antes do envio.
 - Separada a lógica de licença/Trial em uma camada de serviço, preparando evolução futura sem alterar o comportamento atual.
 - Refatoradas responsabilidades do MainViewModel para serviços/helpers menores, mantendo o comportamento da interface.
@@ -41,7 +42,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 
 ### Alterado
 
-- Aprimorado o armazenamento interno de estado da versão Trial.
+- Aprimorado o controle local da versão Trial sem alterar o fluxo do usuário.
 - Ajustados logs do Trial para evitar exposição de detalhes internos do armazenamento.
 
 ## [2.1.19] - 2026-06-02

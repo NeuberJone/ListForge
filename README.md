@@ -204,8 +204,6 @@ O Trial possui limite de processamentos de listas. Cada processamento concluído
 
 A versão completa não consome créditos e não depende do controle Trial. O limite padrão do Trial é 10 processamentos e pode ser ajustado pela variável de ambiente `LISTFORGE_TRIAL_PROCESSING_LIMIT`.
 
-O armazenamento interno de estado da versão Trial foi aprimorado para separar dados internos dos arquivos de configuração exibidos ao usuário.
-
 ## Grupos de tamanho configuráveis
 
 Os tamanhos ficam em `sizes.json` e são representados por `Models/SizeConfig.cs`. O padrão do sistema inclui quatro grupos:
@@ -227,7 +225,13 @@ O mesmo separador é usado para limpar espaços, interpretar a entrada e montar 
 
 ## Testes automatizados
 
-O projeto de testes fica em `ListForge.Tests` e cobre partes rápidas e determinísticas do núcleo, sem depender de OCR. A suíte valida cenários de processamento, tamanhos, quantidade por tamanho, campos extras, meião, JSON, erros de entrada, leitura/escrita de texto simples e listas grandes com 1.000 linhas.
+O projeto de testes fica em `ListForge.Tests` e cobre partes rápidas e determinísticas do núcleo, sem depender de OCR.
+
+A suíte inclui:
+
+* testes unitários do processamento, tamanhos, ordenação, importação, logs, busca/substituição, Trial/licença e serviços internos;
+* testes de integração do fluxo principal sem abrir a UI WPF;
+* testes de entradas grandes com 1.000 linhas, cobrindo validação, processamento, ordenação, expansão de quantidades e JSON.
 
 Para rodar os testes na raiz do projeto:
 
@@ -260,7 +264,7 @@ Na prática, a aplicação usa o diretório gravável resolvido por `ConfigManag
 listforge-YYYY-MM-DD.log
 ```
 
-Os logs registram falhas técnicas de importação de arquivos, OCR, salvamento de configurações, processamento de listas, consumo/bloqueio Trial e exceções inesperadas da aplicação. As entradas incluem data/hora, nível, versão, edição, contexto, mensagem, exceção e stack trace quando houver.
+Os logs registram falhas técnicas de importação de arquivos, OCR, salvamento de configurações, processamento de listas, licença/Trial e exceções inesperadas da aplicação. As entradas incluem data/hora, nível, versão, edição, contexto, mensagem, exceção e stack trace quando houver.
 
 Por padrão, o conteúdo completo das listas processadas não é registrado. Caminhos de arquivos podem aparecer no log quando ajudam no diagnóstico. A tela Configurações possui o botão **Abrir pasta de logs**.
 
@@ -284,7 +288,7 @@ A tela Sobre possui a ação **Gerar pacote de suporte**, que cria um arquivo `.
 
 O pacote inclui informações do produto, resumo seguro de configurações e tamanhos configurados. A tela Sobre permite escolher se os logs recentes serão incluídos pela opção **Incluir logs recentes**.
 
-O pacote nunca inclui conteúdo completo da entrada, saída organizada, JSON de listas reais, arquivos de listas do usuário, estado interno do Trial, tokens, senhas, chaves, build/dist ou repositório Git. Quando os logs são incluídos, o ListForge limita a seleção aos arquivos recentes permitidos.
+O pacote nunca inclui conteúdo completo da entrada, saída organizada, JSON de listas reais, arquivos de listas do usuário, dados internos de licença/Trial, tokens, senhas, chaves, build/dist ou repositório Git. Quando os logs são incluídos, o ListForge limita a seleção aos arquivos recentes permitidos.
 
 Antes da geração, o ListForge avisa que logs podem conter caminhos de arquivos. Ao gerar o pacote, escolha a pasta de destino e revise o ZIP antes de enviar para suporte.
 
@@ -342,8 +346,14 @@ Os temas são carregados por `ResourceDictionary` e aplicados pela janela princi
 
 ```text
 ListForge/
+├─ .editorconfig
+├─ .github/
+│  └─ workflows/
+│     └─ ci.yml
 ├─ App.xaml
 ├─ App.xaml.cs
+├─ build-release.ps1
+├─ create-github-release.ps1
 ├─ GlobalUsings.cs
 ├─ ListForge.csproj
 ├─ ListForge.slnx
@@ -363,8 +373,11 @@ ListForge/
 │  ├─ ListOutputBuilder.cs
 │  ├─ ListParser.cs
 │  ├─ ListProcessor.cs
+│  ├─ ListRowSorter.cs
+│  ├─ ListSortMode.cs
 │  ├─ OperationResult.cs
 │  ├─ SizeHelper.cs
+│  ├─ TextSearchHelper.cs
 │  └─ TrialManager.cs
 ├─ Models/
 │  ├─ AppConfig.cs
@@ -383,13 +396,16 @@ ListForge/
 │  ├─ FileImporterTests.cs
 │  ├─ FileImportServiceTests.cs
 │  ├─ AppLoggerTests.cs
+│  ├─ LargeInputTests.cs
 │  ├─ ListForge.Tests.csproj
 │  ├─ LocalTrialLicenseServiceTests.cs
+│  ├─ MainFlowIntegrationTests.cs
 │  ├─ ListProcessorTests.cs
 │  ├─ OperationResultTests.cs
 │  ├─ OutputExportServiceTests.cs
 │  ├─ SupportPackageServiceTests.cs
 │  ├─ TextSearchHelperTests.cs
+│  ├─ TrialManagerTests.cs
 │  └─ SizeHelperTests.cs
 ├─ ViewModels/
 │  ├─ MainViewModel.cs
@@ -433,11 +449,14 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `UI/Controls` contém controles reutilizáveis.
 * `UI/Themes` contém os dicionários de estilo.
 * `ViewModels/MainViewModel.cs` coordena estado, comandos e integração entre UI, configuração e processamento.
-* `Services` contém serviços pequenos usados pela UI, como informações da tela Sobre e abertura de pastas.
+* `.github/workflows/ci.yml` valida automaticamente restore, build e testes em Windows a cada push ou pull request para `main`.
+* `build-release.ps1` automatiza a geração de artefatos versionados.
+* `create-github-release.ps1` valida artefatos locais e prepara a publicação manual ou via GitHub CLI.
+* `Services` contém serviços extraídos do ViewModel para importação, exportação, processamento, licença, suporte, informações da tela Sobre e abertura de pastas.
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
-* `Services/FileImportService.cs`, `Services/OutputExportService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados para facilitar testes, mensagens amigáveis e logging técnico.
+* `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/ProcessingWorkflowService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.
 * `Core/AppLogger.cs` registra logs internos diários para suporte e diagnóstico.
 * `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
 * `Core/ListParser.cs` concentra separadores, limpeza por separador, parsing de linha e preservação da ordem de entrada.
@@ -449,7 +468,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Core/TextSearchHelper.cs` concentra busca e substituição de texto usada pelo editor.
 * `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
 * `Models` contém os objetos de configuração e linhas processadas.
-* `ListForge.Tests` contém testes automatizados do núcleo determinístico.
+* `ListForge.Tests` contém testes unitários, testes de integração e cobertura de entradas grandes.
 
 ## Decisões técnicas
 
@@ -518,16 +537,30 @@ Executável gerado em Debug:
 bin\Debug\net8.0-windows\ListForge.exe
 ```
 
+## Integração contínua
+
+O repositório possui workflow de CI em `.github/workflows/ci.yml`. Ele roda em `windows-latest` para push e pull request na branch `main`.
+
+O workflow executa:
+
+```powershell
+dotnet restore
+dotnet build --configuration Release
+dotnet test --configuration Release
+```
+
+Esse fluxo não gera instalador, onefile ou artefatos de release.
+
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.22`.
+O projeto está configurado para Windows x64 e versão `2.1.23`.
 
 ### Script de release
 
 Para reduzir inconsistências entre versão do projeto, instalador, documentação e artefatos finais, use o script de release na raiz do repositório:
 
 ```powershell
-.\build-release.ps1 -Version 2.1.16
+.\build-release.ps1 -Version X.Y.Z
 ```
 
 O script:
@@ -546,7 +579,7 @@ Por padrão, o script não sobrescreve uma pasta de versão já existente. Para 
 Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmente:
 
 ```powershell
-.\build-release.ps1 -Version 2.1.16 -InnoSetupPath "C:\Program Files\Inno Setup 7\ISCC.exe"
+.\build-release.ps1 -Version X.Y.Z -InnoSetupPath "C:\Program Files\Inno Setup 7\ISCC.exe"
 ```
 
 ### Comandos manuais
@@ -598,6 +631,14 @@ Antes de publicar uma release no GitHub, gere e confira a distribuição local:
 ```
 
 Depois confira os artefatos em `bin\Release\dist\X.Y.Z`, incluindo o instalador, os dois onefiles e `SHA256SUMS.txt`.
+
+Artefatos esperados:
+
+* `ListForge-Installable\ListForge.exe`;
+* `ListForge-Portable-OneFile\ListForge-vX.Y.Z.exe`;
+* `ListForge-Trial-OneFile\ListForge-Trial-vX.Y.Z.exe`;
+* `Installer\ListForge-Setup-X.Y.Z.exe`;
+* `SHA256SUMS.txt`.
 
 O fluxo recomendado é:
 
