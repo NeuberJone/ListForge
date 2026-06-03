@@ -282,9 +282,11 @@ Ela também possui ações para copiar as informações do produto para suporte,
 
 A tela Sobre possui a ação **Gerar pacote de suporte**, que cria um arquivo `.zip` para diagnóstico técnico.
 
-O pacote inclui informações do produto, resumo seguro de configurações, tamanhos configurados e logs recentes. Ele não inclui conteúdo completo da entrada, saída organizada, JSON de listas reais, arquivos de listas do usuário nem estado interno do Trial.
+O pacote inclui informações do produto, resumo seguro de configurações e tamanhos configurados. A tela Sobre permite escolher se os logs recentes serão incluídos pela opção **Incluir logs recentes**.
 
-Ao gerar o pacote, escolha a pasta de destino. Antes de enviar o arquivo para suporte, revise o ZIP se houver informações sensíveis nos logs, como caminhos de arquivos locais.
+O pacote nunca inclui conteúdo completo da entrada, saída organizada, JSON de listas reais, arquivos de listas do usuário, estado interno do Trial, tokens, senhas, chaves, build/dist ou repositório Git. Quando os logs são incluídos, o ListForge limita a seleção aos arquivos recentes permitidos.
+
+Antes da geração, o ListForge avisa que logs podem conter caminhos de arquivos. Ao gerar o pacote, escolha a pasta de destino e revise o ZIP antes de enviar para suporte.
 
 ## Tamanho da fonte dos editores
 

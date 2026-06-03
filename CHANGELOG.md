@@ -18,6 +18,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 
 ### Alterado
 
+- Pacote de suporte agora permite controlar inclusão de logs recentes e reforça aviso de revisão antes do envio.
 - Refatoradas responsabilidades do MainViewModel para serviços/helpers menores, mantendo o comportamento da interface.
 - Extraído o fluxo principal de processamento e exportação para serviços testáveis, mantendo bindings e comandos existentes.
 - Padronizado retorno de operações internas para separar mensagens ao usuário, detalhes técnicos e logging.

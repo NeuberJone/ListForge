@@ -8,15 +8,25 @@ using Newtonsoft.Json;
 
 namespace ListForge.Services;
 
+public sealed record SupportPackageOptions(
+    bool IncludeLogs = true,
+    int MaxLogFiles = 5,
+    long MaxTotalLogSizeBytes = 1_048_576);
+
 public sealed class SupportPackageService
 {
-    private const int MaxLogFiles = 5;
+    private static readonly SupportPackageOptions DefaultOptions = new();
 
     public OperationResult<string> Generate(string outputDirectory, AboutInfo aboutInfo)
     {
+        return Generate(outputDirectory, aboutInfo, DefaultOptions);
+    }
+
+    public OperationResult<string> Generate(string outputDirectory, AboutInfo aboutInfo, SupportPackageOptions options)
+    {
         try
         {
-            return OperationResult<string>.Ok(GeneratePackage(outputDirectory, aboutInfo));
+            return OperationResult<string>.Ok(GeneratePackage(outputDirectory, aboutInfo, NormalizeOptions(options)));
         }
         catch (Exception ex)
         {
@@ -28,17 +38,29 @@ public sealed class SupportPackageService
         }
     }
 
-    private static string GeneratePackage(string outputDirectory, AboutInfo aboutInfo)
+    private static SupportPackageOptions NormalizeOptions(SupportPackageOptions? options)
+    {
+        options ??= DefaultOptions;
+
+        return new SupportPackageOptions(
+            options.IncludeLogs,
+            Math.Clamp(options.MaxLogFiles, 0, 5),
+            Math.Clamp(options.MaxTotalLogSizeBytes, 0, 5 * 1_048_576));
+    }
+
+    private static string GeneratePackage(string outputDirectory, AboutInfo aboutInfo, SupportPackageOptions options)
     {
         Directory.CreateDirectory(outputDirectory);
 
         var packagePath = CreatePackagePath(outputDirectory);
         using var archive = ZipFile.Open(packagePath, ZipArchiveMode.Create);
 
-        AddTextEntry(archive, "support-info.txt", BuildSupportInfo(aboutInfo));
+        AddTextEntry(archive, "support-info.txt", BuildSupportInfo(aboutInfo, options));
         AddTextEntry(archive, "config-summary.txt", BuildConfigSummary(ConfigManager.LoadConfig()));
         AddTextEntry(archive, "sizes-summary.txt", BuildSizeSummary(ConfigManager.LoadSizeConfig()));
-        AddRecentLogs(archive);
+
+        if (options.IncludeLogs)
+            AddRecentLogs(archive, options);
 
         AppLogger.Info("SupportPackage", "Pacote de suporte gerado.");
         return packagePath;
@@ -60,7 +82,7 @@ public sealed class SupportPackageService
         }
     }
 
-    private static string BuildSupportInfo(AboutInfo info)
+    private static string BuildSupportInfo(AboutInfo info, SupportPackageOptions options)
     {
         var lines = new[]
         {
@@ -72,9 +94,12 @@ public sealed class SupportPackageService
             $"Arquitetura: {RuntimeInformation.OSArchitecture}",
             $"Pasta de configuração: {info.ConfigPath}",
             $"Pasta de logs: {info.LogsPath}",
+            $"Logs recentes incluídos: {(options.IncludeLogs ? "sim" : "não")}",
+            $"Limite de arquivos de log: {options.MaxLogFiles}",
+            $"Limite total de logs: {options.MaxTotalLogSizeBytes} bytes",
             "",
-            "Privacidade: este pacote não inclui conteúdo completo de listas, saída organizada, JSON de listas reais ou estado interno do Trial.",
-            "Antes de enviar, revise o arquivo se houver informações sensíveis nos logs.",
+            "Privacidade: este pacote não inclui conteúdo completo de listas, saída organizada, JSON de listas reais, arquivos do usuário, estado interno do Trial, tokens, senhas, chaves, build/dist ou repositório Git.",
+            "Os logs podem conter caminhos de arquivos. Revise o pacote antes de enviar.",
         };
 
         return string.Join(Environment.NewLine, lines);
@@ -101,20 +126,25 @@ public sealed class SupportPackageService
     private static string BuildSizeSummary(SizeConfig sizes) =>
         JsonConvert.SerializeObject(SizeHelper.Normalize(sizes), Formatting.Indented);
 
-    private static void AddRecentLogs(ZipArchive archive)
+    private static void AddRecentLogs(ZipArchive archive, SupportPackageOptions options)
     {
-        if (!Directory.Exists(ConfigManager.LogDir))
+        if (!Directory.Exists(ConfigManager.LogDir) || options.MaxLogFiles <= 0 || options.MaxTotalLogSizeBytes <= 0)
             return;
 
+        var remainingBytes = options.MaxTotalLogSizeBytes;
         var logs = Directory
             .GetFiles(ConfigManager.LogDir, "listforge-*.log")
             .Select(path => new FileInfo(path))
             .OrderByDescending(file => file.LastWriteTime)
-            .Take(MaxLogFiles);
+            .Take(options.MaxLogFiles);
 
         foreach (var log in logs)
         {
+            if (log.Length > remainingBytes)
+                continue;
+
             archive.CreateEntryFromFile(log.FullName, $"logs/{log.Name}");
+            remainingBytes -= log.Length;
         }
     }
 

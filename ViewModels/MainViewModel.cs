@@ -181,6 +181,8 @@ public class MainViewModel : INotifyPropertyChanged
     public bool AboutIsTrial => _aboutService.IsTrial;
     public string AboutTrialStatus => _aboutService.TrialStatus;
     public string AboutLicenseSummary => _aboutService.LicenseSummary;
+    private bool _supportPackageIncludeLogs = true;
+    public bool SupportPackageIncludeLogs { get => _supportPackageIncludeLogs; set => Set(ref _supportPackageIncludeLogs, value); }
 
     // ---------------------------------------------------------------
     // Size group vars (for settings UI)
@@ -532,11 +534,19 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void GenerateSupportPackage()
     {
+        var warning = SupportPackageIncludeLogs
+            ? "Os logs podem conter caminhos de arquivos. Revise o pacote antes de enviar."
+            : "O pacote será gerado sem logs recentes. Revise o pacote antes de enviar.";
+
+        if (MessageBox.Show(warning, ConfigManager.AppName, MessageBoxButton.OKCancel, MessageBoxImage.Information) != MessageBoxResult.OK)
+            return;
+
         var dlg = new OpenFolderDialog { Title = "Escolha onde salvar o pacote de suporte" };
         if (dlg.ShowDialog() != true)
             return;
 
-        var result = _supportPackageService.Generate(dlg.FolderName, _aboutService.BuildInfo());
+        var options = new SupportPackageOptions(IncludeLogs: SupportPackageIncludeLogs);
+        var result = _supportPackageService.Generate(dlg.FolderName, _aboutService.BuildInfo(), options);
         if (!result.Success || result.Value == null)
         {
             if (result.Exception != null)

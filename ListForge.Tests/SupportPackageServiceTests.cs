@@ -25,21 +25,28 @@ public class SupportPackageServiceTests
 
         var supportInfo = ReadEntry(archive, "support-info.txt");
         Assert.Contains("Privacidade", supportInfo);
+        Assert.Contains("Os logs podem conter caminhos de arquivos", supportInfo);
         Assert.DoesNotContain(ConfigManager.TrialStatePath, supportInfo);
         Assert.DoesNotContain(ConfigManager.InternalStateDir, supportInfo);
     }
 
     [Fact]
-    public void Generate_IncludesRecentLogsWithoutForbiddenFiles()
+    public void Generate_WithLogsOptionIncludesRecentLogsWithoutForbiddenFiles()
     {
         using var env = SupportPackageTestEnvironment.Create();
         File.WriteAllText(Path.Combine(ConfigManager.LogDir, "listforge-2026-06-01.log"), "log 1");
         File.WriteAllText(Path.Combine(ConfigManager.LogDir, "listforge-2026-06-02.log"), "log 2");
         File.WriteAllText(ConfigManager.TrialStatePath, "trial-state");
         File.WriteAllText(Path.Combine(ConfigManager.AppDir, "lista-real.txt"), "ANA,10,G");
+        File.WriteAllText(Path.Combine(ConfigManager.AppDir, "saida-organizada.txt"), "ANA,10,G");
+        File.WriteAllText(Path.Combine(ConfigManager.AppDir, "lista-real.json"), """{"orders":[]}""");
+        Directory.CreateDirectory(Path.Combine(ConfigManager.AppDir, "dist"));
+        File.WriteAllText(Path.Combine(ConfigManager.AppDir, "dist", "ListForge.exe"), "build");
+        Directory.CreateDirectory(Path.Combine(ConfigManager.AppDir, ".git"));
+        File.WriteAllText(Path.Combine(ConfigManager.AppDir, ".git", "config"), "secret");
         var service = new SupportPackageService();
 
-        var result = service.Generate(env.OutputDir, env.AboutInfo);
+        var result = service.Generate(env.OutputDir, env.AboutInfo, new SupportPackageOptions(IncludeLogs: true));
 
         Assert.True(result.Success);
         using var archive = ZipFile.OpenRead(result.Value!);
@@ -48,6 +55,45 @@ public class SupportPackageServiceTests
         Assert.Contains("logs/listforge-2026-06-02.log", entryNames);
         Assert.DoesNotContain(entryNames, name => name.Contains("trial", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(entryNames, name => name.Contains("lista-real", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(entryNames, name => name.Contains("saida", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(entryNames, name => name.Contains("dist", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(entryNames, name => name.Contains(".git", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Generate_WithoutLogsOptionDoesNotIncludeLogsFolder()
+    {
+        using var env = SupportPackageTestEnvironment.Create();
+        File.WriteAllText(Path.Combine(ConfigManager.LogDir, "listforge-2026-06-01.log"), "log 1");
+        var service = new SupportPackageService();
+
+        var result = service.Generate(env.OutputDir, env.AboutInfo, new SupportPackageOptions(IncludeLogs: false));
+
+        Assert.True(result.Success);
+        using var archive = ZipFile.OpenRead(result.Value!);
+        Assert.DoesNotContain(archive.Entries, entry => entry.FullName.StartsWith("logs/", StringComparison.Ordinal));
+
+        var supportInfo = ReadEntry(archive, "support-info.txt");
+        Assert.Contains("Logs recentes incluídos: não", supportInfo);
+        Assert.Contains("Revise o pacote antes de enviar", supportInfo);
+    }
+
+    [Fact]
+    public void Generate_WithLogSizeLimitSkipsLogsThatDoNotFitSafely()
+    {
+        using var env = SupportPackageTestEnvironment.Create();
+        File.WriteAllText(Path.Combine(ConfigManager.LogDir, "listforge-2026-06-01.log"), new string('a', 30));
+        File.WriteAllText(Path.Combine(ConfigManager.LogDir, "listforge-2026-06-02.log"), new string('b', 30));
+        var service = new SupportPackageService();
+
+        var result = service.Generate(
+            env.OutputDir,
+            env.AboutInfo,
+            new SupportPackageOptions(IncludeLogs: true, MaxLogFiles: 5, MaxTotalLogSizeBytes: 10));
+
+        Assert.True(result.Success);
+        using var archive = ZipFile.OpenRead(result.Value!);
+        Assert.DoesNotContain(archive.Entries, entry => entry.FullName.StartsWith("logs/", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -123,7 +169,7 @@ public class SupportPackageServiceTests
 
             var aboutInfo = new AboutInfo(
                 "ListForge",
-                "2.1.22",
+                "2.1.23",
                 "Trial",
                 "Não definido",
                 true,
