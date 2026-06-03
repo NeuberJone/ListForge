@@ -227,7 +227,7 @@ O mesmo separador é usado para limpar espaços, interpretar a entrada e montar 
 
 ## Testes automatizados
 
-O projeto de testes fica em `ListForge.Tests` e cobre partes rápidas e determinísticas do núcleo, sem depender de OCR. A suíte valida cenários de processamento, tamanhos, quantidade por tamanho, campos extras, meião, JSON, erros de entrada e leitura/escrita de texto simples.
+O projeto de testes fica em `ListForge.Tests` e cobre partes rápidas e determinísticas do núcleo, sem depender de OCR. A suíte valida cenários de processamento, tamanhos, quantidade por tamanho, campos extras, meião, JSON, erros de entrada, leitura/escrita de texto simples e listas grandes com 1.000 linhas.
 
 Para rodar os testes na raiz do projeto:
 

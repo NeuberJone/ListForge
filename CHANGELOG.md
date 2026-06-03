@@ -9,6 +9,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 ### Adicionado
 
 - Configuração de qualidade de código com EditorConfig e orientações de formatação.
+- Testes para listas grandes, cobrindo validação, processamento, ordenação, expansão de quantidades e geração de JSON.
 - Documentação do fluxo de publicação de releases no GitHub com tag versionada e artefatos anexados.
 - Script auxiliar para validar artefatos e preparar publicação de release no GitHub.
 - Função para gerar pacote de suporte com logs recentes e informações técnicas seguras para diagnóstico.

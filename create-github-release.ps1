@@ -100,7 +100,7 @@ Write-Host " git push origin $tag"
 Write-Host ""
 
 $gh = Get-Command gh -ErrorAction SilentlyContinue
-if ($gh -eq $null) {
+if ($null -eq $gh) {
     Write-Host "GitHub CLI não encontrado. Crie a release manualmente no GitHub usando a tag $tag." -ForegroundColor Yellow
     return
 }
