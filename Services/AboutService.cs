@@ -7,20 +7,32 @@ namespace ListForge.Services;
 
 public sealed class AboutService
 {
+    private readonly ILicenseService _licenseService;
+
+    public AboutService()
+        : this(new LocalTrialLicenseService())
+    {
+    }
+
+    public AboutService(ILicenseService licenseService)
+    {
+        _licenseService = licenseService;
+    }
+
     public string ProductName => ConfigManager.AppName;
     public string Version => ResolveAppVersion();
-    public string Edition => ConfigManager.EditionName;
+    public string Edition => _licenseService.Edition;
     public string LicensedTo => "Não definido";
     public string Author => "Neuber Jone";
     public string Contact => "GitHub: https://github.com/NeuberJone";
     public string ConfigPath => ConfigManager.AppDir;
     public string LogsPath => ConfigManager.LogDir;
-    public bool IsTrial => ConfigManager.IsTrialBuild;
+    public bool IsTrial => _licenseService.IsTrial;
     public string LicenseSummary => "Software proprietário. O uso comercial, redistribuição ou customização dependem de autorização prévia.";
 
     public string TrialStatus =>
-        ConfigManager.IsTrialBuild
-            ? $"Créditos restantes: {TrialManager.RemainingProcessings}/{TrialManager.Limit} processamento(s)"
+        _licenseService.IsTrial
+            ? $"Créditos restantes: {_licenseService.RemainingProcessings}/{_licenseService.ProcessingLimit} processamento(s)"
             : "Versão completa: sem limite de créditos Trial.";
 
     public AboutInfo BuildInfo() =>
@@ -29,9 +41,9 @@ public sealed class AboutService
             Version,
             Edition,
             LicensedTo,
-            ConfigManager.IsTrialBuild,
-            ConfigManager.IsTrialBuild ? TrialManager.RemainingProcessings : 0,
-            ConfigManager.IsTrialBuild ? TrialManager.Limit : 0,
+            _licenseService.IsTrial,
+            _licenseService.IsTrial ? _licenseService.RemainingProcessings : 0,
+            _licenseService.IsTrial ? _licenseService.ProcessingLimit : 0,
             Author,
             Contact,
             ConfigPath,

@@ -37,6 +37,18 @@ public sealed record ProcessingWorkflowResult(
 
 public sealed class ProcessingWorkflowService
 {
+    private readonly ILicenseService _licenseService;
+
+    public ProcessingWorkflowService()
+        : this(new LocalTrialLicenseService())
+    {
+    }
+
+    public ProcessingWorkflowService(ILicenseService licenseService)
+    {
+        _licenseService = licenseService;
+    }
+
     public ProcessingWorkflowResult Execute(ProcessingWorkflowRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.InputText))
@@ -46,7 +58,7 @@ public sealed class ProcessingWorkflowService
         if (validationIssues.Count > 0)
             return ProcessingWorkflowResult.ValidationFailed(validationIssues);
 
-        if (!TrialManager.HasCredits)
+        if (!_licenseService.CanProcess)
             return ProcessingWorkflowResult.Empty(ProcessingWorkflowStatus.TrialLimitReached);
 
         var rows = ListProcessor.ProcessText(request.InputText, request.Separator, request.SizeConfig);
@@ -58,7 +70,7 @@ public sealed class ProcessingWorkflowService
         var orders = ListProcessor.BuildOrdersFromOrderlist(rows, request.SizeConfig, request.CaseMode);
         var preview = ListProcessor.BuildJsonPreview(orders);
 
-        TrialManager.ConsumeSuccessfulProcessing();
+        _licenseService.ConsumeSuccessfulProcessing();
 
         return new ProcessingWorkflowResult(
             ProcessingWorkflowStatus.Success,

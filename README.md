@@ -374,6 +374,8 @@ ListForge/
 │  ├─ AboutService.cs
 │  ├─ FileImportService.cs
 │  ├─ FolderService.cs
+│  ├─ ILicenseService.cs
+│  ├─ LocalTrialLicenseService.cs
 │  ├─ OutputExportService.cs
 │  ├─ ProcessingWorkflowService.cs
 │  └─ SupportPackageService.cs
@@ -382,6 +384,7 @@ ListForge/
 │  ├─ FileImportServiceTests.cs
 │  ├─ AppLoggerTests.cs
 │  ├─ ListForge.Tests.csproj
+│  ├─ LocalTrialLicenseServiceTests.cs
 │  ├─ ListProcessorTests.cs
 │  ├─ OperationResultTests.cs
 │  ├─ OutputExportServiceTests.cs
@@ -431,6 +434,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `UI/Themes` contém os dicionários de estilo.
 * `ViewModels/MainViewModel.cs` coordena estado, comandos e integração entre UI, configuração e processamento.
 * `Services` contém serviços pequenos usados pela UI, como informações da tela Sobre e abertura de pastas.
+* `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
 * `Services/FileImportService.cs`, `Services/OutputExportService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados para facilitar testes, mensagens amigáveis e logging técnico.
@@ -443,7 +447,6 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Core/FileNameHelper.cs` concentra sanitização de nomes e caminhos versionados.
 * `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
 * `Core/TextSearchHelper.cs` concentra busca e substituição de texto usada pelo editor.
-* `Core/TrialManager.cs` concentra o controle de créditos da versão Trial.
 * `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
 * `Models` contém os objetos de configuração e linhas processadas.
 * `ListForge.Tests` contém testes automatizados do núcleo determinístico.
@@ -456,7 +459,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * A leitura de arquivos e OCR foi separada em `Core/FileImporter.cs`, reduzindo acoplamento com a tela principal.
 * As configurações são salvas em uma pasta gravável por usuário, evitando depender da pasta do executável.
 * Os tamanhos são configuráveis via `sizes.json`, permitindo adaptação a diferentes padrões de produção.
-* O controle Trial foi isolado em `Core/TrialManager.cs`, para separar a regra comercial do restante do processamento.
+* A camada de licença foi organizada para separar a lógica de Trial do fluxo principal e preparar evolução futura sem alterar o comportamento atual.
 * O editor com numeração de linhas foi implementado como controle reutilizável em `UI/Controls/LineNumberedTextBox.cs`.
 * O logging interno usa arquivos locais diários, sem dependências externas, e falhas ao escrever logs são ignoradas de forma segura.
 

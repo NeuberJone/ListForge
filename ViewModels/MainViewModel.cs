@@ -18,15 +18,15 @@ using AppLogger = ListForge.Core.AppLogger;
 using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
 using TextSearchHelper = ListForge.Core.TextSearchHelper;
-using TrialManager = ListForge.Core.TrialManager;
 
 namespace ListForge.ViewModels;
 
 public class MainViewModel : INotifyPropertyChanged
 {
-    private readonly AboutService _aboutService = new();
+    private readonly ILicenseService _licenseService = new LocalTrialLicenseService();
+    private readonly AboutService _aboutService;
     private readonly SupportPackageService _supportPackageService = new();
-    private readonly ProcessingWorkflowService _processingWorkflowService = new();
+    private readonly ProcessingWorkflowService _processingWorkflowService;
     private readonly OutputExportService _outputExportService = new();
     private readonly FileImportService _fileImportService = new();
 
@@ -68,9 +68,7 @@ public class MainViewModel : INotifyPropertyChanged
     private string _replaceText = "";
     private bool _findMatchCase;
     private string _currentFileLabel = "Arquivo atual: (nova lista)";
-    private string _statusText = ConfigManager.IsTrialBuild
-        ? $"Pronto. Trial: {TrialManager.RemainingProcessings}/{TrialManager.Limit} processamento(s) restante(s)."
-        : "Pronto.";
+    private string _statusText = "Pronto.";
     private string _selectedOutputSection = "list";
     private string _selectedSockSize = "";
     private bool _showJsonSection;
@@ -247,6 +245,8 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     public MainViewModel()
     {
+        _aboutService = new AboutService(_licenseService);
+        _processingWorkflowService = new ProcessingWorkflowService(_licenseService);
         _cfg = ConfigManager.LoadConfig();
         _sizeCfg = ConfigManager.LoadSizeConfig();
         LoadConfigIntoProperties();
@@ -282,6 +282,9 @@ public class MainViewModel : INotifyPropertyChanged
         RestoreDefaultSizesCommand = new RelayCommand(RestoreDefaultSizes);
         PickOutputFolderCommand = new RelayCommand(PickOutputFolder);
         ApplyThemeCommand = new RelayCommand(() => RequestThemeChange?.Invoke(ThemeName));
+        StatusText = _licenseService.IsTrial
+            ? $"Pronto. Trial: {_licenseService.RemainingProcessings}/{_licenseService.ProcessingLimit} processamento(s) restante(s)."
+            : "Pronto.";
 
         if (!string.IsNullOrEmpty(_cfg.LastOpenedFile))
         {
@@ -673,7 +676,7 @@ public class MainViewModel : INotifyPropertyChanged
             SelectedOutputSection = "list";
             ClearValidationHighlights();
 
-            StatusText = $"Processado: {result.Rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{TrialManager.StatusSuffix}";
+            StatusText = $"Processado: {result.Rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{_licenseService.ProcessingStatusSuffix}";
         }
         catch (Exception ex)
         {
