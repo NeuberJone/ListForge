@@ -24,11 +24,15 @@ namespace ListForge.ViewModels;
 
 public class MainViewModel : INotifyPropertyChanged
 {
+    private const string AdvancedSaveLooseFilesLabel = "Arquivos soltos";
+    private const string AdvancedSaveZipLabel = "Arquivo ZIP";
+
     private readonly ILicenseService _licenseService = new LocalTrialLicenseService();
     private readonly AboutService _aboutService;
     private readonly SupportPackageService _supportPackageService = new();
     private readonly ProcessingWorkflowService _processingWorkflowService;
     private readonly OutputExportService _outputExportService = new();
+    private readonly AdvancedSaveService _advancedSaveService = new();
     private readonly FileImportService _fileImportService = new();
     private readonly JsonPieceMappingService _jsonPieceMappingService = new();
     private bool _isRefreshingAdvancedJsonPieceSlots;
@@ -145,6 +149,7 @@ public class MainViewModel : INotifyPropertyChanged
     private string _defaultCaseLabel = "Original";
     private string _defaultSeparator = ",";
     private string _themeName = "ListForge Dark";
+    private string _advancedSaveModeLabel = AdvancedSaveLooseFilesLabel;
     private double _editorFontSize = 13;
     private string _sizeSummary = "";
 
@@ -209,6 +214,7 @@ public class MainViewModel : INotifyPropertyChanged
             UseAdvancedJsonPieceMapping = value;
             Notify(nameof(HasJsonFeaturesEnabled));
             Notify(nameof(ShowAdvancedEditorOptions));
+            Notify(nameof(ShowAdvancedSaveButton));
             Notify(nameof(ShowAdvancedJsonOptions));
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
             SaveAdvancedListSettings();
@@ -220,6 +226,7 @@ public class MainViewModel : INotifyPropertyChanged
     public string DefaultListName { get => _defaultListName; set => Set(ref _defaultListName, value); }
     public string DefaultCaseLabel { get => _defaultCaseLabel; set => Set(ref _defaultCaseLabel, value); }
     public string DefaultSeparator { get => _defaultSeparator; set => Set(ref _defaultSeparator, value); }
+    public string AdvancedSaveModeLabel { get => _advancedSaveModeLabel; set => Set(ref _advancedSaveModeLabel, value); }
     public double EditorFontSize
     {
         get => _editorFontSize;
@@ -258,6 +265,7 @@ public class MainViewModel : INotifyPropertyChanged
     public bool ShowAdvancedEditorOptions => AdvancedListEnabled;
     public bool ShowAdvancedJsonOptions => AdvancedListEnabled && ShowJsonSection;
     public bool AdvancedJsonPieceSlotsEnabled => ShowAdvancedJsonOptions;
+    public bool ShowAdvancedSaveButton => ShowAdvancedEditorOptions;
 
     // ---------------------------------------------------------------
     // Bound properties — about
@@ -293,6 +301,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<string> CaseLabels { get; } = ["Original", "Tudo maiúsculo", "Tudo minúsculo"];
     public ObservableCollection<string> SortLabels { get; } = ["Original", "Crescente", "Decrescente"];
     public ObservableCollection<string> ThemeNames { get; } = ["ListForge Dark", "ListForge Light", "SISBolt"];
+    public ObservableCollection<string> AdvancedSaveModeLabels { get; } = [AdvancedSaveLooseFilesLabel, AdvancedSaveZipLabel];
     public ObservableCollection<string> SockSizeOptions { get; } = [];
     public ObservableCollection<PieceTypeOption> JsonPieceTypeOptions { get; } =
     [
@@ -311,6 +320,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ProcessCommand { get; }
     public ICommand CopyOutputCommand { get; }
     public ICommand SaveOutputCommand { get; }
+    public ICommand AdvancedSaveCommand { get; }
     public ICommand CopyJsonCommand { get; }
     public ICommand GenerateJsonCommand { get; }
     public ICommand ClearAllCommand { get; }
@@ -361,6 +371,7 @@ public class MainViewModel : INotifyPropertyChanged
         ProcessCommand = new RelayCommand(ProcessAndPreview);
         CopyOutputCommand = new RelayCommand(CopyOutput);
         SaveOutputCommand = new RelayCommand(SaveOutput);
+        AdvancedSaveCommand = new RelayCommand(AdvancedSave);
         CopyJsonCommand = new RelayCommand(CopyJson);
         GenerateJsonCommand = new RelayCommand(GenerateJson);
         ClearAllCommand = new RelayCommand(ClearAll);
@@ -412,6 +423,7 @@ public class MainViewModel : INotifyPropertyChanged
         DefaultListName = _cfg.DefaultListName;
         DefaultCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
         DefaultSeparator = _cfg.DefaultInputSeparator;
+        AdvancedSaveModeLabel = AdvancedSaveModeToLabel(ParseAdvancedSaveMode(_cfg.AdvancedSaveMode));
         ThemeName = NormalizeThemeName(_cfg.ThemeName);
         EditorSeparator = _cfg.DefaultInputSeparator;
         EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
@@ -455,6 +467,22 @@ public class MainViewModel : INotifyPropertyChanged
         "Decrescente" => ListForge.Core.ListSortMode.Descending,
         _ => ListForge.Core.ListSortMode.Original,
     };
+
+    private static AdvancedSaveMode ParseAdvancedSaveMode(string? value) =>
+        string.Equals(value, "Zip", StringComparison.OrdinalIgnoreCase)
+            ? AdvancedSaveMode.Zip
+            : AdvancedSaveMode.LooseFiles;
+
+    private static string AdvancedSaveModeToConfigValue(AdvancedSaveMode mode) =>
+        mode == AdvancedSaveMode.Zip ? "Zip" : "LooseFiles";
+
+    private static string AdvancedSaveModeToLabel(AdvancedSaveMode mode) =>
+        mode == AdvancedSaveMode.Zip ? AdvancedSaveZipLabel : AdvancedSaveLooseFilesLabel;
+
+    private static AdvancedSaveMode AdvancedSaveModeLabelToMode(string? label) =>
+        string.Equals(label, AdvancedSaveZipLabel, StringComparison.OrdinalIgnoreCase)
+            ? AdvancedSaveMode.Zip
+            : AdvancedSaveMode.LooseFiles;
 
     private static string NormalizeThemeName(string? themeName) => themeName switch
     {
@@ -801,6 +829,75 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     // Output actions
     // ---------------------------------------------------------------
+    private void AdvancedSave()
+    {
+        if (!AdvancedListEnabled)
+        {
+            MessageBox.Show("Ative Lista avançada antes de usar o Salvar avançado.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!ShowJsonSection)
+        {
+            MessageBox.Show("Ative os recursos de JSON antes de usar o Salvar avançado.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(OutputText) || _lastOrders.Count == 0)
+        {
+            MessageBox.Show("Processe a lista antes de usar o Salvar avançado.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var json = _lastJson;
+        if (string.IsNullOrWhiteSpace(json) && _lastOrders.Count > 0)
+        {
+            json = CoreProcessor.BuildJsonPreview(_lastOrders);
+            _lastJson = json;
+            JsonText = json;
+        }
+
+        var baseName = ResolveAdvancedSaveName();
+        if (baseName == null)
+        {
+            AppLogger.Info("AdvancedSave", "Exportacao avancada cancelada na escolha do nome.");
+            return;
+        }
+
+        var outputDirectory = ResolveAdvancedSaveOutputDir();
+        if (outputDirectory == null)
+        {
+            AppLogger.Info("AdvancedSave", "Exportacao avancada cancelada na escolha da pasta.");
+            return;
+        }
+
+        var mode = AdvancedSaveModeLabelToMode(AdvancedSaveModeLabel);
+        var result = _advancedSaveService.Save(new AdvancedSaveRequest(
+            outputDirectory,
+            baseName,
+            InputText,
+            OutputText,
+            json,
+            mode));
+
+        if (!result.Success || result.Value == null)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var saved = result.Value;
+        StatusText = saved.Mode == AdvancedSaveMode.Zip
+            ? $"Salvar avançado gerado: {Path.GetFileName(saved.ZipPath)}"
+            : $"Salvar avançado gerado: {saved.FilePaths.Count} arquivo(s).";
+
+        var message = saved.Mode == AdvancedSaveMode.Zip
+            ? $"Salvar avançado concluído:\n{saved.ZipPath}"
+            : "Salvar avançado concluído:\n" + string.Join("\n", saved.FilePaths);
+
+        MessageBox.Show(message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private void CopyOutput()
     {
         if (string.IsNullOrWhiteSpace(OutputText))
@@ -917,6 +1014,51 @@ public class MainViewModel : INotifyPropertyChanged
             return null;
         }
         return base_;
+    }
+
+    private string? ResolveAdvancedSaveName()
+    {
+        var suggested = string.IsNullOrWhiteSpace(_currentFile)
+            ? (string.IsNullOrWhiteSpace(DefaultListName) ? "lista" : DefaultListName)
+            : CoreProcessor.SanitizeBaseFilename(Path.GetFileNameWithoutExtension(_currentFile));
+
+        var typed = ListForge.UI.Views.InputDialog.Show(
+            "Informe o nome base para o Salvar avançado:", ConfigManager.AppName, suggested);
+        if (typed == null) return null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            MessageBox.Show("Informe um nome base para o Salvar avançado.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return null;
+        }
+
+        var baseName = CoreProcessor.SanitizeBaseFilename(typed);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            MessageBox.Show("Nome inválido.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return null;
+        }
+
+        return baseName;
+    }
+
+    private string? ResolveAdvancedSaveOutputDir()
+    {
+        if (UseDefaultOutputDir)
+        {
+            if (string.IsNullOrWhiteSpace(OutputDir))
+            {
+                MessageBox.Show("Defina uma pasta padrão de saída nas configurações.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return null;
+            }
+
+            Directory.CreateDirectory(OutputDir);
+            return OutputDir;
+        }
+
+        var dlg = new OpenFolderDialog { Title = "Escolha a pasta do Salvar avançado" };
+        if (dlg.ShowDialog() != true) return null;
+        return dlg.FolderName;
     }
 
     private void PickOutputFolder()
@@ -1075,6 +1217,7 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.DefaultListName = DefaultListName.Trim();
         _cfg.DefaultCaseMode = LabelToCaseMode(DefaultCaseLabel);
         _cfg.DefaultInputSeparator = string.IsNullOrWhiteSpace(DefaultSeparator) ? "," : DefaultSeparator.Trim();
+        _cfg.AdvancedSaveMode = AdvancedSaveModeToConfigValue(AdvancedSaveModeLabelToMode(AdvancedSaveModeLabel));
         _cfg.ThemeName = ThemeName;
         _cfg.EditorFontSize = ClampEditorFontSize(EditorFontSize);
         _cfg.LastOpenedFile = _currentFile ?? "";

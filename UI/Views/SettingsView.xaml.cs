@@ -39,6 +39,11 @@ public partial class SettingsView : UserControl
         TxtDefaultSeparator.SetBinding(TextBox.TextProperty,
             new Binding(nameof(vm.DefaultSeparator)) { Source = vm, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
 
+        // ---- Advanced export ----
+        CmbAdvancedSaveMode.ItemsSource = vm.AdvancedSaveModeLabels;
+        CmbAdvancedSaveMode.SetBinding(ComboBox.SelectedItemProperty,
+            new Binding(nameof(vm.AdvancedSaveModeLabel)) { Source = vm, Mode = BindingMode.TwoWay });
+
         // ---- Theme ----
         CmbTheme.ItemsSource = vm.ThemeNames;
         CmbTheme.SetBinding(ComboBox.SelectedItemProperty,

@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.25-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.26-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -110,6 +110,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 
 * Geração de saída textual.
 * Geração, cópia e prévia de JSON.
+* **Salvar avançado** para exportar entrada, saída e JSON em conjunto.
 * Backups automáticos ao sobrescrever arquivos.
 * Logs internos diários para diagnóstico técnico.
 * Configurações persistentes por usuário.
@@ -305,6 +306,19 @@ O Editor possui um switch **Lista avançada** na barra superior. Ele substitui a
 
 Com **Lista avançada** desligada, o ListForge mantém visíveis os controles principais de entrada, saída, preparação, processamento, cópia e salvamento. Ao ligar, o editor mostra opções extras, como aplicação em lote de tamanho/meião e a seleção avançada de tipos de peça para o JSON na barra lateral. Alternar essa opção não altera as regras de processamento por si só e não consome créditos Trial.
 
+## Salvar avançado
+
+Com **Lista avançada** ligada, o Editor mostra o botão **Salvar avançado** no rodapé. Ele exporta, de uma vez, o texto atual da entrada, a saída processada e o JSON atual, usando o mesmo nome base informado pelo usuário.
+
+Antes de usar, processe a lista para revisar a saída. O botão não processa automaticamente e não consome créditos Trial.
+
+Na tela **Configurações > Exportação avançada**, escolha o tipo de exportação:
+
+* **Arquivos soltos**: gera `nome-entrada.txt`, `nome-saida.txt` e `nome.json` na pasta escolhida.
+* **Arquivo ZIP**: gera `nome.zip` contendo somente `nome-entrada.txt`, `nome-saida.txt` e `nome.json`.
+
+O nome base é sanitizado para evitar caracteres inválidos em arquivos. Se já existir algum destino com o mesmo nome, o ListForge usa uma variação versionada, preservando os arquivos anteriores.
+
 ## Geração de JSON
 
 O ListForge gera uma prévia JSON com o objeto `orders`. A estrutura inclui campos como:
@@ -426,6 +440,7 @@ ListForge/
 │  └─ SizeConfig.cs
 ├─ Services/
 │  ├─ AboutService.cs
+│  ├─ AdvancedSaveService.cs
 │  ├─ FileImportService.cs
 │  ├─ FolderService.cs
 │  ├─ ILicenseService.cs
@@ -435,6 +450,7 @@ ListForge/
 │  ├─ ProcessingWorkflowService.cs
 │  └─ SupportPackageService.cs
 ├─ ListForge.Tests/
+│  ├─ AdvancedSaveServiceTests.cs
 │  ├─ FileImporterTests.cs
 │  ├─ FileImportServiceTests.cs
 │  ├─ AppLoggerTests.cs
@@ -499,7 +515,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
-* `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/ProcessingWorkflowService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.
+* `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/AdvancedSaveService.cs`, `Services/ProcessingWorkflowService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.
 * `Core/AppLogger.cs` registra logs internos diários para suporte e diagnóstico.
 * `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
 * `Core/ListParser.cs` concentra separadores, limpeza por separador, parsing de linha e preservação da ordem de entrada.
@@ -597,7 +613,7 @@ Esse fluxo não gera instalador, onefile ou artefatos de release.
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.25`.
+O projeto está configurado para Windows x64 e versão `2.1.26`.
 
 ### Script de release
 
@@ -631,19 +647,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.25\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.26\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.25\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.26\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.25\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.26\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -652,16 +668,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.25\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.26\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.25\Installer
+bin\Release\dist\2.1.26\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.25\SHA256SUMS.txt
+bin\Release\dist\2.1.26\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.

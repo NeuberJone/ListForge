@@ -120,6 +120,7 @@
         <Button Content="Limpar tudo"  Command="{Binding ClearAllCommand}"   Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
         <Button Content="Copiar sa&#x00ED;da" Command="{Binding CopyOutputCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
         <Button Content="Salvar sa&#x00ED;da" Command="{Binding SaveOutputCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+        <Button x:Name="BtnAdvancedSave" Content="Salvar avan&#x00E7;ado" Command="{Binding AdvancedSaveCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0" ToolTip="Salva entrada, sa&#x00ED;da e JSON usando a configura&#x00E7;&#x00E3;o de exporta&#x00E7;&#x00E3;o avan&#x00E7;ada."/>
         <Button x:Name="BtnCopyJson" Content="Copiar JSON" Command="{Binding CopyJsonCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
       </WrapPanel>
       <WrapPanel Grid.Column="1" HorizontalAlignment="Right">

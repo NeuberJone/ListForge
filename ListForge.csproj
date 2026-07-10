@@ -13,9 +13,9 @@
     <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
-    <Version>2.1.25</Version>
-    <FileVersion>2.1.25.0</FileVersion>
-    <AssemblyVersion>2.1.25.0</AssemblyVersion>
+    <Version>2.1.26</Version>
+    <FileVersion>2.1.26.0</FileVersion>
+    <AssemblyVersion>2.1.26.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>

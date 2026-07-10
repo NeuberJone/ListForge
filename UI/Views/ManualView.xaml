@@ -39,6 +39,10 @@ Text="Na barra superior do Editor, use o switch Lista avançada para ligar ou de
         <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
 Text="Na barra superior do Editor existem ações ligadas a arquivo e edição:&#x0a;&#x0a;• Abrir Lista: abre um arquivo de texto para colocar na entrada.&#x0a;• Extrair lista do link: abre uma janela para você colar um link HTTP(S) que retorna JSON.&#x0a;• Salvar Entrada: salva o conteúdo atual da entrada no arquivo atual.&#x0a;• Salvar Entrada Como: salva a entrada em um novo arquivo.&#x0a;• Desfazer: desfaz a última alteração feita na entrada (Ctrl+Z).&#x0a;• Abrir pasta de backups: abre a pasta onde os backups são guardados.&#x0a;&#x0a;Quando você salva por cima de um arquivo já existente, o programa cria um backup antes da gravação. Isso ajuda a recuperar versões anteriores da lista."/>
       </Expander>
+      <Expander Header="Salvar avançado" Margin="0,0,0,6">
+        <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
+Text="Com Lista avançada ligada, o Editor mostra o botão Salvar avançado no rodapé. Ele salva, de uma vez, a entrada atual, a Lista organizada e o JSON atual usando o mesmo nome base.&#x0a;&#x0a;Antes de usar, processe a lista e confira a saída. O Salvar avançado não processa automaticamente e não consome crédito Trial.&#x0a;&#x0a;Em Configurações > Exportação avançada, escolha o tipo:&#x0a;• Arquivos soltos: gera nome-entrada.txt, nome-saida.txt e nome.json.&#x0a;• Arquivo ZIP: gera nome.zip contendo somente esses três arquivos.&#x0a;&#x0a;Se já existir arquivo com o mesmo nome no destino, o ListForge usa uma variação versionada para preservar os arquivos anteriores."/>
+      </Expander>
 
       <Expander Header="Como montar a entrada" Margin="0,0,0,6">
         <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
@@ -127,7 +131,7 @@ Text="O release do ListForge pode ser gerado pelo script build-release.ps1 na ra
       </Expander>
       <Expander Header="Configurações" Margin="0,0,0,6">
         <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
-Text="A tela Configurações é dividida em grupos principais:&#x0a;&#x0a;1. Exibição&#x0a;  • tamanho da fonte das listas&#x0a;&#x0a;2. Saída&#x0a;  • pasta padrão, nome padrão, modo de capitalização, separador padrão&#x0a;&#x0a;3. Tema&#x0a;  • seleção do tema da interface (ListForge Dark / ListForge Light / SISBolt)&#x0a;&#x0a;4. Tamanhos&#x0a;  • cadastro separado por Masculino, Feminino, Infantil e Meião (tamanhos-base, prefixos, sufixos)&#x0a;&#x0a;Na parte inferior: Salvar configurações / Restaurar padrões gerais / Restaurar tamanhos padrão / Abrir pasta de logs. A Lista avançada agora é ligada diretamente no Editor."/>
+Text="A tela Configurações é dividida em grupos principais:&#x0a;&#x0a;1. Exibição&#x0a;  • tamanho da fonte das listas&#x0a;&#x0a;2. Saída&#x0a;  • pasta padrão, nome padrão, modo de capitalização, separador padrão&#x0a;&#x0a;3. Exportação avançada&#x0a;  • tipo do Salvar avançado: Arquivos soltos ou Arquivo ZIP&#x0a;&#x0a;4. Tema&#x0a;  • seleção do tema da interface (ListForge Dark / ListForge Light / SISBolt)&#x0a;&#x0a;5. Tamanhos&#x0a;  • cadastro separado por Masculino, Feminino, Infantil e Meião (tamanhos-base, prefixos, sufixos)&#x0a;&#x0a;Na parte inferior: Salvar configurações / Restaurar padrões gerais / Restaurar tamanhos padrão / Abrir pasta de logs. A Lista avançada agora é ligada diretamente no Editor."/>
       </Expander>
 
       <Expander Header="Tamanhos" Margin="0,0,0,6">

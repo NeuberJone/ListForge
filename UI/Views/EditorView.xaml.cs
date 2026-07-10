@@ -120,6 +120,9 @@ public partial class EditorView : UserControl
                 case nameof(vm.ShowAdvancedEditorOptions):
                     RefreshAdvancedEditorOptionsVisibility(vm);
                     break;
+                case nameof(vm.ShowAdvancedSaveButton):
+                    RefreshAdvancedEditorOptionsVisibility(vm);
+                    break;
             }
         };
 
@@ -134,6 +137,7 @@ public partial class EditorView : UserControl
     private void RefreshAdvancedEditorOptionsVisibility(MainViewModel vm)
     {
         PnlBulkAppend.Visibility = vm.ShowAdvancedEditorOptions ? Visibility.Visible : Visibility.Collapsed;
+        BtnAdvancedSave.Visibility = vm.ShowAdvancedSaveButton ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ---------------------------------------------------------------

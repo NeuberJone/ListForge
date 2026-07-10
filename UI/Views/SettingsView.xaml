@@ -100,6 +100,16 @@
       </GroupBox>
 
       <!-- ============================================================
+           Seção: Exportação avançada
+      ============================================================ -->
+      <GroupBox Header="Exporta&#x00E7;&#x00E3;o avan&#x00E7;ada">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="Tipo de Salvar avan&#x00E7;ado:" VerticalAlignment="Center" Margin="0,0,12,0"/>
+          <ComboBox x:Name="CmbAdvancedSaveMode" Width="180"/>
+        </StackPanel>
+      </GroupBox>
+
+      <!-- ============================================================
            Seção: Tema
       ============================================================ -->
       <GroupBox Header="Tema">

@@ -4,6 +4,15 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.26] - 2026-07-10
+
+### Adicionado
+
+- Botão Salvar avançado no modo avançado do Editor.
+- Exportação conjunta da entrada, saída e JSON com o mesmo nome base.
+- Opção de exportação avançada em arquivos soltos ou arquivo ZIP.
+- Testes automatizados para validar nomes, ZIP, validações e preservação dos créditos Trial no Salvar avançado.
+
 ## [2.1.25] - 2026-07-10
 
 ### Adicionado
