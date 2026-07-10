@@ -4,6 +4,72 @@
              xmlns:ctrl="clr-namespace:ListForge.UI.Controls"
              Background="{StaticResource AppBg}">
 
+  <UserControl.Resources>
+    <Style x:Key="AdvancedListSwitchStyle" TargetType="{x:Type ToggleButton}">
+      <Setter Property="Width" Value="88"/>
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ToggleButton}">
+            <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+              <Border x:Name="Track"
+                      Background="{StaticResource PanelAlt}"
+                      BorderBrush="{StaticResource BorderBrush}"
+                      BorderThickness="1"
+                      CornerRadius="15"/>
+              <TextBlock x:Name="OnLabel"
+                         Text="ON"
+                         Foreground="White"
+                         FontWeight="Bold"
+                         FontSize="11"
+                         HorizontalAlignment="Left"
+                         VerticalAlignment="Center"
+                         Margin="15,0,0,0"
+                         Opacity="0"/>
+              <TextBlock x:Name="OffLabel"
+                         Text="OFF"
+                         Foreground="{StaticResource TextMutedBrush}"
+                         FontWeight="Bold"
+                         FontSize="11"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Center"
+                         Margin="0,0,12,0"/>
+              <Border x:Name="Knob"
+                      Width="26"
+                      Height="26"
+                      Margin="2"
+                      HorizontalAlignment="Left"
+                      CornerRadius="13"
+                      Background="{StaticResource TextBrush}">
+                <Border.Effect>
+                  <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.22"/>
+                </Border.Effect>
+              </Border>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Track" Property="Background" Value="{StaticResource SuccessBrush}"/>
+                <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource SuccessBrush}"/>
+                <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
+                <Setter TargetName="OnLabel" Property="Opacity" Value="1"/>
+                <Setter TargetName="OffLabel" Property="Opacity" Value="0"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Track" Property="Opacity" Value="0.5"/>
+                <Setter TargetName="Knob" Property="Opacity" Value="0.65"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </UserControl.Resources>
+
   <DockPanel>
 
     <!-- ============================================================
@@ -18,6 +84,19 @@
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis"
                    MaxWidth="380"/>
+        <StackPanel DockPanel.Dock="Right"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    Margin="0,0,14,0">
+          <TextBlock Text="Lista avançada"
+                     Foreground="{StaticResource TextBrush}"
+                     FontWeight="Bold"
+                     VerticalAlignment="Center"
+                     Margin="0,0,8,0"/>
+          <ToggleButton x:Name="TglAdvancedList"
+                        Style="{StaticResource AdvancedListSwitchStyle}"
+                        ToolTip="Liga ou desliga os recursos de Lista avançada."/>
+        </StackPanel>
         <WrapPanel>
           <Button Content="Abrir Lista"          Command="{Binding OpenInputFileCommand}"     Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
           <Button Content="Extrair do link"      Command="{Binding ExtractFromLinkCommand}"   Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
@@ -68,7 +147,7 @@
             <ComboBox x:Name="CmbSortMode" Width="140"/>
           </WrapPanel>
 
-          <WrapPanel Margin="0,10,0,0">
+          <WrapPanel x:Name="PnlBulkAppend" Margin="0,10,0,0">
             <TextBlock Text="Adicionar:" VerticalAlignment="Center" Margin="0,0,14,0"/>
             <CheckBox x:Name="ChkApplySock" Content="Mei&#x00E3;o" IsChecked="True" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
             <ComboBox x:Name="CmbBulkSock" Width="170" Margin="0,0,22,0"/>

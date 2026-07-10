@@ -110,7 +110,18 @@ public class MainViewModel : INotifyPropertyChanged
     public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
     public string SelectedOutputSection { get => _selectedOutputSection; set => Set(ref _selectedOutputSection, value); }
     public string SelectedSockSize { get => _selectedSockSize; set => Set(ref _selectedSockSize, value); }
-    public bool ShowJsonSection { get => _showJsonSection; set => Set(ref _showJsonSection, value); }
+    public bool ShowJsonSection
+    {
+        get => _showJsonSection;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_showJsonSection, value)) return;
+            _showJsonSection = value;
+            Notify();
+            Notify(nameof(ShowAdvancedJsonOptions));
+            Notify(nameof(AdvancedJsonPieceSlotsEnabled));
+        }
+    }
 
     private IReadOnlyList<int> _validationHighlightLines = Array.Empty<int>();
     public IReadOnlyList<int> ValidationHighlightLines
@@ -147,6 +158,7 @@ public class MainViewModel : INotifyPropertyChanged
             Notify();
             ShowJsonSection = value;
             Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(ShowAdvancedJsonOptions));
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
         }
     }
@@ -157,6 +169,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             Set(ref _showGenerateJsonButton, value);
             Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(ShowAdvancedJsonOptions));
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
         }
     }
@@ -167,6 +180,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             Set(ref _showCopyJsonButton, value);
             Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(ShowAdvancedJsonOptions));
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
         }
     }
@@ -176,6 +190,7 @@ public class MainViewModel : INotifyPropertyChanged
         set
         {
             Set(ref _useAdvancedJsonPieceMapping, value);
+            Notify(nameof(ShowAdvancedJsonOptions));
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
         }
     }
@@ -193,7 +208,10 @@ public class MainViewModel : INotifyPropertyChanged
             ShowCopyJsonButton = value;
             UseAdvancedJsonPieceMapping = value;
             Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(ShowAdvancedEditorOptions));
+            Notify(nameof(ShowAdvancedJsonOptions));
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
+            SaveAdvancedListSettings();
         }
     }
     public bool UseDefaultOutputDir { get => _useDefaultOutputDir; set { Set(ref _useDefaultOutputDir, value); Notify(nameof(OutputDirEnabled)); } }
@@ -237,7 +255,9 @@ public class MainViewModel : INotifyPropertyChanged
     public bool OutputDirEnabled => !UseDefaultOutputDir;
     public bool DefaultListNameEnabled => !UseDefaultListName;
     public bool HasJsonFeaturesEnabled => AdvancedListEnabled;
-    public bool AdvancedJsonPieceSlotsEnabled => AdvancedListEnabled;
+    public bool ShowAdvancedEditorOptions => AdvancedListEnabled;
+    public bool ShowAdvancedJsonOptions => AdvancedListEnabled && ShowJsonSection;
+    public bool AdvancedJsonPieceSlotsEnabled => ShowAdvancedJsonOptions;
 
     // ---------------------------------------------------------------
     // Bound properties — about
@@ -1006,6 +1026,17 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     // Settings
     // ---------------------------------------------------------------
+    private void SaveAdvancedListSettings()
+    {
+        _cfg.ShowJsonTab = AdvancedListEnabled;
+        _cfg.ShowGenerateJsonButton = AdvancedListEnabled;
+        _cfg.ShowCopyJsonButton = AdvancedListEnabled;
+        _cfg.UseAdvancedJsonPieceMapping = AdvancedListEnabled;
+
+        try { ConfigManager.SaveConfig(_cfg); }
+        catch (Exception ex) { AppLogger.Error("AdvancedList", "Falha ao salvar Lista avançada no config.json.", ex, ConfigManager.ConfigPath); }
+    }
+
     private void SaveSettings()
     {
         if (UseDefaultOutputDir && string.IsNullOrWhiteSpace(OutputDir))

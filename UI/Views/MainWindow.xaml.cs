@@ -36,7 +36,9 @@ public partial class MainWindow : Window
         _vm.RequestScrollToLine += lineNo => EditorViewControl.ScrollToLine(lineNo);
         _vm.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(_vm.AdvancedListEnabled))
+            if (e.PropertyName == nameof(_vm.AdvancedListEnabled)
+                || e.PropertyName == nameof(_vm.ShowJsonSection)
+                || e.PropertyName == nameof(_vm.ShowAdvancedJsonOptions))
                 RefreshAdvancedListPanelVisibility();
         };
 
@@ -83,7 +85,7 @@ public partial class MainWindow : Window
 
     private void RefreshAdvancedListPanelVisibility()
     {
-        AdvancedListPanel.Visibility = _currentScreen == "editor" && _vm.AdvancedListEnabled
+        AdvancedListPanel.Visibility = _currentScreen == "editor" && _vm.ShowAdvancedJsonOptions
             ? Visibility.Visible
             : Visibility.Collapsed;
     }

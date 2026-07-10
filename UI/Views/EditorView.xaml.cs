@@ -92,6 +92,13 @@ public partial class EditorView : UserControl
         // ---- File label ----
         LblCurrentFile.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
             new System.Windows.Data.Binding(nameof(vm.CurrentFileLabel)) { Source = vm });
+        TglAdvancedList.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty,
+            new System.Windows.Data.Binding(nameof(vm.AdvancedListEnabled))
+            {
+                Source = vm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged,
+            });
 
         // ---- Keyboard handler ----
         LnbInput.TextKeyDown += TxtInput_KeyDown;
@@ -110,14 +117,23 @@ public partial class EditorView : UserControl
                 case nameof(vm.ShowGenerateJsonButton):
                     BtnGenerateJson.Visibility = vm.ShowGenerateJsonButton ? Visibility.Visible : Visibility.Collapsed;
                     break;
+                case nameof(vm.ShowAdvancedEditorOptions):
+                    RefreshAdvancedEditorOptionsVisibility(vm);
+                    break;
             }
         };
 
         TabJson.Visibility = vm.ShowJsonSection ? Visibility.Visible : Visibility.Collapsed;
         BtnCopyJson.Visibility = vm.ShowCopyJsonButton ? Visibility.Visible : Visibility.Collapsed;
         BtnGenerateJson.Visibility = vm.ShowGenerateJsonButton ? Visibility.Visible : Visibility.Collapsed;
+        RefreshAdvancedEditorOptionsVisibility(vm);
         // ---- Search highlight ----
         vm.SearchHighlightChanged += (_, _) => ApplySearchHighlight();
+    }
+
+    private void RefreshAdvancedEditorOptionsVisibility(MainViewModel vm)
+    {
+        PnlBulkAppend.Visibility = vm.ShowAdvancedEditorOptions ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ---------------------------------------------------------------

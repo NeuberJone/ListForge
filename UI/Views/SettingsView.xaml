@@ -11,9 +11,6 @@
       ============================================================ -->
       <GroupBox Header="Exibição">
         <StackPanel Margin="0,4,0,0">
-          <CheckBox x:Name="ChkAdvancedList"
-                    Content="Lista avançada"
-                    Margin="0,0,0,12"/>
           <DockPanel LastChildFill="True">
             <TextBlock DockPanel.Dock="Left"
                        Text="Tamanho da fonte das listas:"

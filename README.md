@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.24-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.25-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -93,6 +93,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 * Capitalização em modo original, maiúsculo ou minúsculo.
 * Tamanho de fonte ajustável para entrada, saída e prévia JSON.
 * Atalho com `Ctrl` + scroll do mouse para aumentar ou diminuir a fonte dos editores.
+* Switch **Lista avançada** no editor para ligar ou desligar recursos avançados sem sair da tela principal.
 
 ### Processamento
 
@@ -298,6 +299,12 @@ O tamanho da fonte dos editores de Entrada / edição, Saída e Prévia JSON pod
 
 Também é possível alterar rapidamente pelo editor: posicione o mouse sobre a entrada ou saída, segure `Ctrl` e role o scroll do mouse. `Ctrl` + scroll para cima aumenta a fonte; `Ctrl` + scroll para baixo diminui. O valor é aplicado aos três editores ao mesmo tempo, respeita o intervalo de 8 a 32 px e é salvo em `config.json`.
 
+## Lista avançada no editor
+
+O Editor possui um switch **Lista avançada** na barra superior. Ele substitui a antiga opção de Configurações e permite ligar ou desligar recursos avançados sem sair da tela principal.
+
+Com **Lista avançada** desligada, o ListForge mantém visíveis os controles principais de entrada, saída, preparação, processamento, cópia e salvamento. Ao ligar, o editor mostra opções extras, como aplicação em lote de tamanho/meião e a seleção avançada de tipos de peça para o JSON na barra lateral. Alternar essa opção não altera as regras de processamento por si só e não consome créditos Trial.
+
 ## Geração de JSON
 
 O ListForge gera uma prévia JSON com o objeto `orders`. A estrutura inclui campos como:
@@ -320,7 +327,7 @@ No modo básico, os tamanhos de cada linha seguem a ordem padrão dos campos do 
 
 ### Edição avançada do JSON
 
-Nas Configurações, a opção **Lista avançada** habilita os recursos avançados de JSON. Com ela ativa, a barra lateral do Editor mostra os seletores de tipos de peça usados para distribuir os tamanhos de cada linha entre os campos do JSON.
+No switch da barra superior do Editor, a opção **Lista avançada** habilita os recursos avançados de JSON. Com ela ativa, a barra lateral mostra os seletores de tipos de peça usados para distribuir os tamanhos de cada linha entre os campos do JSON.
 
 O primeiro tipo escolhido é aplicado ao primeiro tamanho encontrado, o segundo tipo ao segundo tamanho, e assim sucessivamente. Tipos já escolhidos deixam de aparecer nas demais posições. Essa opção é útil quando uma mesma linha possui tamanhos de peças diferentes. Quando os tamanhos pertencem ao mesmo gênero, o JSON mantém os campos no mesmo registro; a divisão em registros separados é usada para gêneros diferentes ou para quantidades expandidas.
 
@@ -590,7 +597,7 @@ Esse fluxo não gera instalador, onefile ou artefatos de release.
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.24`.
+O projeto está configurado para Windows x64 e versão `2.1.25`.
 
 ### Script de release
 
@@ -624,19 +631,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.24\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.25\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.24\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.25\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.24\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.25\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -645,16 +652,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.24\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.25\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.24\Installer
+bin\Release\dist\2.1.25\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.24\SHA256SUMS.txt
+bin\Release\dist\2.1.25\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.

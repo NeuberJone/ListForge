@@ -16,8 +16,6 @@ public partial class SettingsView : UserControl
         DataContext = vm;
 
         // ---- Display ----
-        ChkAdvancedList.SetBinding(CheckBox.IsCheckedProperty,
-            new Binding(nameof(vm.AdvancedListEnabled)) { Source = vm, Mode = BindingMode.TwoWay });
         SldEditorFontSize.SetBinding(Slider.ValueProperty,
             new Binding(nameof(vm.EditorFontSize)) { Source = vm, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
         TxtEditorFontSize.SetBinding(TextBlock.TextProperty,

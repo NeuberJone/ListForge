@@ -4,6 +4,13 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.25] - 2026-07-10
+
+### Adicionado
+
+- Switch Lista avançada movido para o Editor, substituindo a opção da tela Configurações.
+- Lista avançada passa a concentrar opções extras da lista e recursos avançados de JSON.
+
 ## [2.1.24] - 2026-07-09
 
 ### Adicionado
