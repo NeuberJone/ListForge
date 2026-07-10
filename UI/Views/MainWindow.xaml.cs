@@ -117,11 +117,15 @@ public partial class MainWindow : Window
         var segUri = new Uri(
             "pack://application:,,,/UI/Controls/SegmentedControl.xaml",
             UriKind.Absolute);
+        var toggleUri = new Uri(
+            "pack://application:,,,/UI/Controls/AnimatedToggleSwitch.xaml",
+            UriKind.Absolute);
 
         var mergedDicts = Application.Current.Resources.MergedDictionaries;
         mergedDicts.Clear();
         mergedDicts.Add(new ResourceDictionary { Source = themeUri });
         mergedDicts.Add(new ResourceDictionary { Source = segUri });
+        mergedDicts.Add(new ResourceDictionary { Source = toggleUri });
 
         RefreshThemeResources();
         _isApplyingTheme = false;

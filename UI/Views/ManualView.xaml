@@ -32,7 +32,7 @@ Text="A interface é dividida em três áreas principais:&#x0a;&#x0a;• Barra l
 
       <Expander Header="Lista avançada no Editor" Margin="0,0,0,6">
         <TextBlock Margin="14,8,14,14" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontFamily="Segoe UI" FontSize="13"
-Text="Na barra superior do Editor, use o switch Lista avançada para ligar ou desligar recursos avançados sem sair da tela principal.&#x0a;&#x0a;Com Lista avançada desligada, ficam visíveis os controles principais para abrir, editar, preparar, processar, copiar e salvar a lista.&#x0a;&#x0a;Com Lista avançada ligada, aparecem opções extras, como aplicação em lote de tamanho/meião e os seletores avançados de tipos de peça do JSON na barra lateral.&#x0a;&#x0a;A troca não apaga configurações avançadas salvas, não altera as regras de processamento por si só e não consome crédito Trial."/>
+Text="Na barra superior do Editor, use o switch animado Lista avançada para ligar ou desligar recursos avançados sem sair da tela principal. O controle pode ser alternado pelo mouse ou pelo teclado.&#x0a;&#x0a;Com Lista avançada desligada, ficam visíveis os controles principais para abrir, editar, preparar, processar, copiar e salvar a lista.&#x0a;&#x0a;Com Lista avançada ligada, aparecem opções extras, como aplicação em lote de tamanho/meião e os seletores avançados de tipos de peça do JSON na barra lateral.&#x0a;&#x0a;A troca não apaga configurações avançadas salvas, não altera as regras de processamento por si só e não consome crédito Trial."/>
       </Expander>
 
       <Expander Header="Arquivos, salvamento e backups" Margin="0,0,0,6">

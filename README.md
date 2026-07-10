@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.27-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.28-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -302,7 +302,7 @@ Também é possível alterar rapidamente pelo editor: posicione o mouse sobre a 
 
 ## Lista avançada no editor
 
-O Editor possui um switch **Lista avançada** na barra superior. Ele substitui a antiga opção de Configurações e permite ligar ou desligar recursos avançados sem sair da tela principal.
+O Editor possui um switch animado **Lista avançada** na barra superior. Ele substitui a antiga opção de Configurações e permite ligar ou desligar recursos avançados sem sair da tela principal.
 
 Com **Lista avançada** desligada, o ListForge mantém visíveis os controles principais de entrada, saída, preparação, processamento, cópia e salvamento. Ao ligar, o editor mostra opções extras, como aplicação em lote de tamanho/meião e a seleção avançada de tipos de peça para o JSON na barra lateral. Alternar essa opção não altera as regras de processamento por si só e não consome créditos Trial.
 
@@ -485,6 +485,7 @@ ListForge/
 │  └─ RelayCommand.cs
 ├─ UI/
 │  ├─ Controls/
+│  │  ├─ AnimatedToggleSwitch.xaml
 │  │  ├─ LineNumberedTextBox.cs
 │  │  ├─ SegmentedControl.cs
 │  │  └─ SegmentedControl.xaml
@@ -627,7 +628,7 @@ Esse fluxo não gera instalador, onefile ou artefatos de release.
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.27`.
+O projeto está configurado para Windows x64 e versão `2.1.28`.
 
 ### Script de release
 
@@ -661,19 +662,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.27\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.28\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.27\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.28\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.27\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.28\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -682,16 +683,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.27\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.28\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.27\Installer
+bin\Release\dist\2.1.28\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.27\SHA256SUMS.txt
+bin\Release\dist\2.1.28\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.

@@ -162,6 +162,17 @@ public partial class EditorView : UserControl
         }
     }
 
+    private void AdvancedListToggle_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter
+            && sender is System.Windows.Controls.Primitives.ToggleButton toggle
+            && toggle.IsEnabled)
+        {
+            toggle.IsChecked = toggle.IsChecked != true;
+            e.Handled = true;
+        }
+    }
+
     private void AppendSelected_Click(object sender, RoutedEventArgs e) =>
         AppendTokensToInput(applyToAll: false);
 

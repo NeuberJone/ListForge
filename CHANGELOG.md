@@ -4,6 +4,12 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.28] - 2026-07-10
+
+### Alterado
+
+- Melhorada a alternância da Lista avançada com switch animado no Editor.
+
 ## [2.1.27] - 2026-07-10
 
 ### Corrigido

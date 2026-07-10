@@ -7,6 +7,7 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="UI/Themes/DarkTheme.xaml"/>
         <ResourceDictionary Source="UI/Controls/SegmentedControl.xaml"/>
+        <ResourceDictionary Source="UI/Controls/AnimatedToggleSwitch.xaml"/>
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

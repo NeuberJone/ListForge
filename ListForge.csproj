@@ -13,9 +13,9 @@
     <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
-    <Version>2.1.27</Version>
-    <FileVersion>2.1.27.0</FileVersion>
-    <AssemblyVersion>2.1.27.0</AssemblyVersion>
+    <Version>2.1.28</Version>
+    <FileVersion>2.1.28.0</FileVersion>
+    <AssemblyVersion>2.1.28.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -48,6 +48,7 @@
     <Resource Include="UI\Themes\LightTheme.xaml"/>
     <Resource Include="UI\Themes\SisBoltTheme.xaml"/>
     <Resource Include="UI\Controls\SegmentedControl.xaml"/>
+    <Resource Include="UI\Controls\AnimatedToggleSwitch.xaml"/>
   </ItemGroup>
 
 </Project>
