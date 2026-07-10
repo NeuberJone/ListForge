@@ -192,7 +192,47 @@ public class ListProcessorTests
 
         Assert.Equal("JOANA,10,M,JUVENIL", output);
         Assert.DoesNotContain(orders, order => order.ContainsKey("Socks"));
-        Assert.Equal("M", orders.Single()["ShortSleeve"]);
+        Assert.Equal("1-M", orders.Single()["ShortSleeve"]);
+    }
+
+    [Fact]
+    public void BuildOrders_UsesQuantitySizeFormatForImplicitQuantityInJsonOnly()
+    {
+        var rows = ListProcessor.ProcessText("MANEL,,PP", ",", Config);
+
+        var output = ListProcessor.BuildOutput(rows, Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.Equal("MANEL,,PP", output);
+        var order = Assert.Single(orders);
+        Assert.Equal("1-PP", order["ShortSleeve"]);
+        Assert.DoesNotContain("1-PP", output);
+    }
+
+    [Fact]
+    public void BuildOrders_PreservesExplicitQuantityInJsonSizeFields()
+    {
+        var rows = ListProcessor.ProcessText("JAO,10,3-G", ",", Config);
+
+        var output = ListProcessor.BuildOutput(rows, Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.Equal("JAO,10,G\nJAO,10,G\nJAO,10,G", output);
+        var order = Assert.Single(orders);
+        Assert.Equal("3-G", order["ShortSleeve"]);
+    }
+
+    [Fact]
+    public void BuildOrders_UsesQuantitySizeFormatForMultiplePieces()
+    {
+        var rows = ListProcessor.ProcessText("JOAO,5,1-G,2-M,3-P", ",", Config);
+
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        var order = Assert.Single(orders);
+        Assert.Equal("1-G", order["ShortSleeve"]);
+        Assert.Equal("2-M", order["LongSleeve"]);
+        Assert.Equal("3-P", order["Short"]);
     }
 
     [Fact]
@@ -227,6 +267,26 @@ public class ListProcessorTests
         var text = ListProcessor.ExtractListTextFromJsonData(data);
 
         Assert.Equal("ANA,10,G,NINA,O+", text);
+    }
+
+    [Fact]
+    public void ExtractListTextFromJsonData_ExpandsQuantitySizeJsonValues()
+    {
+        var data = JArray.Parse("""
+        [
+          {
+            "Name": "ANA",
+            "Number": "10",
+            "ShortSleeve": "2-G",
+            "Nickname": "NINA",
+            "BloodType": "O+"
+          }
+        ]
+        """);
+
+        var text = ListProcessor.ExtractListTextFromJsonData(data);
+
+        Assert.Equal("ANA,10,G,NINA,O+\nANA,10,G,NINA,O+", text);
     }
 
     [Fact]

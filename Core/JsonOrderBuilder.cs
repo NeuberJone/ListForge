@@ -80,19 +80,16 @@ public static class JsonOrderBuilder
         foreach (var group in groupOrder)
         {
             var pieces = groupedPieces[group];
-            var rowCount = pieces.Max(piece => piece.Quantity);
             var gender = SizeHelper.GenderFromSize(pieces[0].Size, sizeConfig);
+            var order = CreateOrder(row, caseMode, gender);
 
-            for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+            foreach (var piece in pieces)
             {
-                var order = CreateOrder(row, caseMode, gender);
-                foreach (var piece in pieces)
-                {
-                    if (rowIndex < piece.Quantity && PieceTypeMapper.JsonFields.Contains(piece.PieceField))
-                        order[piece.PieceField] = piece.Size;
-                }
-                orders.Add(order);
+                if (PieceTypeMapper.JsonFields.Contains(piece.PieceField))
+                    order[piece.PieceField] = SizeHelper.FormatSizeForJson(piece.Quantity, piece.Size);
             }
+
+            orders.Add(order);
         }
 
         return orders;

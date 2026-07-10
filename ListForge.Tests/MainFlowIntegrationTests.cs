@@ -88,13 +88,11 @@ public class MainFlowIntegrationTests
             ListSortMode.Original);
 
         Assert.Equal("ANA,10,G,NINA,O+\nANA,10,G,NINA,O+", result.OutputText);
-        Assert.Equal(["ANA", "ANA"], JsonNames(result));
-        Assert.All(result.Orders, order =>
-        {
-            Assert.Equal("NINA", order["Nickname"]);
-            Assert.Equal("O+", order["BloodType"]);
-            Assert.Equal("G", order["ShortSleeve"]);
-        });
+        var order = Assert.Single(result.Orders);
+        Assert.Equal("ANA", order["Name"]);
+        Assert.Equal("NINA", order["Nickname"]);
+        Assert.Equal("O+", order["BloodType"]);
+        Assert.Equal("2-G", order["ShortSleeve"]);
     }
 
     [Fact]

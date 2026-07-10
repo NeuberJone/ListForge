@@ -80,8 +80,8 @@ public class LargeInputTests
         var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
 
         Assert.Equal(LargeLineCount * 2, CountOutputLines(output));
-        Assert.Equal(LargeLineCount * 2, orders.Count);
-        Assert.All(orders, order => Assert.Equal("G", order["ShortSleeve"]));
+        Assert.Equal(LargeLineCount, orders.Count);
+        Assert.All(orders, order => Assert.Equal("2-G", order["ShortSleeve"]));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class LargeInputTests
         Assert.Contains("JUVENIL", output);
         Assert.DoesNotContain("JUVENIL", preview);
         Assert.DoesNotContain(orders, order => order.ContainsKey("Socks"));
-        Assert.All(orders, order => Assert.Equal("M", order["ShortSleeve"]));
+        Assert.All(orders, order => Assert.Equal("1-M", order["ShortSleeve"]));
     }
 
     [Fact]

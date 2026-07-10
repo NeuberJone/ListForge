@@ -36,8 +36,8 @@ public class JsonPieceMappingTests
 
         var order = Assert.Single(orders);
         Assert.Equal("MA", order["Gender"]);
-        Assert.Equal("G", order["ShortSleeve"]);
-        Assert.Equal("M", order["LongSleeve"]);
+        Assert.Equal("1-G", order["ShortSleeve"]);
+        Assert.Equal("1-M", order["LongSleeve"]);
     }
 
     [Fact]
@@ -49,11 +49,11 @@ public class JsonPieceMappingTests
 
         Assert.Equal(2, orders.Count);
         Assert.Equal("MA", orders[0]["Gender"]);
-        Assert.Equal("G", orders[0]["ShortSleeve"]);
+        Assert.Equal("1-G", orders[0]["ShortSleeve"]);
         Assert.Equal("", orders[0]["LongSleeve"]);
         Assert.Equal("FE", orders[1]["Gender"]);
         Assert.Equal("", orders[1]["ShortSleeve"]);
-        Assert.Equal("BLM", orders[1]["LongSleeve"]);
+        Assert.Equal("1-BLM", orders[1]["LongSleeve"]);
     }
 
     [Fact]
@@ -65,12 +65,10 @@ public class JsonPieceMappingTests
 
         var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config, "original", options);
 
-        Assert.Equal(20, orders.Count);
-        Assert.Equal(3, orders.Count(order => order["Tanktop"] == "P"));
-        Assert.Equal(4, orders.Count(order => order["ShortSleeve"] == "G"));
-        Assert.Equal(20, orders.Count(order => order["Short"] == "M"));
-        Assert.Equal("G", orders.First(order => order["Tanktop"] == "P")["ShortSleeve"]);
-        Assert.Equal("M", orders.First(order => order["Tanktop"] == "P")["Short"]);
+        var order = Assert.Single(orders);
+        Assert.Equal("3-P", order["Tanktop"]);
+        Assert.Equal("4-G", order["ShortSleeve"]);
+        Assert.Equal("20-M", order["Short"]);
     }
 
     [Fact]
@@ -84,8 +82,8 @@ public class JsonPieceMappingTests
 
         var order = Assert.Single(orders);
         Assert.Equal("MA", order["Gender"]);
-        Assert.Equal("G", order["ShortSleeve"]);
-        Assert.Equal("M", order["Short"]);
+        Assert.Equal("1-G", order["ShortSleeve"]);
+        Assert.Equal("1-M", order["Short"]);
     }
 
     [Fact]
@@ -99,11 +97,11 @@ public class JsonPieceMappingTests
 
         Assert.Equal(2, orders.Count);
         Assert.Equal("MA", orders[0]["Gender"]);
-        Assert.Equal("G", orders[0]["ShortSleeve"]);
+        Assert.Equal("1-G", orders[0]["ShortSleeve"]);
         Assert.Equal("", orders[0]["Tanktop"]);
         Assert.Equal("FE", orders[1]["Gender"]);
         Assert.Equal("", orders[1]["ShortSleeve"]);
-        Assert.Equal("BLM", orders[1]["Tanktop"]);
+        Assert.Equal("1-BLM", orders[1]["Tanktop"]);
     }
 
     [Fact]
@@ -128,7 +126,10 @@ public class JsonPieceMappingTests
 
         Assert.Equal(ProcessingWorkflowStatus.Success, result.Status);
         Assert.Equal(defaultResult.OutputText, result.OutputText);
-        Assert.Equal(20, result.Orders.Count);
+        var order = Assert.Single(result.Orders);
+        Assert.Equal("3-P", order["Tanktop"]);
+        Assert.Equal("4-G", order["ShortSleeve"]);
+        Assert.Equal("20-M", order["Short"]);
     }
 
     [Fact]
@@ -198,11 +199,11 @@ public class JsonPieceMappingTests
 
         Assert.Equal(ProcessingWorkflowStatus.Success, result.Status);
         Assert.Equal("ANA", result.Orders[0]["Name"]);
-        Assert.Equal("M", result.Orders[0]["Tanktop"]);
-        Assert.Equal("GG", result.Orders[0]["Vest"]);
+        Assert.Equal("1-M", result.Orders[0]["Tanktop"]);
+        Assert.Equal("1-GG", result.Orders[0]["Vest"]);
         Assert.Equal("BRUNO", result.Orders[1]["Name"]);
-        Assert.Equal("P", result.Orders[1]["Tanktop"]);
-        Assert.Equal("G", result.Orders[1]["Vest"]);
+        Assert.Equal("1-P", result.Orders[1]["Tanktop"]);
+        Assert.Equal("1-G", result.Orders[1]["Vest"]);
     }
 
     [Fact]

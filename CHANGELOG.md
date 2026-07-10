@@ -4,6 +4,12 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.27] - 2026-07-10
+
+### Corrigido
+
+- JSON agora mantém a quantidade junto ao tamanho nos campos de peça, usando o formato `quantidade-tamanho`, sem alterar a lista organizada.
+
 ## [2.1.26] - 2026-07-10
 
 ### Adicionado

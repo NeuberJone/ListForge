@@ -165,6 +165,18 @@ public static class SizeHelper
         return qty == 1 ? size : $"{qty}-{size}";
     }
 
+    public static string FormatSizeForJson(int quantity, string size)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Quantidade inválida (<= 0).");
+
+        var normalized = NormalizeToken(size);
+        if (string.IsNullOrEmpty(normalized))
+            throw new ArgumentException("Tamanho vazio (não permitido).");
+
+        return $"{quantity}-{normalized}";
+    }
+
     // ---------------------------------------------------------------
     // CSV helpers (for UI settings)
     // ---------------------------------------------------------------

@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.26-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.27-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -337,6 +337,20 @@ O ListForge gera uma prévia JSON com o objeto `orders`. A estrutura inclui camp
 
 O meião é mantido na lista organizada, mas não é exportado como campo `Socks` no JSON.
 
+Nos campos de peça do JSON, o tamanho sempre usa o formato `quantidade-tamanho`. Quando a entrada não traz quantidade explícita, o JSON usa quantidade `1`.
+
+Exemplos:
+
+```json
+{
+  "ShortSleeve": "1-PP",
+  "LongSleeve": "2-M",
+  "Tanktop": "3-P"
+}
+```
+
+Essa regra vale somente para o JSON. A lista organizada mantém o formato textual do editor.
+
 No modo básico, os tamanhos de cada linha seguem a ordem padrão dos campos do JSON: o primeiro tamanho vai para `ShortSleeve`, o segundo para `LongSleeve`, depois `Short`, `Pants`, `Tanktop` e `Vest`. Tamanhos do mesmo gênero ficam no mesmo registro; gêneros diferentes continuam sendo separados quando necessário.
 
 ### Edição avançada do JSON
@@ -613,7 +627,7 @@ Esse fluxo não gera instalador, onefile ou artefatos de release.
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.26`.
+O projeto está configurado para Windows x64 e versão `2.1.27`.
 
 ### Script de release
 
@@ -647,19 +661,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.26\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.27\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.26\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.27\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.26\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.27\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -668,16 +682,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.26\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.27\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.26\Installer
+bin\Release\dist\2.1.27\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.26\SHA256SUMS.txt
+bin\Release\dist\2.1.27\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -786,7 +800,7 @@ Prévia JSON simplificada:
       "Number": "14",
       "BloodType": "",
       "Gender": "FE",
-      "ShortSleeve": "BLG",
+      "ShortSleeve": "1-BLG",
       "LongSleeve": "",
       "Short": "",
       "Pants": "",
