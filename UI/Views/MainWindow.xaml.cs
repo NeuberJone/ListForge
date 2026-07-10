@@ -29,9 +29,16 @@ public partial class MainWindow : Window
 
         StatusLabel.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
             new System.Windows.Data.Binding(nameof(_vm.StatusText)) { Source = _vm });
+        SidebarAdvancedJsonPieceSlots.SetBinding(ItemsControl.ItemsSourceProperty,
+            new System.Windows.Data.Binding(nameof(_vm.AdvancedJsonPieceSlots)) { Source = _vm });
 
         _vm.RequestThemeChange += themeName => ApplyTheme(themeName);
         _vm.RequestScrollToLine += lineNo => EditorViewControl.ScrollToLine(lineNo);
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(_vm.AdvancedListEnabled))
+                RefreshAdvancedListPanelVisibility();
+        };
 
         // Apply theme saved in config on startup
         ApplyTheme(_vm.ThemeName);
@@ -71,6 +78,14 @@ public partial class MainWindow : Window
         BtnNavSettings.Style = (Style)FindResource(key == "settings" ? "SidebarButtonActive" : "SidebarButton");
         BtnNavManual.Style = (Style)FindResource(key == "manual" ? "SidebarButtonActive" : "SidebarButton");
         BtnNavAbout.Style = (Style)FindResource(key == "about" ? "SidebarButtonActive" : "SidebarButton");
+        RefreshAdvancedListPanelVisibility();
+    }
+
+    private void RefreshAdvancedListPanelVisibility()
+    {
+        AdvancedListPanel.Visibility = _currentScreen == "editor" && _vm.AdvancedListEnabled
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void NavEditor_Click(object sender, RoutedEventArgs e) => ShowScreen("editor");
@@ -122,6 +137,8 @@ public partial class MainWindow : Window
         StatusbarPanel.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "BorderBrush");
         LogoTitle.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextBrush");
         LogoSubtitle.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextMutedBrush");
+        AdvancedListTitle.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextBrush");
+        AdvancedListSubtitle.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextMutedBrush");
         TopbarTitle.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextBrush");
         StatusLabel.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextMutedBrush");
 

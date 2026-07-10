@@ -11,14 +11,8 @@
       ============================================================ -->
       <GroupBox Header="Exibição">
         <StackPanel Margin="0,4,0,0">
-          <CheckBox x:Name="ChkShowJsonTab"
-                    Content="Exibir aba de prévia JSON no editor"
-                    Margin="0,0,0,8"/>
-          <CheckBox x:Name="ChkShowGenerateJsonButton"
-                    Content="Exibir botão Gerar JSON no editor"
-                    Margin="0,0,0,8"/>
-          <CheckBox x:Name="ChkShowCopyJsonButton"
-                    Content="Exibir botão Copiar JSON no editor"
+          <CheckBox x:Name="ChkAdvancedList"
+                    Content="Lista avançada"
                     Margin="0,0,0,12"/>
           <DockPanel LastChildFill="True">
             <TextBlock DockPanel.Dock="Left"

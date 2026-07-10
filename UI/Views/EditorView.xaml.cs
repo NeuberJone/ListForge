@@ -116,7 +116,6 @@ public partial class EditorView : UserControl
         TabJson.Visibility = vm.ShowJsonSection ? Visibility.Visible : Visibility.Collapsed;
         BtnCopyJson.Visibility = vm.ShowCopyJsonButton ? Visibility.Visible : Visibility.Collapsed;
         BtnGenerateJson.Visibility = vm.ShowGenerateJsonButton ? Visibility.Visible : Visibility.Collapsed;
-
         // ---- Search highlight ----
         vm.SearchHighlightChanged += (_, _) => ApplySearchHighlight();
     }

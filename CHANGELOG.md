@@ -4,6 +4,26 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.24] - 2026-07-09
+
+### Adicionado
+
+- Edição avançada do JSON para mapear a ordem dos tamanhos da lista para tipos de peça específicos.
+- Configuração de ordem personalizada entre Manga Curta, Manga Longa, Short, Calça, Regata e Colete.
+- Testes automatizados para validar mapeamento avançado, quantidades, ordenação, erros de configuração e preservação da saída textual.
+
+### Alterado
+
+- Simplificada a ativação dos recursos avançados em uma única opção chamada Lista avançada.
+- Movida a seleção dos tipos de peça da tela Configurações para a barra lateral do Editor.
+- Ocultados tipos de peça já escolhidos nas demais posições da lista avançada.
+
+### Corrigido
+
+- Corrigida duplicação de opções e perda de seleção nos seletores da lista avançada.
+- Ajustada a lista avançada para manter no mesmo registro JSON os tamanhos do mesmo gênero.
+- Ajustado o modo básico do JSON para distribuir tamanhos na ordem padrão dos campos de peça.
+
 ## [2.1.23] - 2026-06-02
 
 ### Adicionado

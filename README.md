@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.23-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.24-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -316,6 +316,38 @@ O ListForge gera uma prévia JSON com o objeto `orders`. A estrutura inclui camp
 
 O meião é mantido na lista organizada, mas não é exportado como campo `Socks` no JSON.
 
+No modo básico, os tamanhos de cada linha seguem a ordem padrão dos campos do JSON: o primeiro tamanho vai para `ShortSleeve`, o segundo para `LongSleeve`, depois `Short`, `Pants`, `Tanktop` e `Vest`. Tamanhos do mesmo gênero ficam no mesmo registro; gêneros diferentes continuam sendo separados quando necessário.
+
+### Edição avançada do JSON
+
+Nas Configurações, a opção **Lista avançada** habilita os recursos avançados de JSON. Com ela ativa, a barra lateral do Editor mostra os seletores de tipos de peça usados para distribuir os tamanhos de cada linha entre os campos do JSON.
+
+O primeiro tipo escolhido é aplicado ao primeiro tamanho encontrado, o segundo tipo ao segundo tamanho, e assim sucessivamente. Tipos já escolhidos deixam de aparecer nas demais posições. Essa opção é útil quando uma mesma linha possui tamanhos de peças diferentes. Quando os tamanhos pertencem ao mesmo gênero, o JSON mantém os campos no mesmo registro; a divisão em registros separados é usada para gêneros diferentes ou para quantidades expandidas.
+
+Exemplo:
+
+```text
+JOAO,10,3-P,4-G,20-M
+```
+
+Ordem avançada:
+
+```text
+1. Regata
+2. Manga Curta
+3. Short
+```
+
+Resultado conceitual:
+
+```text
+3-P será usado como Regata
+4-G será usado como Manga Curta
+20-M será usado como Short
+```
+
+Quando a opção está desativada, o ListForge mantém o comportamento padrão. A saída textual continua seguindo o fluxo normal; a ordem avançada altera apenas a montagem dos campos do JSON.
+
 O JSON é encapsulado com metadados básicos como `title`, `order_number`, `client_name`, `unique_name_chars` e `unique_nickname_chars`.
 
 ## Backups automáticos
@@ -368,6 +400,7 @@ ListForge/
 │  ├─ AppLogger.cs
 │  ├─ FileImporter.cs
 │  ├─ FileNameHelper.cs
+│  ├─ JsonPieceMappingOptions.cs
 │  ├─ JsonListImporter.cs
 │  ├─ JsonOrderBuilder.cs
 │  ├─ ListOutputBuilder.cs
@@ -376,6 +409,7 @@ ListForge/
 │  ├─ ListRowSorter.cs
 │  ├─ ListSortMode.cs
 │  ├─ OperationResult.cs
+│  ├─ PieceTypeMapper.cs
 │  ├─ SizeHelper.cs
 │  ├─ TextSearchHelper.cs
 │  └─ TrialManager.cs
@@ -388,6 +422,7 @@ ListForge/
 │  ├─ FileImportService.cs
 │  ├─ FolderService.cs
 │  ├─ ILicenseService.cs
+│  ├─ JsonPieceMappingService.cs
 │  ├─ LocalTrialLicenseService.cs
 │  ├─ OutputExportService.cs
 │  ├─ ProcessingWorkflowService.cs
@@ -396,6 +431,7 @@ ListForge/
 │  ├─ FileImporterTests.cs
 │  ├─ FileImportServiceTests.cs
 │  ├─ AppLoggerTests.cs
+│  ├─ JsonPieceMappingTests.cs
 │  ├─ LargeInputTests.cs
 │  ├─ ListForge.Tests.csproj
 │  ├─ LocalTrialLicenseServiceTests.cs
@@ -461,8 +497,9 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
 * `Core/ListParser.cs` concentra separadores, limpeza por separador, parsing de linha e preservação da ordem de entrada.
 * `Core/ListOutputBuilder.cs` concentra a explosão de tamanhos, distribuição de grupos, meião e montagem da saída textual.
-* `Core/JsonOrderBuilder.cs` concentra a montagem de `orders`, prévia JSON e exportação JSON.
+* `Core/JsonOrderBuilder.cs` concentra a montagem de `orders`, prévia JSON, exportação JSON e aplicação da ordem avançada de tipos de peça.
 * `Core/JsonListImporter.cs` concentra a extração de lista textual a partir de JSON.
+* `Core/PieceTypeMapper.cs` e `Services/JsonPieceMappingService.cs` concentram os tipos de peça disponíveis, normalização da ordem personalizada e validação do mapeamento avançado do JSON.
 * `Core/FileNameHelper.cs` concentra sanitização de nomes e caminhos versionados.
 * `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
 * `Core/TextSearchHelper.cs` concentra busca e substituição de texto usada pelo editor.
@@ -553,7 +590,7 @@ Esse fluxo não gera instalador, onefile ou artefatos de release.
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.23`.
+O projeto está configurado para Windows x64 e versão `2.1.24`.
 
 ### Script de release
 
@@ -587,19 +624,19 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.23\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.24\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.23\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.24\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.23\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.24\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -608,16 +645,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.23\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.24\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.23\Installer
+bin\Release\dist\2.1.24\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.23\SHA256SUMS.txt
+bin\Release\dist\2.1.24\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.

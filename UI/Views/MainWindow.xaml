@@ -63,6 +63,42 @@
                   Margin="0,0,0,4"/>
         </StackPanel>
 
+        <StackPanel x:Name="AdvancedListPanel"
+                    DockPanel.Dock="Top"
+                    Margin="14,24,14,0">
+          <TextBlock x:Name="AdvancedListTitle"
+                     Text="Lista avan&#x00E7;ada"
+                     Foreground="{StaticResource TextBrush}"
+                     FontSize="13"
+                     FontWeight="Bold"
+                     Margin="0,0,0,6"/>
+          <TextBlock x:Name="AdvancedListSubtitle"
+                     Text="Ordem dos tipos de pe&#x00E7;a no JSON"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     FontSize="11"
+                     TextWrapping="Wrap"
+                     Margin="0,0,0,10"/>
+          <ItemsControl x:Name="SidebarAdvancedJsonPieceSlots">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="0,0,0,8">
+                  <TextBlock Text="{Binding PositionLabel}"
+                             Foreground="{StaticResource TextMutedBrush}"
+                             FontSize="11"
+                             FontWeight="Bold"
+                             Margin="0,0,0,3"/>
+                  <ComboBox Width="170"
+                            HorizontalAlignment="Left"
+                            ItemsSource="{Binding AvailablePieceOptions}"
+                            DisplayMemberPath="Label"
+                            SelectedValuePath="Key"
+                            SelectedValue="{Binding SelectedPieceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
       </DockPanel>
     </Border>
 

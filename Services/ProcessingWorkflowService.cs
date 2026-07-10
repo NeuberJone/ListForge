@@ -18,7 +18,8 @@ public sealed record ProcessingWorkflowRequest(
     string Separator,
     SizeConfig SizeConfig,
     string CaseMode,
-    ListSortMode SortMode);
+    ListSortMode SortMode,
+    JsonPieceMappingOptions? JsonPieceMapping = null);
 
 public sealed record ProcessingWorkflowResult(
     ProcessingWorkflowStatus Status,
@@ -38,6 +39,7 @@ public sealed record ProcessingWorkflowResult(
 public sealed class ProcessingWorkflowService
 {
     private readonly ILicenseService _licenseService;
+    private readonly JsonPieceMappingService _jsonPieceMappingService = new();
 
     public ProcessingWorkflowService()
         : this(new LocalTrialLicenseService())
@@ -58,16 +60,27 @@ public sealed class ProcessingWorkflowService
         if (validationIssues.Count > 0)
             return ProcessingWorkflowResult.ValidationFailed(validationIssues);
 
-        if (!_licenseService.CanProcess)
-            return ProcessingWorkflowResult.Empty(ProcessingWorkflowStatus.TrialLimitReached);
-
         var rows = ListProcessor.ProcessText(request.InputText, request.Separator, request.SizeConfig);
         if (rows.Count == 0)
             return ProcessingWorkflowResult.Empty(ProcessingWorkflowStatus.NoRows);
 
         rows = ListProcessor.SortRows(rows, request.SortMode);
+        var pieceMappingIssues = _jsonPieceMappingService.Validate(
+            rows,
+            request.SizeConfig,
+            request.JsonPieceMapping ?? JsonPieceMappingOptions.Disabled);
+        if (pieceMappingIssues.Count > 0)
+            return ProcessingWorkflowResult.ValidationFailed(pieceMappingIssues);
+
+        if (!_licenseService.CanProcess)
+            return ProcessingWorkflowResult.Empty(ProcessingWorkflowStatus.TrialLimitReached);
+
         var output = ListProcessor.BuildOutput(rows, request.SizeConfig, request.CaseMode);
-        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, request.SizeConfig, request.CaseMode);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(
+            rows,
+            request.SizeConfig,
+            request.CaseMode,
+            request.JsonPieceMapping ?? JsonPieceMappingOptions.Disabled);
         var preview = ListProcessor.BuildJsonPreview(orders);
 
         _licenseService.ConsumeSuccessfulProcessing();

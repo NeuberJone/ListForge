@@ -71,8 +71,9 @@ public static class ListProcessor
     public static List<Dictionary<string, string>> BuildOrdersFromOrderlist(
         List<ParsedRow> rows,
         SizeConfig sizeConfig,
-        string caseMode = "original") =>
-        JsonOrderBuilder.BuildOrdersFromOrderlist(rows, sizeConfig, caseMode);
+        string caseMode = "original",
+        JsonPieceMappingOptions? pieceMappingOptions = null) =>
+        JsonOrderBuilder.BuildOrdersFromOrderlist(rows, sizeConfig, caseMode, pieceMappingOptions);
 
     public static string BuildJsonPreview(List<Dictionary<string, string>> orders) =>
         JsonOrderBuilder.BuildJsonPreview(orders);

@@ -13,63 +13,133 @@ public static class JsonOrderBuilder
     public static List<Dictionary<string, string>> BuildOrdersFromOrderlist(
         List<ParsedRow> rows,
         SizeConfig sizeConfig,
-        string caseMode = "original")
+        string caseMode = "original",
+        JsonPieceMappingOptions? pieceMappingOptions = null)
+    {
+        if (pieceMappingOptions?.UseCustomOrder == true)
+            return BuildOrdersWithCustomPieceOrder(rows, sizeConfig, caseMode, pieceMappingOptions);
+
+        var orders = new List<Dictionary<string, string>>();
+        foreach (var row in rows)
+            orders.AddRange(BuildCustomPieceOrdersForRow(row, sizeConfig, caseMode, PieceTypeMapper.JsonFields));
+
+        return orders;
+    }
+
+    private static List<Dictionary<string, string>> BuildOrdersWithCustomPieceOrder(
+        List<ParsedRow> rows,
+        SizeConfig sizeConfig,
+        string caseMode,
+        JsonPieceMappingOptions pieceMappingOptions)
     {
         var orders = new List<Dictionary<string, string>>();
+        var pieceOrder = pieceMappingOptions.NormalizedOrder;
 
-        var normalized = rows
-            .SelectMany(r => ListOutputBuilder.ExplodeRowFragments(r, sizeConfig))
-            .ToList();
+        foreach (var row in rows)
+            orders.AddRange(BuildCustomPieceOrdersForRow(row, sizeConfig, caseMode, pieceOrder));
 
-        foreach (var fragment in normalized)
+        return orders;
+    }
+
+    private static IEnumerable<Dictionary<string, string>> BuildCustomPieceOrdersForRow(
+        ParsedRow row,
+        SizeConfig sizeConfig,
+        string caseMode,
+        IReadOnlyList<string> pieceOrder)
+    {
+        var apparelIndex = 0;
+        var groupOrder = new List<string>();
+        var groupedPieces = new Dictionary<string, List<MappedPieceSize>>();
+
+        foreach (var tam in row.Tams)
         {
-            var row = fragment.Row;
-            if (row.Tams.Count == 0 && fragment.Socks.Count > 0)
-            {
-                orders.Add(new Dictionary<string, string>
-                {
-                    ["Name"] = ListProcessor.ApplyCaseMode(row.Name, caseMode),
-                    ["Nickname"] = ListProcessor.ApplyCaseMode(row.S2, caseMode),
-                    ["Number"] = row.Number,
-                    ["BloodType"] = ListProcessor.ApplyCaseMode(row.S3, caseMode),
-                    ["Gender"] = "",
-                    ["ShortSleeve"] = "",
-                    ["LongSleeve"] = "",
-                    ["Short"] = "",
-                    ["Pants"] = "",
-                    ["Tanktop"] = "",
-                    ["Vest"] = "",
-                });
+            var (qty, size) = SizeHelper.ParseQtyAndSize(tam, sizeConfig);
+            var group = SizeHelper.SizeGroupOf(size, sizeConfig);
+            if (group == SizeHelper.GroupSock)
                 continue;
+
+            var pieceField = apparelIndex < pieceOrder.Count
+                ? pieceOrder[apparelIndex]
+                : PieceTypeMapper.ShortSleeve;
+            apparelIndex++;
+
+            if (!groupedPieces.TryGetValue(group, out var pieces))
+            {
+                pieces = [];
+                groupedPieces[group] = pieces;
+                groupOrder.Add(group);
             }
 
-            foreach (var tam in row.Tams)
-            {
-                var (qty, size) = SizeHelper.ParseQtyAndSize(tam, sizeConfig);
-                var gender = SizeHelper.GenderFromSize(size, sizeConfig);
+            pieces.Add(new MappedPieceSize(pieceField, size, qty));
+        }
 
-                for (var i = 0; i < qty; i++)
+        if (groupedPieces.Count == 0 && row.Tams.Count > 0)
+            return [CreateOrder(row, caseMode)];
+
+        var orders = new List<Dictionary<string, string>>();
+        foreach (var group in groupOrder)
+        {
+            var pieces = groupedPieces[group];
+            var rowCount = pieces.Max(piece => piece.Quantity);
+            var gender = SizeHelper.GenderFromSize(pieces[0].Size, sizeConfig);
+
+            for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+            {
+                var order = CreateOrder(row, caseMode, gender);
+                foreach (var piece in pieces)
                 {
-                    orders.Add(new Dictionary<string, string>
-                    {
-                        ["Name"] = ListProcessor.ApplyCaseMode(row.Name, caseMode),
-                        ["Nickname"] = ListProcessor.ApplyCaseMode(row.S2, caseMode),
-                        ["Number"] = row.Number,
-                        ["BloodType"] = ListProcessor.ApplyCaseMode(row.S3, caseMode),
-                        ["Gender"] = gender,
-                        ["ShortSleeve"] = size,
-                        ["LongSleeve"] = "",
-                        ["Short"] = "",
-                        ["Pants"] = "",
-                        ["Tanktop"] = "",
-                        ["Vest"] = "",
-                    });
+                    if (rowIndex < piece.Quantity && PieceTypeMapper.JsonFields.Contains(piece.PieceField))
+                        order[piece.PieceField] = piece.Size;
                 }
+                orders.Add(order);
             }
         }
 
         return orders;
     }
+
+    private static Dictionary<string, string> CreateOrder(
+        ParsedRow row,
+        SizeConfig sizeConfig,
+        string caseMode,
+        string size = "",
+        string pieceField = "")
+    {
+        var order = CreateOrder(
+            row,
+            caseMode,
+            string.IsNullOrEmpty(size) ? "" : SizeHelper.GenderFromSize(size, sizeConfig));
+
+        if (!string.IsNullOrEmpty(size) && PieceTypeMapper.JsonFields.Contains(pieceField))
+            order[pieceField] = size;
+
+        return order;
+    }
+
+    private static Dictionary<string, string> CreateOrder(
+        ParsedRow row,
+        string caseMode,
+        string gender = "")
+    {
+        var order = new Dictionary<string, string>
+        {
+            ["Name"] = ListProcessor.ApplyCaseMode(row.Name, caseMode),
+            ["Nickname"] = ListProcessor.ApplyCaseMode(row.S2, caseMode),
+            ["Number"] = row.Number,
+            ["BloodType"] = ListProcessor.ApplyCaseMode(row.S3, caseMode),
+            ["Gender"] = gender,
+            ["ShortSleeve"] = "",
+            ["LongSleeve"] = "",
+            ["Short"] = "",
+            ["Pants"] = "",
+            ["Tanktop"] = "",
+            ["Vest"] = "",
+        };
+
+        return order;
+    }
+
+    private sealed record MappedPieceSize(string PieceField, string Size, int Quantity);
 
     private static JObject WrapOrders(List<Dictionary<string, string>> orders) =>
         new()

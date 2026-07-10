@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using ListForge.Config;
+using ListForge.Core;
 using ListForge.Models;
 using ListForge.Services;
 using Microsoft.Win32;
@@ -29,6 +30,8 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly ProcessingWorkflowService _processingWorkflowService;
     private readonly OutputExportService _outputExportService = new();
     private readonly FileImportService _fileImportService = new();
+    private readonly JsonPieceMappingService _jsonPieceMappingService = new();
+    private bool _isRefreshingAdvancedJsonPieceSlots;
 
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
@@ -82,11 +85,22 @@ public class MainViewModel : INotifyPropertyChanged
             _inputText = value;
             Notify();
             ClearValidationHighlights();
+            RefreshAdvancedJsonPieceSlots();
         }
     }
     public string OutputText { get => _outputText; set => Set(ref _outputText, value); }
     public string JsonText { get => _jsonText; set => Set(ref _jsonText, value); }
-    public string EditorSeparator { get => _editorSeparator; set => Set(ref _editorSeparator, value); }
+    public string EditorSeparator
+    {
+        get => _editorSeparator;
+        set
+        {
+            if (EqualityComparer<string>.Default.Equals(_editorSeparator, value)) return;
+            _editorSeparator = value;
+            Notify();
+            RefreshAdvancedJsonPieceSlots();
+        }
+    }
     public string EditorCaseLabel { get => _editorCaseLabel; set => Set(ref _editorCaseLabel, value); }
     public string EditorSortLabel { get => _editorSortLabel; set => Set(ref _editorSortLabel, value); }
     public string FindText { get => _findText; set { Set(ref _findText, value); ClearSearchHighlight(keepStatus: true); } }
@@ -111,6 +125,8 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _showJsonTab;
     private bool _showGenerateJsonButton;
     private bool _showCopyJsonButton;
+    private bool _useAdvancedJsonPieceMapping;
+    private bool _advancedListEnabled;
     private bool _useDefaultOutputDir;
     private string _outputDir = "";
     private bool _useDefaultListName;
@@ -121,9 +137,65 @@ public class MainViewModel : INotifyPropertyChanged
     private double _editorFontSize = 13;
     private string _sizeSummary = "";
 
-    public bool ShowJsonTab { get => _showJsonTab; set { Set(ref _showJsonTab, value); ShowJsonSection = value; } }
-    public bool ShowGenerateJsonButton { get => _showGenerateJsonButton; set => Set(ref _showGenerateJsonButton, value); }
-    public bool ShowCopyJsonButton { get => _showCopyJsonButton; set => Set(ref _showCopyJsonButton, value); }
+    public bool ShowJsonTab
+    {
+        get => _showJsonTab;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_showJsonTab, value)) return;
+            _showJsonTab = value;
+            Notify();
+            ShowJsonSection = value;
+            Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(AdvancedJsonPieceSlotsEnabled));
+        }
+    }
+    public bool ShowGenerateJsonButton
+    {
+        get => _showGenerateJsonButton;
+        set
+        {
+            Set(ref _showGenerateJsonButton, value);
+            Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(AdvancedJsonPieceSlotsEnabled));
+        }
+    }
+    public bool ShowCopyJsonButton
+    {
+        get => _showCopyJsonButton;
+        set
+        {
+            Set(ref _showCopyJsonButton, value);
+            Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(AdvancedJsonPieceSlotsEnabled));
+        }
+    }
+    public bool UseAdvancedJsonPieceMapping
+    {
+        get => _useAdvancedJsonPieceMapping;
+        set
+        {
+            Set(ref _useAdvancedJsonPieceMapping, value);
+            Notify(nameof(AdvancedJsonPieceSlotsEnabled));
+        }
+    }
+    public bool AdvancedListEnabled
+    {
+        get => _advancedListEnabled;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_advancedListEnabled, value)) return;
+            _advancedListEnabled = value;
+            Notify();
+
+            ShowJsonTab = value;
+            ShowGenerateJsonButton = value;
+            ShowCopyJsonButton = value;
+            UseAdvancedJsonPieceMapping = value;
+            Notify(nameof(HasJsonFeaturesEnabled));
+            Notify(nameof(AdvancedJsonPieceSlotsEnabled));
+        }
+    }
     public bool UseDefaultOutputDir { get => _useDefaultOutputDir; set { Set(ref _useDefaultOutputDir, value); Notify(nameof(OutputDirEnabled)); } }
     public string OutputDir { get => _outputDir; set => Set(ref _outputDir, value); }
     public bool UseDefaultListName { get => _useDefaultListName; set { Set(ref _useDefaultListName, value); Notify(nameof(DefaultListNameEnabled)); } }
@@ -164,6 +236,8 @@ public class MainViewModel : INotifyPropertyChanged
     public string SizeSummary { get => _sizeSummary; set => Set(ref _sizeSummary, value); }
     public bool OutputDirEnabled => !UseDefaultOutputDir;
     public bool DefaultListNameEnabled => !UseDefaultListName;
+    public bool HasJsonFeaturesEnabled => AdvancedListEnabled;
+    public bool AdvancedJsonPieceSlotsEnabled => AdvancedListEnabled;
 
     // ---------------------------------------------------------------
     // Bound properties — about
@@ -200,6 +274,12 @@ public class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<string> SortLabels { get; } = ["Original", "Crescente", "Decrescente"];
     public ObservableCollection<string> ThemeNames { get; } = ["ListForge Dark", "ListForge Light", "SISBolt"];
     public ObservableCollection<string> SockSizeOptions { get; } = [];
+    public ObservableCollection<PieceTypeOption> JsonPieceTypeOptions { get; } =
+    [
+        new("", "Selecionar"),
+        .. PieceTypeMapper.AvailableOptions,
+    ];
+    public ObservableCollection<AdvancedJsonPieceSlot> AdvancedJsonPieceSlots { get; } = [];
 
     // ---------------------------------------------------------------
     // Commands
@@ -305,9 +385,7 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     private void LoadConfigIntoProperties()
     {
-        ShowJsonTab = _cfg.ShowJsonTab;
-        ShowGenerateJsonButton = _cfg.ShowGenerateJsonButton;
-        ShowCopyJsonButton = _cfg.ShowCopyJsonButton;
+        AdvancedListEnabled = _cfg.UseAdvancedJsonPieceMapping;
         UseDefaultOutputDir = _cfg.UseDefaultOutputDir;
         OutputDir = _cfg.OutputDir;
         UseDefaultListName = _cfg.UseDefaultListName;
@@ -318,7 +396,8 @@ public class MainViewModel : INotifyPropertyChanged
         EditorSeparator = _cfg.DefaultInputSeparator;
         EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
         EditorFontSize = _cfg.EditorFontSize;
-        ShowJsonSection = _cfg.ShowJsonTab;
+        ShowJsonSection = AdvancedListEnabled;
+        RefreshAdvancedJsonPieceSlots(_cfg.AdvancedJsonPieceOrder);
     }
 
     private void LoadSizeConfigIntoBindings()
@@ -624,7 +703,8 @@ public class MainViewModel : INotifyPropertyChanged
                 EditorSeparator,
                 _sizeCfg,
                 LabelToCaseMode(EditorCaseLabel),
-                LabelToSortMode(EditorSortLabel)));
+                LabelToSortMode(EditorSortLabel),
+                BuildJsonPieceMappingOptions()));
 
             if (result.Status == ProcessingWorkflowStatus.EmptyInput)
             {
@@ -950,9 +1030,14 @@ public class MainViewModel : INotifyPropertyChanged
 
         var oldTheme = _cfg.ThemeName;
 
-        _cfg.ShowJsonTab = ShowJsonTab;
-        _cfg.ShowGenerateJsonButton = ShowGenerateJsonButton;
-        _cfg.ShowCopyJsonButton = ShowCopyJsonButton;
+        _cfg.ShowJsonTab = AdvancedListEnabled;
+        _cfg.ShowGenerateJsonButton = AdvancedListEnabled;
+        _cfg.ShowCopyJsonButton = AdvancedListEnabled;
+        _cfg.UseAdvancedJsonPieceMapping = AdvancedListEnabled;
+        _cfg.AdvancedJsonPieceOrder = AdvancedJsonPieceSlots
+            .Select(slot => PieceTypeMapper.NormalizeKey(slot.SelectedPieceType))
+            .Where(PieceTypeMapper.IsKnownKey)
+            .ToList();
         _cfg.UseDefaultOutputDir = UseDefaultOutputDir;
         _cfg.OutputDir = OutputDir.Trim();
         _cfg.UseDefaultListName = UseDefaultListName;
@@ -987,6 +1072,83 @@ public class MainViewModel : INotifyPropertyChanged
 
         StatusText = "Configurações salvas.";
         MessageBox.Show("Configurações salvas com sucesso.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private JsonPieceMappingOptions BuildJsonPieceMappingOptions() =>
+        new(
+            HasJsonFeaturesEnabled && UseAdvancedJsonPieceMapping,
+            AdvancedJsonPieceSlots
+                .Select(slot => PieceTypeMapper.NormalizeKey(slot.SelectedPieceType))
+                .Where(PieceTypeMapper.IsKnownKey)
+                .ToList());
+
+    private void RefreshAdvancedJsonPieceSlots(IEnumerable<string>? preferredOrder = null)
+    {
+        if (_sizeCfg == null)
+            return;
+
+        _isRefreshingAdvancedJsonPieceSlots = true;
+        try
+        {
+            var currentOrder = preferredOrder?.ToList()
+                ?? AdvancedJsonPieceSlots.Select(slot => slot.SelectedPieceType).ToList();
+
+            var requiredSlots = string.IsNullOrWhiteSpace(InputText)
+                ? JsonPieceMappingService.ClampSlotCount(System.Math.Max(1, currentOrder.Count))
+                : _jsonPieceMappingService.EstimateRequiredSlots(InputText, EditorSeparator, _sizeCfg);
+
+            while (AdvancedJsonPieceSlots.Count > requiredSlots)
+            {
+                var slot = AdvancedJsonPieceSlots[^1];
+                slot.PropertyChanged -= AdvancedJsonPieceSlot_PropertyChanged;
+                AdvancedJsonPieceSlots.RemoveAt(AdvancedJsonPieceSlots.Count - 1);
+            }
+
+            for (var i = 0; i < requiredSlots; i++)
+            {
+                var selected = i < currentOrder.Count ? PieceTypeMapper.NormalizeKey(currentOrder[i]) : "";
+                if (!PieceTypeMapper.IsKnownKey(selected)) selected = "";
+
+                if (i < AdvancedJsonPieceSlots.Count)
+                {
+                    AdvancedJsonPieceSlots[i].Position = i + 1;
+                    AdvancedJsonPieceSlots[i].SelectedPieceType = selected;
+                }
+                else
+                {
+                    var slot = new AdvancedJsonPieceSlot(i + 1, selected);
+                    slot.PropertyChanged += AdvancedJsonPieceSlot_PropertyChanged;
+                    AdvancedJsonPieceSlots.Add(slot);
+                }
+            }
+        }
+        finally
+        {
+            _isRefreshingAdvancedJsonPieceSlots = false;
+        }
+
+        RefreshAdvancedJsonPieceSlotOptions();
+    }
+
+    private void AdvancedJsonPieceSlot_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!_isRefreshingAdvancedJsonPieceSlots && e.PropertyName == nameof(AdvancedJsonPieceSlot.SelectedPieceType))
+            RefreshAdvancedJsonPieceSlotOptions();
+    }
+
+    private void RefreshAdvancedJsonPieceSlotOptions()
+    {
+        foreach (var slot in AdvancedJsonPieceSlots)
+        {
+            var current = PieceTypeMapper.NormalizeKey(slot.SelectedPieceType);
+            var usedByOtherSlots = AdvancedJsonPieceSlots
+                .Where(other => !ReferenceEquals(other, slot))
+                .Select(other => PieceTypeMapper.NormalizeKey(other.SelectedPieceType))
+                .Where(PieceTypeMapper.IsKnownKey)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            slot.SetAvailablePieceTypes(usedByOtherSlots, current);
+        }
     }
 
     private void RestoreDefaultSettings()
@@ -1081,4 +1243,118 @@ public class SizeGroupBindings : INotifyPropertyChanged
     public string BaseSizes { get => _baseSizes; set => Set(ref _baseSizes, value); }
     public string Prefixes { get => _prefixes; set => Set(ref _prefixes, value); }
     public string Suffixes { get => _suffixes; set => Set(ref _suffixes, value); }
+}
+
+public class AdvancedJsonPieceSlot : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private int _position;
+    private string _selectedPieceType = "";
+    public ObservableCollection<AdvancedJsonPieceOption> AvailablePieceOptions { get; } = [];
+
+    public AdvancedJsonPieceSlot(int position, string selectedPieceType)
+    {
+        _position = position;
+        _selectedPieceType = selectedPieceType;
+        AvailablePieceOptions.Add(new AdvancedJsonPieceOption("", "Selecionar"));
+        foreach (var option in PieceTypeMapper.AvailableOptions)
+            AvailablePieceOptions.Add(new AdvancedJsonPieceOption(option.Key, option.Label));
+    }
+
+    public int Position
+    {
+        get => _position;
+        set
+        {
+            if (_position == value) return;
+            _position = value;
+            Notify();
+            Notify(nameof(PositionLabel));
+        }
+    }
+
+    public string PositionLabel => $"{Position}º tamanho";
+
+    public string SelectedPieceType
+    {
+        get => _selectedPieceType;
+        set
+        {
+            if (EqualityComparer<string>.Default.Equals(_selectedPieceType, value)) return;
+            _selectedPieceType = value;
+            Notify();
+        }
+    }
+
+    public void SetAvailablePieceTypes(ISet<string> unavailableKeys, string currentKey)
+    {
+        var desiredOptions = BuildAvailablePieceOptions(unavailableKeys, currentKey).ToList();
+        var desiredKeys = desiredOptions
+            .Select(option => option.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        for (var i = AvailablePieceOptions.Count - 1; i >= 0; i--)
+        {
+            if (!desiredKeys.Contains(AvailablePieceOptions[i].Key))
+                AvailablePieceOptions.RemoveAt(i);
+        }
+
+        for (var desiredIndex = 0; desiredIndex < desiredOptions.Count; desiredIndex++)
+        {
+            var desired = desiredOptions[desiredIndex];
+            var currentIndex = IndexOfOption(desired.Key);
+
+            if (currentIndex < 0)
+            {
+                AvailablePieceOptions.Insert(desiredIndex, desired);
+                continue;
+            }
+
+            if (currentIndex != desiredIndex)
+                AvailablePieceOptions.Move(currentIndex, desiredIndex);
+        }
+    }
+
+    private static IEnumerable<AdvancedJsonPieceOption> BuildAvailablePieceOptions(
+        ISet<string> unavailableKeys,
+        string currentKey)
+    {
+        yield return new AdvancedJsonPieceOption("", "Selecionar");
+
+        foreach (var option in PieceTypeMapper.AvailableOptions)
+        {
+            if (string.Equals(option.Key, currentKey, StringComparison.OrdinalIgnoreCase)
+                || !unavailableKeys.Contains(option.Key))
+                yield return new AdvancedJsonPieceOption(option.Key, option.Label);
+        }
+    }
+
+    private int IndexOfOption(string key)
+    {
+        for (var i = 0; i < AvailablePieceOptions.Count; i++)
+        {
+            if (string.Equals(AvailablePieceOptions[i].Key, key, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private void Notify([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
+
+public class AdvancedJsonPieceOption
+{
+    public AdvancedJsonPieceOption(string key, string label)
+    {
+        Key = key;
+        Label = label;
+    }
+
+    public string Key { get; }
+    public string Label { get; }
+
+    public override string ToString() => Label;
 }

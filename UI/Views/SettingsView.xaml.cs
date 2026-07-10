@@ -16,12 +16,8 @@ public partial class SettingsView : UserControl
         DataContext = vm;
 
         // ---- Display ----
-        ChkShowJsonTab.SetBinding(CheckBox.IsCheckedProperty,
-            new Binding(nameof(vm.ShowJsonTab)) { Source = vm, Mode = BindingMode.TwoWay });
-        ChkShowGenerateJsonButton.SetBinding(CheckBox.IsCheckedProperty,
-            new Binding(nameof(vm.ShowGenerateJsonButton)) { Source = vm, Mode = BindingMode.TwoWay });
-        ChkShowCopyJsonButton.SetBinding(CheckBox.IsCheckedProperty,
-            new Binding(nameof(vm.ShowCopyJsonButton)) { Source = vm, Mode = BindingMode.TwoWay });
+        ChkAdvancedList.SetBinding(CheckBox.IsCheckedProperty,
+            new Binding(nameof(vm.AdvancedListEnabled)) { Source = vm, Mode = BindingMode.TwoWay });
         SldEditorFontSize.SetBinding(Slider.ValueProperty,
             new Binding(nameof(vm.EditorFontSize)) { Source = vm, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
         TxtEditorFontSize.SetBinding(TextBlock.TextProperty,
