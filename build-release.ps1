@@ -69,6 +69,23 @@ function Get-ReleaseRelativePath {
     [System.Uri]::UnescapeDataString($baseUri.MakeRelativeUri($targetUri).ToString()).Replace('/', '\')
 }
 
+function Copy-ReleaseAsset {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath
+    )
+
+    if (-not (Test-Path -LiteralPath $SourcePath)) {
+        throw "Artefato de origem não encontrado: $SourcePath"
+    }
+
+    if (Test-Path -LiteralPath $DestinationPath) {
+        throw "Arquivo de Release já existe: $DestinationPath"
+    }
+
+    Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath
+}
+
 if ($Version -notmatch '^\d+\.\d+\.\d+$') {
     throw "Versão inválida. Use o formato X.Y.Z, por exemplo: 2.1.16"
 }
@@ -86,6 +103,7 @@ $installableDir = Join-Path $versionDist "ListForge-Installable"
 $portableDir = Join-Path $versionDist "ListForge-Portable-OneFile"
 $trialDir = Join-Path $versionDist "ListForge-Trial-OneFile"
 $installerDir = Join-Path $versionDist "Installer"
+$releaseDir = Join-Path $versionDist "Release"
 $checksumsPath = Join-Path $versionDist "SHA256SUMS.txt"
 
 $script:ExecutedCommands = [System.Collections.Generic.List[string]]::new()
@@ -110,7 +128,7 @@ if (Test-Path -LiteralPath $versionDist) {
     }
 }
 
-New-Item -ItemType Directory -Path $installableDir, $portableDir, $trialDir, $installerDir -Force | Out-Null
+New-Item -ItemType Directory -Path $installableDir, $portableDir, $trialDir, $installerDir, $releaseDir -Force | Out-Null
 
 Write-Step "Atualizando arquivos de versão"
 $projectText = Get-Content -LiteralPath $csprojPath -Raw -Encoding UTF8
@@ -240,6 +258,25 @@ $checksumLines = foreach ($artifact in $expectedArtifacts) {
 
 Set-Content -LiteralPath $checksumsPath -Value $checksumLines -Encoding ASCII
 
+Write-Step "Preparando pasta Release para GitHub"
+$releaseArtifacts = @(
+    @{ Source = Join-Path $installerDir "ListForge-Setup-$Version.exe"; Name = "ListForge-Setup-$Version.exe" },
+    @{ Source = $trialVersionedExe; Name = "ListForge-Trial-v$Version.exe" },
+    @{ Source = $portableVersionedExe; Name = "ListForge-v$Version.exe" }
+)
+
+foreach ($artifact in $releaseArtifacts) {
+    Copy-ReleaseAsset -SourcePath $artifact.Source -DestinationPath (Join-Path $releaseDir $artifact.Name)
+}
+
+$releaseChecksumLines = foreach ($artifact in $releaseArtifacts) {
+    $hash = (Get-FileHash -LiteralPath $artifact.Source -Algorithm SHA256).Hash.ToUpperInvariant()
+    "$hash $($artifact.Name)"
+}
+
+$releaseChecksumsPath = Join-Path $releaseDir "SHA256SUMS.txt"
+Set-Content -LiteralPath $releaseChecksumsPath -Value $releaseChecksumLines -Encoding ASCII
+
 Write-Host ""
 Write-Host "Release gerado com sucesso." -ForegroundColor Green
 Write-Host "Versão: $Version"
@@ -255,6 +292,10 @@ $expectedArtifacts | ForEach-Object { Write-Host " - $_" }
 Write-Host ""
 Write-Host "Checksums:"
 Write-Host " - $checksumsPath"
+Write-Host " - $releaseChecksumsPath"
+Write-Host ""
+Write-Host "Arquivos para anexar no GitHub:"
+Get-ChildItem -LiteralPath $releaseDir -File | Sort-Object Name | ForEach-Object { Write-Host " - $($_.FullName)" }
 Write-Host ""
 Write-Host "Testes: concluídos com sucesso."
 Write-Host "Instalador: gerado com sucesso."

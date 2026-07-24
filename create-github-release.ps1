@@ -16,14 +16,15 @@ Set-Location $repoRoot
 
 $tag = "v$Version"
 $versionDist = Join-Path $repoRoot "bin\Release\dist\$Version"
+$releaseDir = Join-Path $versionDist "Release"
 $releaseNotesPath = Join-Path $versionDist "RELEASE_NOTES_$Version.txt"
 
 $requiredArtifacts = @(
-    (Join-Path $versionDist "ListForge-Portable-OneFile\ListForge-v$Version.exe"),
-    (Join-Path $versionDist "ListForge-Trial-OneFile\ListForge-Trial-v$Version.exe"),
-    (Join-Path $versionDist "Installer\ListForge-Setup-$Version.exe")
+    (Join-Path $releaseDir "ListForge-Setup-$Version.exe"),
+    (Join-Path $releaseDir "ListForge-Trial-v$Version.exe"),
+    (Join-Path $releaseDir "ListForge-v$Version.exe")
 )
-$checksumsPath = Join-Path $versionDist "SHA256SUMS.txt"
+$checksumsPath = Join-Path $releaseDir "SHA256SUMS.txt"
 
 function Get-ChangelogSection {
     param(
@@ -115,12 +116,16 @@ if (-not (Test-Path -LiteralPath $versionDist)) {
     throw "Pasta da versão não encontrada: $versionDist. Gere a release local antes com .\build-release.ps1 -Version $Version"
 }
 
+if (-not (Test-Path -LiteralPath $releaseDir)) {
+    throw "Pasta de anexos da Release não encontrada: $releaseDir. Gere a release local antes com .\build-release.ps1 -Version $Version"
+}
+
 $missingArtifacts = $requiredArtifacts | Where-Object { -not (Test-Path -LiteralPath $_) }
 if ($missingArtifacts.Count -gt 0) {
     throw "Artefato(s) ausente(s):`n$($missingArtifacts -join [Environment]::NewLine)"
 }
 
-Assert-ChecksumEntries -ChecksumsPath $checksumsPath -Artifacts $requiredArtifacts -VersionDist $versionDist
+Assert-ChecksumEntries -ChecksumsPath $checksumsPath -Artifacts $requiredArtifacts -VersionDist $releaseDir
 
 $artifacts = [System.Collections.Generic.List[string]]::new()
 $requiredArtifacts | ForEach-Object { $artifacts.Add($_) | Out-Null }

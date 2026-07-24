@@ -6,6 +6,10 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 
 ## [2.1.31] - 2026-07-22
 
+### Adicionado
+
+- Criada pasta Release com artefatos prontos para anexar no GitHub Release.
+
 ### Alterado
 
 - Movidos os controles de atualização manual para a tela Sobre, junto das informações de versão e suporte.
