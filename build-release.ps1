@@ -88,6 +88,42 @@ function Copy-ReleaseAsset {
     Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath
 }
 
+function Get-ChangelogSection {
+    param(
+        [string]$ChangelogPath,
+        [string]$ReleaseVersion
+    )
+
+    if (-not (Test-Path -LiteralPath $ChangelogPath)) {
+        return ""
+    }
+
+    $lines = Get-Content -LiteralPath $ChangelogPath -Encoding UTF8
+    $startPattern = "## [$ReleaseVersion]"
+    $start = -1
+
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i].StartsWith($startPattern, [System.StringComparison]::Ordinal)) {
+            $start = $i
+            break
+        }
+    }
+
+    if ($start -lt 0) {
+        return ""
+    }
+
+    $end = $lines.Count
+    for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+        if ($lines[$i].StartsWith("## [", [System.StringComparison]::Ordinal)) {
+            $end = $i
+            break
+        }
+    }
+
+    ($lines[$start..($end - 1)] -join [Environment]::NewLine).Trim()
+}
+
 if ($Version -notmatch '^\d+\.\d+\.\d+$') {
     throw "Versão inválida. Use o formato X.Y.Z, por exemplo: 2.1.16"
 }
@@ -310,6 +346,14 @@ if (-not [string]::IsNullOrWhiteSpace($ReleaseBaseUrl)) {
     $manifestPath = Join-Path $releaseDir "update.json"
     $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 }
+
+$releaseNotesText = Get-ChangelogSection -ChangelogPath $changelogPath -ReleaseVersion $Version
+if ([string]::IsNullOrWhiteSpace($releaseNotesText)) {
+    $releaseNotesText = "# ListForge $Version"
+}
+
+$releaseNotesAssetPath = Join-Path $releaseDir "RELEASE_NOTES_$Version.txt"
+Set-Content -LiteralPath $releaseNotesAssetPath -Value $releaseNotesText -Encoding UTF8
 
 Write-Host ""
 Write-Host "Release gerado com sucesso." -ForegroundColor Green
