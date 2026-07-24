@@ -4,7 +4,9 @@ param(
 
     [switch]$Force,
 
-    [string]$InnoSetupPath
+    [string]$InnoSetupPath,
+
+    [string]$ReleaseBaseUrl
 )
 
 $ErrorActionPreference = "Stop"
@@ -276,6 +278,38 @@ $releaseChecksumLines = foreach ($artifact in $releaseArtifacts) {
 
 $releaseChecksumsPath = Join-Path $releaseDir "SHA256SUMS.txt"
 Set-Content -LiteralPath $releaseChecksumsPath -Value $releaseChecksumLines -Encoding ASCII
+
+if (-not [string]::IsNullOrWhiteSpace($ReleaseBaseUrl)) {
+    $releaseBaseUri = $null
+    $isValidReleaseBaseUrl = [Uri]::TryCreate($ReleaseBaseUrl.Trim(), [UriKind]::Absolute, [ref]$releaseBaseUri)
+    if (-not $isValidReleaseBaseUrl -or -not [string]::Equals($releaseBaseUri.Scheme, "https", [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "ReleaseBaseUrl inválida. Use uma URL HTTPS pública."
+    }
+
+    $publicBaseUrl = $ReleaseBaseUrl.Trim().TrimEnd('/')
+    $installerName = "ListForge-Setup-$Version.exe"
+    $installerPath = Join-Path $releaseDir $installerName
+    $manifest = [ordered]@{
+        version = $Version
+        tagName = "v$Version"
+        releaseUrl = $publicBaseUrl
+        notes = "ListForge $Version"
+        installer = [ordered]@{
+            name = $installerName
+            url = "$publicBaseUrl/$installerName"
+            size = (Get-Item -LiteralPath $installerPath).Length
+            sha256 = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToUpperInvariant()
+        }
+        checksums = [ordered]@{
+            name = "SHA256SUMS.txt"
+            url = "$publicBaseUrl/SHA256SUMS.txt"
+            size = (Get-Item -LiteralPath $releaseChecksumsPath).Length
+        }
+    }
+
+    $manifestPath = Join-Path $releaseDir "update.json"
+    $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+}
 
 Write-Host ""
 Write-Host "Release gerado com sucesso." -ForegroundColor Green

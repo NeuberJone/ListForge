@@ -41,6 +41,7 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isRefreshingAdvancedJsonPieceSlots;
     private DistributionInfo _distributionInfo;
     private CancellationTokenSource? _updateCancellation;
+    private DateTimeOffset? _lastManualUpdateCheckUtc;
 
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
@@ -468,6 +469,12 @@ public class MainViewModel : INotifyPropertyChanged
         if (!CheckUpdatesOnStartup || !_distributionInfo.CanRunInstallerUpdate)
             return Task.CompletedTask;
 
+        if (!UpdateCheckPolicy.ShouldRunAutomaticCheck(_cfg.LastUpdateCheckUtc, DateTimeOffset.UtcNow))
+        {
+            UpdateStatusText = "Atualizações já verificadas nas últimas 24 horas.";
+            return Task.CompletedTask;
+        }
+
         return CheckForUpdatesAsync(isAutomatic: true);
     }
 
@@ -475,6 +482,31 @@ public class MainViewModel : INotifyPropertyChanged
     {
         if (IsUpdateBusy)
             return;
+
+        var checkStartedUtc = DateTimeOffset.UtcNow;
+        if (!isAutomatic &&
+            !UpdateCheckPolicy.ShouldRunManualCheck(_lastManualUpdateCheckUtc, checkStartedUtc))
+        {
+            UpdateStatusText = "Aguarde um minuto antes de verificar novamente.";
+            return;
+        }
+
+        if (!isAutomatic)
+            _lastManualUpdateCheckUtc = checkStartedUtc;
+
+        _cfg.LastUpdateCheckUtc = checkStartedUtc;
+        try
+        {
+            ConfigManager.SaveConfig(_cfg);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(
+                "Update",
+                "Falha ao salvar o horário da verificação de atualizações.",
+                ex,
+                ConfigManager.ConfigPath);
+        }
 
         _updateCancellation = new CancellationTokenSource();
         IsUpdateBusy = true;

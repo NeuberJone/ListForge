@@ -17,5 +17,6 @@ public sealed class AppConfig
     public string ThemeName { get; set; } = "ListForge Dark";
     public double EditorFontSize { get; set; } = 13;
     public bool CheckUpdatesOnStartup { get; set; } = true;
+    public DateTimeOffset? LastUpdateCheckUtc { get; set; }
     public string LastOpenedFile { get; set; } = "";
 }

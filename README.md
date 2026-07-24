@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.31-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.32-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -22,7 +22,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 * Gera saída textual e prévia JSON.
 * Mantém configurações por usuário e backups automáticos.
 * Possui versão completa e build Trial com limite de processamentos.
-* Verifica atualizações pela versão estável mais recente publicada no GitHub Releases.
+* Verifica atualizações por manifest HTTPS público, com download validado por SHA-256.
 * Inclui testes automatizados e testes de integração para proteger regras críticas do núcleo e do fluxo principal.
 * Registra logs internos diários para suporte e diagnóstico.
 * Possui tela Sobre com versão, edição, caminhos e informações de suporte.
@@ -302,7 +302,7 @@ Antes da geração, o ListForge avisa que logs podem conter caminhos de arquivos
 
 A tela Sobre possui a seção **Atualizações**, com versão instalada, tipo de distribuição, opção **Verificar atualizações ao iniciar**, botão **Verificar agora**, status e progresso de download.
 
-A verificação usa a Release estável mais recente do GitHub Releases. Releases marcadas como rascunho ou pré-lançamento são ignoradas. O endereço padrão da API é público e pode ser ajustado pela variável de ambiente `LISTFORGE_UPDATE_API_URL` quando houver necessidade de teste ou ambiente controlado.
+A verificação usa um manifest HTTPS público (`update.json`) com a versão mais recente, URL do instalador e SHA-256 esperado. O endereço padrão aponta para o repositório público de releases do ListForge e pode ser ajustado pela variável de ambiente `LISTFORGE_UPDATE_API_URL` quando houver necessidade de teste ou ambiente controlado.
 
 Na distribuição completa instalável, o ListForge pode verificar, baixar, validar e iniciar o instalador da nova versão. A validação exige SHA-256 informado pela Release ou pelo arquivo `SHA256SUMS.txt`; se a integridade não puder ser confirmada, o instalador não é executado. O download é feito primeiro como arquivo parcial e só fica pronto para execução depois da validação.
 
@@ -551,7 +551,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `build-release.ps1` automatiza a geração de artefatos versionados e marca a distribuição como instalável, portátil ou Trial.
 * `create-github-release.ps1` valida artefatos locais, exige `SHA256SUMS.txt` e prepara a publicação manual ou via GitHub CLI.
 * `Services` contém serviços extraídos do ViewModel para importação, exportação, processamento, licença, suporte, informações da tela Sobre e abertura de pastas.
-* `Services/GitHubUpdateService.cs`, `Services/UpdateInstallerService.cs`, `Services/UpdateProcessLauncher.cs` e `Services/DistributionInfoService.cs` concentram consulta de Release, validação de instalador, abertura segura de processos e identificação da distribuição atual.
+* `Services/GitHubUpdateService.cs`, `Services/UpdateInstallerService.cs`, `Services/UpdateProcessLauncher.cs` e `Services/DistributionInfoService.cs` concentram consulta de atualização por manifest/GitHub, validação de instalador, abertura segura de processos e identificação da distribuição atual.
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
@@ -579,7 +579,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * As configurações são salvas em uma pasta gravável por usuário, evitando depender da pasta do executável.
 * Os tamanhos são configuráveis via `sizes.json`, permitindo adaptação a diferentes padrões de produção.
 * A camada de licença foi organizada para separar a lógica de Trial do fluxo principal e preparar evolução futura sem alterar o comportamento atual.
-* A verificação de atualizações usa Releases estáveis do GitHub, valida o instalador por SHA-256 e respeita o tipo de distribuição antes de iniciar qualquer instalador.
+* A verificação de atualizações usa manifest HTTPS público, valida o instalador por SHA-256 e respeita o tipo de distribuição antes de iniciar qualquer instalador.
 * O editor com numeração de linhas foi implementado como controle reutilizável em `UI/Controls/LineNumberedTextBox.cs`.
 * O logging interno usa arquivos locais diários, sem dependências externas, e falhas ao escrever logs são ignoradas de forma segura.
 
@@ -684,24 +684,30 @@ Se o Inno Setup não estiver em um caminho comum, informe o compilador manualmen
 .\build-release.ps1 -Version X.Y.Z -InnoSetupPath "C:\Program Files\Inno Setup 7\ISCC.exe"
 ```
 
+Para gerar também o `update.json` da fonte pública de atualização, informe a URL base onde os arquivos serão publicados:
+
+```powershell
+.\build-release.ps1 -Version X.Y.Z -ReleaseBaseUrl "https://pub-62303cd1120248b08beb3454fe0c6316.r2.dev"
+```
+
 ### Comandos manuais
 
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.31\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.32\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.31\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.32\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.31\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.32\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -710,16 +716,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.31\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.32\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.31\Installer
+bin\Release\dist\2.1.32\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.31\SHA256SUMS.txt
+bin\Release\dist\2.1.32\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -727,7 +733,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.31\Release
+bin\Release\dist\2.1.32\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:
@@ -735,9 +741,10 @@ Essa pasta contém os arquivos planos para anexar no GitHub Release:
 * `ListForge-Setup-X.Y.Z.exe`;
 * `ListForge-Trial-vX.Y.Z.exe`;
 * `ListForge-vX.Y.Z.exe`;
-* `SHA256SUMS.txt`.
+* `SHA256SUMS.txt`;
+* `update.json`, quando uma URL pública for informada ao script de release.
 
-Para que a verificação de atualização instalada funcione, a Release publicada no GitHub deve conter o instalador com nome exato `ListForge-Setup-X.Y.Z.exe`, além de `SHA256SUMS.txt` com esse arquivo listado ou digest SHA-256 equivalente informado pelo GitHub.
+Para que a verificação de atualização instalada funcione sem depender da API do GitHub, publique também o `update.json` em uma URL HTTPS acessível. O instalador deve manter o nome exato `ListForge-Setup-X.Y.Z.exe`, com SHA-256 correspondente no manifest ou em `SHA256SUMS.txt`.
 
 ## Publicação de release no GitHub
 
@@ -759,7 +766,8 @@ Artefatos esperados:
 * `Release\ListForge-Setup-X.Y.Z.exe`;
 * `Release\ListForge-Trial-vX.Y.Z.exe`;
 * `Release\ListForge-vX.Y.Z.exe`;
-* `Release\SHA256SUMS.txt`.
+* `Release\SHA256SUMS.txt`;
+* `Release\update.json`, quando houver URL pública de atualização.
 
 O fluxo recomendado é:
 
@@ -774,6 +782,8 @@ Em seguida, crie a release no GitHub usando a tag `vX.Y.Z`, revise as notas com 
 * `Release\ListForge-Trial-vX.Y.Z.exe`;
 * `Release\ListForge-vX.Y.Z.exe`;
 * `Release\SHA256SUMS.txt`.
+
+Se usar um servidor próprio ou R2 para atualização automática, publique também `Release\update.json` na URL configurada pelo aplicativo.
 
 O script auxiliar abaixo valida os artefatos locais, prepara notas a partir do changelog e mostra os comandos de publicação sem criar uma release automaticamente:
 

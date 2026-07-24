@@ -22,6 +22,21 @@ public class UpdateServiceTests
     }
 
     [Fact]
+    public async Task CheckForUpdates_StaticManifest_ReturnsUpdateAvailable()
+    {
+        using var service = ServiceWithJson(ManifestJson("2.1.29"));
+
+        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
+
+        Assert.True(result.Success);
+        Assert.Equal(UpdateAvailability.UpdateAvailable, result.Value!.Availability);
+        Assert.Equal("ListForge-Setup-2.1.29.exe", result.Value.Release!.InstallerAsset.Name);
+        Assert.Equal("https://updates.example.com/ListForge-Setup-2.1.29.exe", result.Value.Release.InstallerAsset.DownloadUrl);
+        Assert.Equal("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", result.Value.Release.InstallerAsset.Sha256);
+        Assert.NotNull(result.Value.Release.ChecksumsAsset);
+    }
+
+    [Fact]
     public async Task CheckForUpdates_SameVersion_ReturnsUpToDate()
     {
         using var service = ServiceWithJson(ReleaseJson("v2.1.29", "ListForge-Setup-2.1.29.exe"));
@@ -214,6 +229,29 @@ public class UpdateServiceTests
         """;
     }
 
+    private static string ManifestJson(string version)
+    {
+        return $$"""
+        {
+          "version": "{{version}}",
+          "tagName": "v{{version}}",
+          "releaseUrl": "https://updates.example.com/",
+          "notes": "Notas da Release",
+          "installer": {
+            "name": "ListForge-Setup-{{version}}.exe",
+            "url": "https://updates.example.com/ListForge-Setup-{{version}}.exe",
+            "size": 10,
+            "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "checksums": {
+            "name": "SHA256SUMS.txt",
+            "url": "https://updates.example.com/SHA256SUMS.txt",
+            "size": 100
+          }
+        }
+        """;
+    }
+
     private sealed class StaticHandler : HttpMessageHandler
     {
         private readonly HttpResponseMessage _response;
@@ -391,9 +429,43 @@ public class UpdateInstallerServiceTests
         ConfigManager.SetDirectoriesForTesting(Path.Combine(env.Root, "app"), Path.Combine(env.Root, "state"));
 
         Assert.True(ConfigManager.LoadConfig().CheckUpdatesOnStartup);
+        Assert.Null(ConfigManager.LoadConfig().LastUpdateCheckUtc);
 
         File.WriteAllText(ConfigManager.ConfigPath, "{}");
         Assert.True(ConfigManager.LoadConfig().CheckUpdatesOnStartup);
+        Assert.Null(ConfigManager.LoadConfig().LastUpdateCheckUtc);
+    }
+
+    [Fact]
+    public void UpdateCheckPolicy_AutomaticCheckRunsAtMostOncePerDay()
+    {
+        var now = new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero);
+
+        Assert.True(UpdateCheckPolicy.ShouldRunAutomaticCheck(null, now));
+        Assert.False(UpdateCheckPolicy.ShouldRunAutomaticCheck(now.AddHours(-23), now));
+        Assert.True(UpdateCheckPolicy.ShouldRunAutomaticCheck(now.AddHours(-24), now));
+    }
+
+    [Fact]
+    public void UpdateCheckPolicy_ManualCheckRequiresOneMinuteBetweenAttempts()
+    {
+        var now = new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero);
+
+        Assert.True(UpdateCheckPolicy.ShouldRunManualCheck(null, now));
+        Assert.False(UpdateCheckPolicy.ShouldRunManualCheck(now.AddSeconds(-59), now));
+        Assert.True(UpdateCheckPolicy.ShouldRunManualCheck(now.AddMinutes(-1), now));
+    }
+
+    [Fact]
+    public void AppConfig_PersistsLastUpdateCheckUtc()
+    {
+        using var env = UpdateTestEnvironment.Create();
+        ConfigManager.SetDirectoriesForTesting(Path.Combine(env.Root, "app"), Path.Combine(env.Root, "state"));
+        var checkedAt = new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero);
+
+        ConfigManager.SaveConfig(new AppConfig { LastUpdateCheckUtc = checkedAt });
+
+        Assert.Equal(checkedAt, ConfigManager.LoadConfig().LastUpdateCheckUtc);
     }
 
     [Fact]

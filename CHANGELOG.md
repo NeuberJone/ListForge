@@ -4,6 +4,16 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.32] - 2026-07-24
+
+### Adicionado
+
+- Adicionado suporte a manifest HTTPS público (`update.json`) para verificação de atualizações sem depender da API do GitHub.
+
+### Alterado
+
+- Script de release passa a gerar `update.json` quando uma URL pública é informada.
+
 ## [2.1.31] - 2026-07-22
 
 ### Adicionado

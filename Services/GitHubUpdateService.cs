@@ -9,7 +9,8 @@ namespace ListForge.Services;
 
 public sealed class GitHubUpdateService : IDisposable
 {
-    public const string DefaultApiUrl = "https://api.github.com/repos/NeuberJone/ListForge/releases/latest";
+    public const string DefaultApiUrl = "https://pub-62303cd1120248b08beb3454fe0c6316.r2.dev/update.json";
+    public const string GitHubApiUrl = "https://api.github.com/repos/NeuberJone/ListForge/releases/latest";
     public const string ApiUrlEnvironmentVariable = "LISTFORGE_UPDATE_API_URL";
 
     private readonly HttpClient _httpClient;
@@ -47,7 +48,7 @@ public sealed class GitHubUpdateService : IDisposable
             {
                 return OperationResult<UpdateCheckInfo>.Fail(
                     "Nenhuma Release estável foi encontrada para atualização.",
-                    "GitHub Releases retornou 404.",
+                    "Fonte de atualização retornou 404.",
                     errorCode: "ReleaseNotFound");
             }
 
@@ -55,7 +56,7 @@ public sealed class GitHubUpdateService : IDisposable
             {
                 return OperationResult<UpdateCheckInfo>.Fail(
                     "Não foi possível verificar atualizações agora. Tente novamente mais tarde.",
-                    $"GitHub Releases retornou HTTP {(int)response.StatusCode} {response.ReasonPhrase}.",
+                    $"Fonte de atualização retornou HTTP {(int)response.StatusCode} {response.ReasonPhrase}.",
                     errorCode: "HttpError");
             }
 
@@ -98,7 +99,7 @@ public sealed class GitHubUpdateService : IDisposable
         {
             return OperationResult<UpdateCheckInfo>.Fail(
                 "Tempo esgotado ao verificar atualizações. Tente novamente mais tarde.",
-                "Timeout ao consultar GitHub Releases.",
+                "Timeout ao consultar fonte de atualização.",
                 ex,
                 "Timeout");
         }
@@ -114,7 +115,7 @@ public sealed class GitHubUpdateService : IDisposable
         {
             return OperationResult<UpdateCheckInfo>.Fail(
                 "Não foi possível verificar atualizações agora. Verifique sua conexão e tente novamente.",
-                "Falha ao consultar GitHub Releases.",
+                "Falha ao consultar fonte de atualização.",
                 ex,
                 "UpdateCheckFailed");
         }
@@ -125,6 +126,9 @@ public sealed class GitHubUpdateService : IDisposable
         try
         {
             var root = JObject.Parse(json);
+            if (root["assets"] == null && root["tag_name"] == null)
+                return ParseManifest(root);
+
             if (root.Value<bool?>("draft") == true || root.Value<bool?>("prerelease") == true)
             {
                 return OperationResult<UpdateReleaseInfo>.Fail(
@@ -211,6 +215,82 @@ public sealed class GitHubUpdateService : IDisposable
         }
     }
 
+    private static OperationResult<UpdateReleaseInfo> ParseManifest(JObject root)
+    {
+        var versionText = ReadString(root, "version");
+        if (!TryParseReleaseVersion(versionText, out var releaseVersion))
+        {
+            return OperationResult<UpdateReleaseInfo>.Fail(
+                "A Release encontrada possui uma versão inválida.",
+                $"version inválida no manifest: {versionText ?? "(vazia)"}",
+                errorCode: "InvalidTag");
+        }
+
+        versionText = ToThreePartVersion(releaseVersion);
+        var expectedInstallerName = $"ListForge-Setup-{versionText}.exe";
+        var installer = root["installer"] as JObject;
+        var checksum = root["checksums"] as JObject;
+
+        var installerName = ReadString(installer, "name")
+            ?? ReadString(root, "installerName")
+            ?? expectedInstallerName;
+        var installerUrl = ReadString(installer, "url")
+            ?? ReadString(installer, "downloadUrl")
+            ?? ReadString(root, "installerUrl");
+
+        if (!string.Equals(installerName, expectedInstallerName, StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(installerUrl))
+        {
+            return OperationResult<UpdateReleaseInfo>.Fail(
+                "A Release encontrada não possui o instalador esperado para esta versão.",
+                $"Instalador esperado não encontrado no manifest: {expectedInstallerName}",
+                errorCode: "InstallerAssetMissing");
+        }
+
+        var installerAsset = new UpdateAssetInfo(
+            installerName,
+            installerUrl,
+            ReadLong(installer, "size") ?? ReadLong(installer, "sizeBytes") ?? ReadLong(root, "installerSizeBytes") ?? 0,
+            NormalizeDigest(ReadString(installer, "sha256") ?? ReadString(installer, "digest") ?? ReadString(root, "sha256") ?? ReadString(root, "installerSha256")));
+
+        if (!IsHttps(installerAsset.DownloadUrl))
+        {
+            return OperationResult<UpdateReleaseInfo>.Fail(
+                "O instalador da Release possui um endereço inválido.",
+                $"URL do instalador não é HTTPS: {installerAsset.DownloadUrl}",
+                errorCode: "InstallerUrlNotHttps");
+        }
+
+        UpdateAssetInfo? checksumsAsset = null;
+        var checksumUrl = ReadString(checksum, "url")
+            ?? ReadString(checksum, "downloadUrl")
+            ?? ReadString(root, "checksumsUrl");
+        if (!string.IsNullOrWhiteSpace(checksumUrl))
+        {
+            checksumsAsset = new UpdateAssetInfo(
+                ReadString(checksum, "name") ?? "SHA256SUMS.txt",
+                checksumUrl,
+                ReadLong(checksum, "size") ?? ReadLong(checksum, "sizeBytes") ?? ReadLong(root, "checksumsSizeBytes") ?? 0,
+                NormalizeDigest(ReadString(checksum, "sha256") ?? ReadString(checksum, "digest")));
+
+            if (!IsHttps(checksumsAsset.DownloadUrl))
+            {
+                return OperationResult<UpdateReleaseInfo>.Fail(
+                    "O arquivo de verificação da Release possui um endereço inválido.",
+                    $"URL do SHA256SUMS não é HTTPS: {checksumsAsset.DownloadUrl}",
+                    errorCode: "ChecksumsUrlNotHttps");
+            }
+        }
+
+        return OperationResult<UpdateReleaseInfo>.Ok(new UpdateReleaseInfo(
+            releaseVersion,
+            ReadString(root, "tagName") ?? ReadString(root, "tag_name") ?? $"v{versionText}",
+            ReadString(root, "releaseUrl") ?? ReadString(root, "htmlUrl") ?? ReadString(root, "html_url") ?? "",
+            ReadString(root, "notes") ?? ReadString(root, "body") ?? "",
+            installerAsset,
+            checksumsAsset));
+    }
+
     internal static bool TryParseReleaseVersion(string? tagName, out Version version)
     {
         version = new Version(0, 0, 0);
@@ -267,6 +347,12 @@ public sealed class GitHubUpdateService : IDisposable
             : null;
     }
 
+    private static string? ReadString(JObject? root, string name) =>
+        root?.Value<string>(name)?.Trim();
+
+    private static long? ReadLong(JObject? root, string name) =>
+        root?.Value<long?>(name);
+
     private static bool IsHttps(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri)
         && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
@@ -289,7 +375,7 @@ public sealed class GitHubUpdateService : IDisposable
         if (!client.DefaultRequestHeaders.UserAgent.Any())
             client.DefaultRequestHeaders.UserAgent.ParseAdd($"{ConfigManager.AppName}/update-check");
         if (!client.DefaultRequestHeaders.Accept.Any())
-            client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
     }
 
     public void Dispose() =>
