@@ -4,6 +4,32 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.31] - 2026-07-22
+
+### Alterado
+
+- Movidos os controles de atualização manual para a tela Sobre, junto das informações de versão e suporte.
+
+## [2.1.30] - 2026-07-22
+
+### Corrigido
+
+- Corrigido o binding do progresso de download de atualizações na tela Configurações para evitar erro ao abrir o aplicativo.
+
+## [2.1.29] - 2026-07-22
+
+### Adicionado
+
+- Verificação manual e automática de atualizações pela Release estável mais recente do GitHub.
+- Seção Atualizações nas Configurações, com versão instalada, tipo de distribuição, preferência de verificação ao iniciar, status e progresso.
+- Download validado do instalador com SHA-256 antes de executar atualização na distribuição instalável.
+- Testes automatizados para consulta de Release, seleção de asset, validação de hash, downloads parciais, cancelamento, tipo de distribuição e regras do instalador.
+
+### Alterado
+
+- Scripts de release passam a marcar o tipo de distribuição gerada e a validar `SHA256SUMS.txt` para publicação no GitHub.
+- Instalador preserva atualização no mesmo local da instalação existente, sem criar instalação paralela por versão.
+
 ## [2.1.28] - 2026-07-10
 
 ### Alterado

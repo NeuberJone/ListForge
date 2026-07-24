@@ -34,6 +34,7 @@ public partial class MainWindow : Window
 
         _vm.RequestThemeChange += themeName => ApplyTheme(themeName);
         _vm.RequestScrollToLine += lineNo => EditorViewControl.ScrollToLine(lineNo);
+        _vm.RequestShutdown += Close;
         _vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(_vm.AdvancedListEnabled)
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
         ApplyTheme(_vm.ThemeName);
 
         ShowScreen("editor");
+        Loaded += async (_, _) => await _vm.CheckForUpdatesOnStartupAsync();
     }
 
     // ---------------------------------------------------------------

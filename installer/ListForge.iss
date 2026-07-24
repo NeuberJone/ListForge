@@ -1,5 +1,5 @@
 ﻿#define MyAppName "ListForge"
-#define MyAppVersion "2.1.28"
+#define MyAppVersion "2.1.31"
 #define MyAppPublisher "Neuber Jone"
 #define MyAppExeName "ListForge.exe"
 #define SourceDir "..\bin\Release\dist\" + MyAppVersion + "\ListForge-Installable"
@@ -12,6 +12,9 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+UsePreviousAppDir=yes
+CloseApplications=yes
+RestartApplications=no
 OutputDir=..\bin\Release\dist\{#MyAppVersion}\Installer
 OutputBaseFilename=ListForge-Setup-{#MyAppVersion}
 SetupIconFile=..\Assets\logo.ico

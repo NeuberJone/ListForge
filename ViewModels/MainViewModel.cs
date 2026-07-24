@@ -35,7 +35,12 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly AdvancedSaveService _advancedSaveService = new();
     private readonly FileImportService _fileImportService = new();
     private readonly JsonPieceMappingService _jsonPieceMappingService = new();
+    private readonly DistributionInfoService _distributionInfoService = new();
+    private readonly GitHubUpdateService _githubUpdateService = new();
+    private readonly UpdateInstallerService _updateInstallerService = new();
     private bool _isRefreshingAdvancedJsonPieceSlots;
+    private DistributionInfo _distributionInfo;
+    private CancellationTokenSource? _updateCancellation;
 
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
@@ -151,6 +156,10 @@ public class MainViewModel : INotifyPropertyChanged
     private string _themeName = "ListForge Dark";
     private string _advancedSaveModeLabel = AdvancedSaveLooseFilesLabel;
     private double _editorFontSize = 13;
+    private bool _checkUpdatesOnStartup = true;
+    private bool _isUpdateBusy;
+    private double _updateDownloadProgress;
+    private string _updateStatusText = "Nenhuma verificação executada.";
     private string _sizeSummary = "";
 
     public bool ShowJsonTab
@@ -227,6 +236,20 @@ public class MainViewModel : INotifyPropertyChanged
     public string DefaultCaseLabel { get => _defaultCaseLabel; set => Set(ref _defaultCaseLabel, value); }
     public string DefaultSeparator { get => _defaultSeparator; set => Set(ref _defaultSeparator, value); }
     public string AdvancedSaveModeLabel { get => _advancedSaveModeLabel; set => Set(ref _advancedSaveModeLabel, value); }
+    public bool CheckUpdatesOnStartup
+    {
+        get => _checkUpdatesOnStartup;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_checkUpdatesOnStartup, value)) return;
+            _checkUpdatesOnStartup = value;
+            Notify();
+
+            _cfg.CheckUpdatesOnStartup = value;
+            try { ConfigManager.SaveConfig(_cfg); }
+            catch (Exception ex) { AppLogger.Error("Update", "Falha ao salvar preferência de atualização no config.json.", ex, ConfigManager.ConfigPath); }
+        }
+    }
     public double EditorFontSize
     {
         get => _editorFontSize;
@@ -266,6 +289,29 @@ public class MainViewModel : INotifyPropertyChanged
     public bool ShowAdvancedJsonOptions => AdvancedListEnabled && ShowJsonSection;
     public bool AdvancedJsonPieceSlotsEnabled => ShowAdvancedJsonOptions;
     public bool ShowAdvancedSaveButton => ShowAdvancedEditorOptions;
+    public string InstalledVersion => _aboutService.Version;
+    public string DistributionDisplayName => _distributionInfo.DisplayName;
+    public bool IsUpdateBusy
+    {
+        get => _isUpdateBusy;
+        private set
+        {
+            Set(ref _isUpdateBusy, value);
+            Notify(nameof(IsUpdateProgressVisible));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+    public bool IsUpdateProgressVisible => IsUpdateBusy && UpdateDownloadProgress > 0;
+    public double UpdateDownloadProgress
+    {
+        get => _updateDownloadProgress;
+        private set
+        {
+            Set(ref _updateDownloadProgress, Math.Clamp(value, 0, 100));
+            Notify(nameof(IsUpdateProgressVisible));
+        }
+    }
+    public string UpdateStatusText { get => _updateStatusText; private set => Set(ref _updateStatusText, value); }
 
     // ---------------------------------------------------------------
     // Bound properties — about
@@ -342,6 +388,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand RestoreDefaultSizesCommand { get; }
     public ICommand PickOutputFolderCommand { get; }
     public ICommand ApplyThemeCommand { get; }
+    public ICommand CheckUpdatesCommand { get; }
+    public ICommand CancelUpdateDownloadCommand { get; }
 
     // Search state (exposed so View can use it)
     private List<(int start, int length)> _searchMatches = [];
@@ -357,6 +405,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         _aboutService = new AboutService(_licenseService);
         _processingWorkflowService = new ProcessingWorkflowService(_licenseService);
+        _distributionInfo = _distributionInfoService.GetCurrentDistribution();
         _cfg = ConfigManager.LoadConfig();
         _sizeCfg = ConfigManager.LoadSizeConfig();
         LoadConfigIntoProperties();
@@ -393,6 +442,8 @@ public class MainViewModel : INotifyPropertyChanged
         RestoreDefaultSizesCommand = new RelayCommand(RestoreDefaultSizes);
         PickOutputFolderCommand = new RelayCommand(PickOutputFolder);
         ApplyThemeCommand = new RelayCommand(() => RequestThemeChange?.Invoke(ThemeName));
+        CheckUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(isAutomatic: false), () => !IsUpdateBusy);
+        CancelUpdateDownloadCommand = new RelayCommand(CancelUpdateDownload, () => IsUpdateBusy);
         StatusText = _licenseService.IsTrial
             ? $"Pronto. Trial: {_licenseService.RemainingProcessings}/{_licenseService.ProcessingLimit} processamento(s) restante(s)."
             : "Pronto.";
@@ -405,10 +456,180 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public event Action<string>? RequestThemeChange;
+    public event Action? RequestShutdown;
 
     public void RefreshAboutInfo()
     {
         Notify(nameof(AboutTrialStatus));
+    }
+
+    public Task CheckForUpdatesOnStartupAsync()
+    {
+        if (!CheckUpdatesOnStartup || !_distributionInfo.CanRunInstallerUpdate)
+            return Task.CompletedTask;
+
+        return CheckForUpdatesAsync(isAutomatic: true);
+    }
+
+    private async Task CheckForUpdatesAsync(bool isAutomatic)
+    {
+        if (IsUpdateBusy)
+            return;
+
+        _updateCancellation = new CancellationTokenSource();
+        IsUpdateBusy = true;
+        UpdateDownloadProgress = 0;
+        UpdateStatusText = "Verificando atualizações...";
+
+        try
+        {
+            var currentVersion = ResolveCurrentVersion();
+            var checkResult = await _githubUpdateService
+                .CheckForUpdatesAsync(currentVersion, _updateCancellation.Token)
+                .ConfigureAwait(true);
+
+            if (!checkResult.Success || checkResult.Value == null)
+            {
+                LogUpdateFailure(checkResult.TechnicalMessage, checkResult.Exception);
+                UpdateStatusText = isAutomatic
+                    ? "Não foi possível verificar atualizações automaticamente."
+                    : checkResult.UserMessage;
+
+                if (!isAutomatic)
+                    MessageBox.Show(checkResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var info = checkResult.Value;
+            UpdateStatusText = info.UserMessage;
+
+            if (info.Availability != UpdateAvailability.UpdateAvailable || info.Release == null)
+            {
+                if (!isAutomatic)
+                    MessageBox.Show(info.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            await HandleAvailableUpdateAsync(info.Release).ConfigureAwait(true);
+        }
+        finally
+        {
+            IsUpdateBusy = false;
+            UpdateDownloadProgress = 0;
+            _updateCancellation.Dispose();
+            _updateCancellation = null;
+        }
+    }
+
+    private async Task HandleAvailableUpdateAsync(UpdateReleaseInfo release)
+    {
+        var message = BuildUpdateAvailableMessage(release);
+        if (!_distributionInfo.CanRunInstallerUpdate)
+        {
+            var portableMessage = message
+                + "\n\nEsta edição em execução é "
+                + _distributionInfo.DisplayName
+                + ". O ListForge não iniciará o instalador para evitar criar outra instalação no computador."
+                + "\n\nDeseja abrir a página da Release?";
+
+            if (MessageBox.Show(portableMessage, ConfigManager.AppName, MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            {
+                var openResult = _updateInstallerService.OpenReleasePage(release);
+                if (!openResult.Success)
+                    MessageBox.Show(openResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            return;
+        }
+
+        if (MessageBox.Show(
+                message + "\n\nDeseja baixar e instalar a atualização agora?",
+                ConfigManager.AppName,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information) != MessageBoxResult.Yes)
+        {
+            UpdateStatusText = "Atualização adiada.";
+            return;
+        }
+
+        UpdateStatusText = "Baixando atualização...";
+        var progress = new Progress<double>(value => UpdateDownloadProgress = value);
+        var downloadResult = await _updateInstallerService
+            .DownloadAndValidateInstallerAsync(release, progress, _updateCancellation?.Token ?? CancellationToken.None)
+            .ConfigureAwait(true);
+
+        if (!downloadResult.Success || downloadResult.Value == null)
+        {
+            LogUpdateFailure(downloadResult.TechnicalMessage, downloadResult.Exception);
+            UpdateStatusText = downloadResult.UserMessage;
+            MessageBox.Show(downloadResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        UpdateStatusText = "Instalador validado. Iniciando atualização...";
+        var startResult = _updateInstallerService.StartInstaller(downloadResult.Value.InstallerPath);
+        if (!startResult.Success)
+        {
+            LogUpdateFailure(startResult.TechnicalMessage, startResult.Exception);
+            UpdateStatusText = "Não foi possível iniciar o instalador.";
+            MessageBox.Show(startResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        UpdateStatusText = "Instalador iniciado. O ListForge será fechado.";
+        RequestShutdown?.Invoke();
+    }
+
+    private void CancelUpdateDownload()
+    {
+        _updateCancellation?.Cancel();
+        UpdateStatusText = "Cancelando atualização...";
+    }
+
+    private string BuildUpdateAvailableMessage(UpdateReleaseInfo release)
+    {
+        var newVersion = GitHubUpdateService.ToThreePartVersion(release.Version);
+        var message =
+            "Uma nova versão do ListForge está disponível."
+            + $"\n\nVersão instalada: {InstalledVersion}"
+            + $"\nNova versão: {newVersion}";
+
+        var notes = SummarizeReleaseNotes(release.Notes);
+        if (!string.IsNullOrWhiteSpace(notes))
+            message += $"\n\nNotas da Release:\n{notes}";
+
+        return message;
+    }
+
+    private static string SummarizeReleaseNotes(string notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes))
+            return "";
+
+        var lines = notes
+            .Replace("\r\n", "\n")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim().TrimStart('#', '-', '*', ' '))
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Take(6)
+            .ToList();
+
+        var summary = string.Join("\n", lines);
+        return summary.Length <= 600 ? summary : summary[..600] + "...";
+    }
+
+    private Version ResolveCurrentVersion()
+    {
+        return GitHubUpdateService.TryParseReleaseVersion(InstalledVersion, out var version)
+            ? version
+            : new Version(0, 0, 0);
+    }
+
+    private static void LogUpdateFailure(string technicalMessage, Exception? exception)
+    {
+        if (exception != null)
+            AppLogger.Warning("Update", technicalMessage, exception);
+        else
+            AppLogger.Warning("Update", technicalMessage);
     }
 
     // ---------------------------------------------------------------
@@ -425,6 +646,7 @@ public class MainViewModel : INotifyPropertyChanged
         DefaultSeparator = _cfg.DefaultInputSeparator;
         AdvancedSaveModeLabel = AdvancedSaveModeToLabel(ParseAdvancedSaveMode(_cfg.AdvancedSaveMode));
         ThemeName = NormalizeThemeName(_cfg.ThemeName);
+        CheckUpdatesOnStartup = _cfg.CheckUpdatesOnStartup;
         EditorSeparator = _cfg.DefaultInputSeparator;
         EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
         EditorFontSize = _cfg.EditorFontSize;
@@ -1220,6 +1442,7 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.AdvancedSaveMode = AdvancedSaveModeToConfigValue(AdvancedSaveModeLabelToMode(AdvancedSaveModeLabel));
         _cfg.ThemeName = ThemeName;
         _cfg.EditorFontSize = ClampEditorFontSize(EditorFontSize);
+        _cfg.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
         _cfg.LastOpenedFile = _currentFile ?? "";
 
         try

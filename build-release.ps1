@@ -97,12 +97,17 @@ New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 Assert-UnderDirectory -ChildPath $versionDist -ParentPath $distRoot
 
 if (Test-Path -LiteralPath $versionDist) {
-    if (-not $Force) {
+    $existingFiles = Get-ChildItem -LiteralPath $versionDist -Recurse -File -Force
+    if ($existingFiles.Count -eq 0 -and -not $Force) {
+        Write-Host "A pasta da versão já existe, mas não contém arquivos. Continuando sem sobrescrever artefatos." -ForegroundColor Yellow
+    }
+    elseif (-not $Force) {
         throw "A pasta da versão já existe: $versionDist. Use -Force para recriar somente essa pasta."
     }
-
-    Write-Host "Recriando somente a pasta da versão atual: $versionDist" -ForegroundColor Yellow
-    Remove-Item -LiteralPath $versionDist -Recurse -Force
+    else {
+        Write-Host "Recriando somente a pasta da versão atual: $versionDist" -ForegroundColor Yellow
+        Remove-Item -LiteralPath $versionDist -Recurse -Force
+    }
 }
 
 New-Item -ItemType Directory -Path $installableDir, $portableDir, $trialDir, $installerDir -Force | Out-Null
@@ -156,13 +161,13 @@ Invoke-ReleaseCommand "dotnet test" { dotnet test }
 Invoke-ReleaseCommand "dotnet build -c Release" { dotnet build -c Release }
 
 Write-Step "Publicando versão instalável"
-Invoke-ReleaseCommand "dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o $installableDir" {
-    dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:DebugType=None -p:DebugSymbols=false -o $installableDir
+Invoke-ReleaseCommand "dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o $installableDir" {
+    dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o $installableDir
 }
 
 Write-Step "Publicando onefile completo"
-Invoke-ReleaseCommand "dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o $portableDir" {
-    dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o $portableDir
+Invoke-ReleaseCommand "dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o $portableDir" {
+    dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o $portableDir
 }
 
 $portableExe = Join-Path $portableDir "ListForge.exe"
@@ -173,8 +178,8 @@ if (-not (Test-Path -LiteralPath $portableExe)) {
 Move-Item -LiteralPath $portableExe -Destination $portableVersionedExe
 
 Write-Step "Publicando onefile Trial"
-Invoke-ReleaseCommand "dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o $trialDir" {
-    dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o $trialDir
+Invoke-ReleaseCommand "dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o $trialDir" {
+    dotnet publish ListForge.csproj -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o $trialDir
 }
 
 $trialExe = Join-Path $trialDir "ListForge.exe"

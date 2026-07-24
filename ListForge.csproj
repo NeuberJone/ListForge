@@ -13,9 +13,10 @@
     <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
-    <Version>2.1.28</Version>
-    <FileVersion>2.1.28.0</FileVersion>
-    <AssemblyVersion>2.1.28.0</AssemblyVersion>
+    <Version>2.1.31</Version>
+    <FileVersion>2.1.31.0</FileVersion>
+    <AssemblyVersion>2.1.31.0</AssemblyVersion>
+    <ListForgeDistribution Condition="'$(ListForgeDistribution)' == ''">Development</ListForgeDistribution>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,6 +50,13 @@
     <Resource Include="UI\Themes\SisBoltTheme.xaml"/>
     <Resource Include="UI\Controls\SegmentedControl.xaml"/>
     <Resource Include="UI\Controls\AnimatedToggleSwitch.xaml"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ListForgeDistribution</_Parameter1>
+      <_Parameter2>$(ListForgeDistribution)</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>
