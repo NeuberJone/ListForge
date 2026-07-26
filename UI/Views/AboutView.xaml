@@ -90,6 +90,12 @@
                       Command="{Binding CheckUpdatesCommand}"
                       Style="{StaticResource AccentButton}"
                       Margin="0,0,8,0"/>
+              <Button x:Name="BtnDownloadAvailableUpdate"
+                      Content="Baixar agora"
+                      Command="{Binding DownloadAvailableUpdateCommand}"
+                      Style="{StaticResource AccentButton}"
+                      Margin="0,0,8,0"
+                      Visibility="Collapsed"/>
               <Button Content="Cancelar download"
                       Command="{Binding CancelUpdateDownloadCommand}"
                       Style="{StaticResource StdButton}"/>

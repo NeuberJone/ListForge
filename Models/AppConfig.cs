@@ -18,5 +18,18 @@ public sealed class AppConfig
     public double EditorFontSize { get; set; } = 13;
     public bool CheckUpdatesOnStartup { get; set; } = true;
     public DateTimeOffset? LastUpdateCheckUtc { get; set; }
+    public string LastUpdateAvailability { get; set; } = "";
+    public string LastAvailableUpdateVersion { get; set; } = "";
+    public string LastAvailableUpdateTagName { get; set; } = "";
+    public string LastAvailableUpdateReleaseUrl { get; set; } = "";
+    public string LastAvailableUpdateNotes { get; set; } = "";
+    public string LastAvailableUpdateInstallerName { get; set; } = "";
+    public string LastAvailableUpdateInstallerUrl { get; set; } = "";
+    public long LastAvailableUpdateInstallerSizeBytes { get; set; }
+    public string LastAvailableUpdateInstallerSha256 { get; set; } = "";
+    public string LastAvailableUpdateChecksumsName { get; set; } = "";
+    public string LastAvailableUpdateChecksumsUrl { get; set; } = "";
+    public long LastAvailableUpdateChecksumsSizeBytes { get; set; }
+    public string LastAvailableUpdateChecksumsSha256 { get; set; } = "";
     public string LastOpenedFile { get; set; } = "";
 }

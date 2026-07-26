@@ -4,6 +4,13 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [Unreleased]
+
+### Alterado
+
+- A tela Sobre mantém o resultado da última verificação de atualização e exibe `Baixar agora` quando uma nova versão já foi encontrada.
+- A verificação automática dentro do intervalo de 24 horas passa a mostrar um status útil, como aplicativo atualizado ou atualização disponível.
+
 ## [2.1.33] - 2026-07-24
 
 ### Adicionado

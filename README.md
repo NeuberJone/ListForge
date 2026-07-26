@@ -285,9 +285,9 @@ A tela Sobre exibe informações úteis para identificação da instalação e s
 * autor e contato;
 * pasta de configuração e pasta de logs usadas pelo aplicativo;
 * resumo curto de licença/propriedade;
-* seção Atualizações, com verificação manual, preferência de verificação ao iniciar, status e progresso.
+* seção Atualizações, com verificação manual, preferência de verificação ao iniciar, status, botão de download quando há versão disponível e progresso.
 
-Ela também possui ações para copiar as informações do produto para suporte, verificar atualizações, gerar pacote de suporte, abrir a pasta de configuração e abrir a pasta de logs.
+Ela também possui ações para copiar as informações do produto para suporte, verificar atualizações, baixar a atualização disponível, gerar pacote de suporte, abrir a pasta de configuração e abrir a pasta de logs.
 
 ## Pacote de suporte
 
@@ -301,7 +301,9 @@ Antes da geração, o ListForge avisa que logs podem conter caminhos de arquivos
 
 ## Atualizações do aplicativo
 
-A tela Sobre possui a seção **Atualizações**, com versão instalada, tipo de distribuição, opção **Verificar atualizações ao iniciar**, botão **Verificar agora**, status e progresso de download.
+A tela Sobre possui a seção **Atualizações**, com versão instalada, tipo de distribuição, opção **Verificar atualizações ao iniciar**, botão **Verificar agora**, botão **Baixar agora** quando uma atualização foi encontrada, status da última verificação e progresso de download.
+
+Quando a verificação automática encontra uma nova versão, o status permanece visível na tela Sobre e o usuário pode baixar depois pelo botão **Baixar agora**, sem precisar verificar novamente. Se a última verificação concluiu que o ListForge já está na versão mais recente, o status mostra que o aplicativo está atualizado em vez de exibir apenas o aviso de intervalo de 24 horas.
 
 A verificação usa um manifest HTTPS público (`update.json`) com a versão mais recente, URL do instalador e SHA-256 esperado. O endereço padrão aponta para o repositório público de releases do ListForge e pode ser ajustado pela variável de ambiente `LISTFORGE_UPDATE_API_URL` quando houver necessidade de teste ou ambiente controlado.
 

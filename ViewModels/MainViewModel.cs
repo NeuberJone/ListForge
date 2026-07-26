@@ -160,6 +160,7 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isExtractingFromLink;
     private double _updateDownloadProgress;
     private string _updateStatusText = "Nenhuma verificação executada.";
+    private UpdateReleaseInfo? _availableUpdateRelease;
     private string _sizeSummary = "";
 
     public bool ShowJsonTab
@@ -313,6 +314,17 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
     public bool IsUpdateProgressVisible => IsUpdateBusy && UpdateDownloadProgress > 0;
+    public bool HasAvailableUpdate => AvailableUpdateRelease != null;
+    public UpdateReleaseInfo? AvailableUpdateRelease
+    {
+        get => _availableUpdateRelease;
+        private set
+        {
+            Set(ref _availableUpdateRelease, value);
+            Notify(nameof(HasAvailableUpdate));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
     public double UpdateDownloadProgress
     {
         get => _updateDownloadProgress;
@@ -402,6 +414,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand PickOutputFolderCommand { get; }
     public ICommand ApplyThemeCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
+    public ICommand DownloadAvailableUpdateCommand { get; }
     public ICommand CancelUpdateDownloadCommand { get; }
 
     // Search state (exposed so View can use it)
@@ -458,6 +471,7 @@ public class MainViewModel : INotifyPropertyChanged
         PickOutputFolderCommand = new RelayCommand(PickOutputFolder);
         ApplyThemeCommand = new RelayCommand(() => RequestThemeChange?.Invoke(ThemeName));
         CheckUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(isAutomatic: false), () => !IsUpdateBusy);
+        DownloadAvailableUpdateCommand = new AsyncRelayCommand(DownloadAvailableUpdateAsync, () => !IsUpdateBusy && HasAvailableUpdate);
         CancelUpdateDownloadCommand = new RelayCommand(CancelUpdateDownload, () => IsUpdateBusy);
         StatusText = _licenseService.IsTrial
             ? $"Pronto. Trial: {_licenseService.RemainingProcessings}/{_licenseService.ProcessingLimit} processamento(s) restante(s)."
@@ -485,7 +499,9 @@ public class MainViewModel : INotifyPropertyChanged
 
         if (!UpdateCheckPolicy.ShouldRunAutomaticCheck(_cfg.LastUpdateCheckUtc, DateTimeOffset.UtcNow))
         {
-            UpdateStatusText = "Atualizações já verificadas nas últimas 24 horas.";
+            UpdateStatusText = HasAvailableUpdate
+                ? BuildStoredUpdateStatus(AvailableUpdateRelease!)
+                : "O ListForge está atualizado.";
             return Task.CompletedTask;
         }
 
@@ -547,16 +563,44 @@ public class MainViewModel : INotifyPropertyChanged
             }
 
             var info = checkResult.Value;
-            UpdateStatusText = info.UserMessage;
+            SaveUpdateCheckInfo(info);
 
             if (info.Availability != UpdateAvailability.UpdateAvailable || info.Release == null)
             {
+                AvailableUpdateRelease = null;
+                UpdateStatusText = info.UserMessage;
                 if (!isAutomatic)
                     MessageBox.Show(info.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            await HandleAvailableUpdateAsync(info.Release).ConfigureAwait(true);
+            AvailableUpdateRelease = info.Release;
+            UpdateStatusText = BuildStoredUpdateStatus(info.Release);
+
+            if (!isAutomatic)
+                MessageBox.Show(BuildUpdateAvailableMessage(info.Release), ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        finally
+        {
+            IsUpdateBusy = false;
+            UpdateDownloadProgress = 0;
+            _updateCancellation.Dispose();
+            _updateCancellation = null;
+        }
+    }
+
+    private async Task DownloadAvailableUpdateAsync()
+    {
+        if (AvailableUpdateRelease == null || IsUpdateBusy)
+            return;
+
+        _updateCancellation = new CancellationTokenSource();
+        IsUpdateBusy = true;
+        UpdateDownloadProgress = 0;
+
+        try
+        {
+            await HandleAvailableUpdateAsync(AvailableUpdateRelease).ConfigureAwait(true);
         }
         finally
         {
@@ -624,6 +668,125 @@ public class MainViewModel : INotifyPropertyChanged
         UpdateStatusText = "Instalador iniciado. O ListForge será fechado.";
         RequestShutdown?.Invoke();
     }
+
+    private string BuildStoredUpdateStatus(UpdateReleaseInfo release)
+    {
+        var newVersion = GitHubUpdateService.ToThreePartVersion(release.Version);
+        return $"Atualização disponível: ListForge {newVersion}. Use Baixar agora para atualizar.";
+    }
+
+    private void SaveUpdateCheckInfo(UpdateCheckInfo info)
+    {
+        _cfg.LastUpdateAvailability = info.Availability.ToString();
+
+        if (info.Availability == UpdateAvailability.UpdateAvailable && info.Release != null)
+            SaveAvailableUpdateRelease(info.Release);
+        else
+            ClearAvailableUpdateCache();
+
+        try
+        {
+            ConfigManager.SaveConfig(_cfg);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Update", "Falha ao salvar resultado da verificação de atualizações.", ex, ConfigManager.ConfigPath);
+        }
+    }
+
+    private void SaveAvailableUpdateRelease(UpdateReleaseInfo release)
+    {
+        _cfg.LastAvailableUpdateVersion = GitHubUpdateService.ToThreePartVersion(release.Version);
+        _cfg.LastAvailableUpdateTagName = release.TagName;
+        _cfg.LastAvailableUpdateReleaseUrl = release.HtmlUrl;
+        _cfg.LastAvailableUpdateNotes = release.Notes;
+        _cfg.LastAvailableUpdateInstallerName = release.InstallerAsset.Name;
+        _cfg.LastAvailableUpdateInstallerUrl = release.InstallerAsset.DownloadUrl;
+        _cfg.LastAvailableUpdateInstallerSizeBytes = release.InstallerAsset.SizeBytes;
+        _cfg.LastAvailableUpdateInstallerSha256 = release.InstallerAsset.Sha256 ?? "";
+        _cfg.LastAvailableUpdateChecksumsName = release.ChecksumsAsset?.Name ?? "";
+        _cfg.LastAvailableUpdateChecksumsUrl = release.ChecksumsAsset?.DownloadUrl ?? "";
+        _cfg.LastAvailableUpdateChecksumsSizeBytes = release.ChecksumsAsset?.SizeBytes ?? 0;
+        _cfg.LastAvailableUpdateChecksumsSha256 = release.ChecksumsAsset?.Sha256 ?? "";
+    }
+
+    private void ClearAvailableUpdateCache()
+    {
+        _cfg.LastAvailableUpdateVersion = "";
+        _cfg.LastAvailableUpdateTagName = "";
+        _cfg.LastAvailableUpdateReleaseUrl = "";
+        _cfg.LastAvailableUpdateNotes = "";
+        _cfg.LastAvailableUpdateInstallerName = "";
+        _cfg.LastAvailableUpdateInstallerUrl = "";
+        _cfg.LastAvailableUpdateInstallerSizeBytes = 0;
+        _cfg.LastAvailableUpdateInstallerSha256 = "";
+        _cfg.LastAvailableUpdateChecksumsName = "";
+        _cfg.LastAvailableUpdateChecksumsUrl = "";
+        _cfg.LastAvailableUpdateChecksumsSizeBytes = 0;
+        _cfg.LastAvailableUpdateChecksumsSha256 = "";
+    }
+
+    private void RestoreCachedUpdateState()
+    {
+        if (string.Equals(_cfg.LastUpdateAvailability, nameof(UpdateAvailability.UpdateAvailable), StringComparison.OrdinalIgnoreCase)
+            && TryCreateCachedAvailableUpdate(out var release)
+            && IsNewerThanInstalled(release.Version))
+        {
+            AvailableUpdateRelease = release;
+            UpdateStatusText = BuildStoredUpdateStatus(release);
+            return;
+        }
+
+        if (string.Equals(_cfg.LastUpdateAvailability, nameof(UpdateAvailability.UpToDate), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(_cfg.LastUpdateAvailability, nameof(UpdateAvailability.RemoteOlder), StringComparison.OrdinalIgnoreCase))
+        {
+            AvailableUpdateRelease = null;
+            UpdateStatusText = "O ListForge está atualizado.";
+        }
+    }
+
+    private bool TryCreateCachedAvailableUpdate(out UpdateReleaseInfo release)
+    {
+        release = null!;
+        if (!GitHubUpdateService.TryParseReleaseVersion(_cfg.LastAvailableUpdateVersion, out var version)
+            || string.IsNullOrWhiteSpace(_cfg.LastAvailableUpdateInstallerName)
+            || string.IsNullOrWhiteSpace(_cfg.LastAvailableUpdateInstallerUrl))
+        {
+            return false;
+        }
+
+        var installer = new UpdateAssetInfo(
+            _cfg.LastAvailableUpdateInstallerName,
+            _cfg.LastAvailableUpdateInstallerUrl,
+            _cfg.LastAvailableUpdateInstallerSizeBytes,
+            string.IsNullOrWhiteSpace(_cfg.LastAvailableUpdateInstallerSha256) ? null : _cfg.LastAvailableUpdateInstallerSha256);
+
+        UpdateAssetInfo? checksums = null;
+        if (!string.IsNullOrWhiteSpace(_cfg.LastAvailableUpdateChecksumsName)
+            && !string.IsNullOrWhiteSpace(_cfg.LastAvailableUpdateChecksumsUrl))
+        {
+            checksums = new UpdateAssetInfo(
+                _cfg.LastAvailableUpdateChecksumsName,
+                _cfg.LastAvailableUpdateChecksumsUrl,
+                _cfg.LastAvailableUpdateChecksumsSizeBytes,
+                string.IsNullOrWhiteSpace(_cfg.LastAvailableUpdateChecksumsSha256) ? null : _cfg.LastAvailableUpdateChecksumsSha256);
+        }
+
+        release = new UpdateReleaseInfo(
+            version,
+            string.IsNullOrWhiteSpace(_cfg.LastAvailableUpdateTagName) ? $"v{GitHubUpdateService.ToThreePartVersion(version)}" : _cfg.LastAvailableUpdateTagName,
+            _cfg.LastAvailableUpdateReleaseUrl,
+            _cfg.LastAvailableUpdateNotes,
+            installer,
+            checksums);
+        return true;
+    }
+
+    private bool IsNewerThanInstalled(Version version) =>
+        NormalizeVersion(version).CompareTo(NormalizeVersion(ResolveCurrentVersion())) > 0;
+
+    private static Version NormalizeVersion(Version version) =>
+        new(version.Major, version.Minor, Math.Max(0, version.Build));
 
     private void CancelUpdateDownload()
     {
@@ -698,6 +861,7 @@ public class MainViewModel : INotifyPropertyChanged
         EditorFontSize = _cfg.EditorFontSize;
         ShowJsonSection = AdvancedListEnabled;
         RefreshAdvancedJsonPieceSlots(_cfg.AdvancedJsonPieceOrder);
+        RestoreCachedUpdateState();
     }
 
     private void LoadSizeConfigIntoBindings()
