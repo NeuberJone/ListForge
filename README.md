@@ -782,23 +782,25 @@ Artefatos esperados:
 * `Release\SHA256SUMS.txt`;
 * `Release\update.json`, quando houver URL pública de atualização.
 
-O fluxo recomendado é:
+O fluxo recomendado é criar uma tag versionada depois que a distribuição local estiver validada. A tag deve seguir exatamente o padrão `vX.Y.Z`, apontar para o commit que gerou os artefatos e ser enviada ao repositório remoto antes da publicação da Release:
 
 ```powershell
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-Em seguida, crie a release no GitHub usando a tag `vX.Y.Z`, revise as notas com base na seção correspondente do `CHANGELOG.md` e anexe:
+Em seguida, crie a Release no GitHub usando essa mesma tag `vX.Y.Z`. A Release deve ter título `ListForge X.Y.Z`, notas revisadas com base em `Release\RELEASE_NOTES_X.Y.Z.txt` e anexos oficiais vindos somente de `bin\Release\dist\X.Y.Z\Release`:
 
 * `Release\ListForge-Setup-X.Y.Z.exe`;
 * `Release\ListForge-Trial-vX.Y.Z.exe`;
 * `Release\ListForge-vX.Y.Z.exe`;
-* `Release\SHA256SUMS.txt`.
+* `Release\SHA256SUMS.txt`;
+* `Release\RELEASE_NOTES_X.Y.Z.txt`;
+* `Release\update.json`, quando houver manifest público de atualização.
 
-Se usar um servidor próprio ou R2 para atualização automática, publique também `Release\update.json` na URL configurada pelo aplicativo.
+Se usar um servidor próprio ou R2 para atualização automática, publique também os arquivos necessários dessa pasta na URL configurada pelo aplicativo, mantendo os mesmos nomes usados no manifest.
 
-O script auxiliar abaixo valida os artefatos locais, prepara notas a partir do changelog e mostra os comandos de publicação sem criar uma release automaticamente:
+O script auxiliar abaixo valida os artefatos locais, preserva `RELEASE_NOTES_X.Y.Z.txt` quando ele já estiver preenchido, inclui `update.json` quando existir e mostra os comandos de tag/publicação sem criar uma Release automaticamente:
 
 ```powershell
 .\create-github-release.ps1 -Version X.Y.Z

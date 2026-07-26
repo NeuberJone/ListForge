@@ -10,6 +10,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 
 - A tela Sobre mantém o resultado da última verificação de atualização e exibe `Baixar agora` quando uma nova versão já foi encontrada.
 - A verificação automática dentro do intervalo de 24 horas passa a mostrar um status útil, como aplicativo atualizado ou atualização disponível.
+- Documentadas as etapas obrigatórias de tag versionada e publicação de Release no fluxo de distribuição.
 
 ## [2.1.33] - 2026-07-24
 
