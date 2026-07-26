@@ -4,6 +4,18 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.33] - 2026-07-24
+
+### Adicionado
+
+- Adicionado menu em `Extrair lista do link` para criar uma nova lista ou adicionar os registros extraídos à lista atual.
+- Adicionados testes para extração por link, preservação de duplicidades e prévia sem consumo de crédito Trial.
+
+### Alterado
+
+- Meião e aplicação em lote de tamanho agora ficam disponíveis no Editor mesmo com Lista avançada desligada.
+- Extração por link valida o conteúdo antes de substituir ou adicionar à entrada atual.
+
 ## [2.1.32] - 2026-07-24
 
 ### Adicionado

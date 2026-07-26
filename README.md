@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.32-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.33-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -95,6 +95,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 * Tamanho de fonte ajustável para entrada, saída e prévia JSON.
 * Atalho com `Ctrl` + scroll do mouse para aumentar ou diminuir a fonte dos editores.
 * Switch **Lista avançada** no editor para ligar ou desligar recursos avançados sem sair da tela principal.
+* Extração de lista por link com opções para criar nova lista ou adicionar à lista atual.
 
 ### Processamento
 
@@ -320,7 +321,16 @@ Também é possível alterar rapidamente pelo editor: posicione o mouse sobre a 
 
 O Editor possui um switch animado **Lista avançada** na barra superior. Ele substitui a antiga opção de Configurações e permite ligar ou desligar recursos avançados sem sair da tela principal.
 
-Com **Lista avançada** desligada, o ListForge mantém visíveis os controles principais de entrada, saída, preparação, processamento, cópia e salvamento. Ao ligar, o editor mostra opções extras, como aplicação em lote de tamanho/meião e a seleção avançada de tipos de peça para o JSON na barra lateral. Alternar essa opção não altera as regras de processamento por si só e não consome créditos Trial.
+Com **Lista avançada** desligada, o ListForge mantém visíveis os controles principais de entrada, saída, preparação, processamento, cópia, salvamento e aplicação em lote de tamanho/meião. Ao ligar, o editor mostra opções extras, como a seleção avançada de tipos de peça para o JSON na barra lateral. Alternar essa opção não altera as regras de processamento por si só e não consome créditos Trial.
+
+## Extrair lista do link
+
+O botão **Extrair lista do link** abre um menu com duas opções:
+
+* **Criar nova lista**: valida o link e substitui a entrada atual somente se a extração terminar com sucesso.
+* **Adicionar à lista atual**: valida o link e adiciona os registros extraídos ao final da entrada atual, preservando duplicidades.
+
+O link precisa começar com `http://` ou `https://` e retornar um JSON compatível. Falhas de URL, acesso, JSON inválido ou validação da lista não alteram a entrada atual e não consomem créditos Trial.
 
 ## Salvar avançado
 
@@ -695,19 +705,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.32\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.33\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.32\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.33\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.32\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.33\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -716,16 +726,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.32\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.33\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.32\Installer
+bin\Release\dist\2.1.33\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.32\SHA256SUMS.txt
+bin\Release\dist\2.1.33\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -733,7 +743,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.32\Release
+bin\Release\dist\2.1.33\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:
@@ -742,6 +752,7 @@ Essa pasta contém os arquivos planos para anexar no GitHub Release:
 * `ListForge-Trial-vX.Y.Z.exe`;
 * `ListForge-vX.Y.Z.exe`;
 * `SHA256SUMS.txt`;
+* `RELEASE_NOTES_X.Y.Z.txt`;
 * `update.json`, quando uma URL pública for informada ao script de release.
 
 Para que a verificação de atualização instalada funcione sem depender da API do GitHub, publique também o `update.json` em uma URL HTTPS acessível. O instalador deve manter o nome exato `ListForge-Setup-X.Y.Z.exe`, com SHA-256 correspondente no manifest ou em `SHA256SUMS.txt`.

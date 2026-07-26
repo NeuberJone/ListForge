@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -13,8 +12,6 @@ using ListForge.Core;
 using ListForge.Models;
 using ListForge.Services;
 using Microsoft.Win32;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using AppLogger = ListForge.Core.AppLogger;
 using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
@@ -34,6 +31,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly OutputExportService _outputExportService = new();
     private readonly AdvancedSaveService _advancedSaveService = new();
     private readonly FileImportService _fileImportService = new();
+    private readonly LinkListImportService _linkListImportService = new();
     private readonly JsonPieceMappingService _jsonPieceMappingService = new();
     private readonly DistributionInfoService _distributionInfoService = new();
     private readonly GitHubUpdateService _githubUpdateService = new();
@@ -159,6 +157,7 @@ public class MainViewModel : INotifyPropertyChanged
     private double _editorFontSize = 13;
     private bool _checkUpdatesOnStartup = true;
     private bool _isUpdateBusy;
+    private bool _isExtractingFromLink;
     private double _updateDownloadProgress;
     private string _updateStatusText = "Nenhuma verificação executada.";
     private string _sizeSummary = "";
@@ -287,6 +286,7 @@ public class MainViewModel : INotifyPropertyChanged
     public bool DefaultListNameEnabled => !UseDefaultListName;
     public bool HasJsonFeaturesEnabled => AdvancedListEnabled;
     public bool ShowAdvancedEditorOptions => AdvancedListEnabled;
+    public bool IsExtractFromLinkEnabled => !IsExtractingFromLink;
     public bool ShowAdvancedJsonOptions => AdvancedListEnabled && ShowJsonSection;
     public bool AdvancedJsonPieceSlotsEnabled => ShowAdvancedJsonOptions;
     public bool ShowAdvancedSaveButton => ShowAdvancedEditorOptions;
@@ -299,6 +299,16 @@ public class MainViewModel : INotifyPropertyChanged
         {
             Set(ref _isUpdateBusy, value);
             Notify(nameof(IsUpdateProgressVisible));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+    public bool IsExtractingFromLink
+    {
+        get => _isExtractingFromLink;
+        private set
+        {
+            Set(ref _isExtractingFromLink, value);
+            Notify(nameof(IsExtractFromLinkEnabled));
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -364,6 +374,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand SaveInputFileCommand { get; }
     public ICommand SaveInputAsFileCommand { get; }
     public ICommand ExtractFromLinkCommand { get; }
+    public ICommand ExtractNewListFromLinkCommand { get; }
+    public ICommand AppendFromLinkCommand { get; }
     public ICommand ProcessCommand { get; }
     public ICommand CopyOutputCommand { get; }
     public ICommand SaveOutputCommand { get; }
@@ -417,8 +429,10 @@ public class MainViewModel : INotifyPropertyChanged
         OpenInputFileCommand = new RelayCommand(OpenInputFile);
         SaveInputFileCommand = new RelayCommand(SaveInputFile);
         SaveInputAsFileCommand = new RelayCommand(SaveInputAsFile);
-        ExtractFromLinkCommand = new RelayCommand(ExtractFromLink);
-        ProcessCommand = new RelayCommand(ProcessAndPreview);
+        ExtractFromLinkCommand = new AsyncRelayCommand(() => ExtractFromLinkAsync(ExtractedListDestination.NewList), () => !IsExtractingFromLink);
+        ExtractNewListFromLinkCommand = new AsyncRelayCommand(() => ExtractFromLinkAsync(ExtractedListDestination.NewList), () => !IsExtractingFromLink);
+        AppendFromLinkCommand = new AsyncRelayCommand(() => ExtractFromLinkAsync(ExtractedListDestination.CurrentList), () => !IsExtractingFromLink);
+        ProcessCommand = new RelayCommand(() => ProcessAndPreview());
         CopyOutputCommand = new RelayCommand(CopyOutput);
         SaveOutputCommand = new RelayCommand(SaveOutput);
         AdvancedSaveCommand = new RelayCommand(AdvancedSave);
@@ -951,52 +965,106 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     // Extract from URL
     // ---------------------------------------------------------------
-    private async void ExtractFromLink()
+    private async Task ExtractFromLinkAsync(ExtractedListDestination destination)
     {
+        if (IsExtractingFromLink)
+            return;
+
         var url = ListForge.UI.Views.InputDialog.Show(
             "Cole o link do JSON para extrair a lista:", ConfigManager.AppName);
         if (string.IsNullOrWhiteSpace(url)) return;
 
-        url = url.Trim();
-        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (destination == ExtractedListDestination.NewList
+            && HasCurrentListContent()
+            && MessageBox.Show(
+                "A lista atual será substituída somente se a extração terminar com sucesso.\n\nDeseja continuar?",
+                ConfigManager.AppName,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
         {
-            MessageBox.Show("O link precisa começar com http:// ou https://.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-            AppLogger.Warning("ExtractFromLink", "Link rejeitado por formato inválido.");
+            StatusText = "Extração cancelada.";
+            AppLogger.Info("ExtractFromLink", "Criação de nova lista por link cancelada antes da extração.");
             return;
         }
 
+        IsExtractingFromLink = true;
+        StatusText = "Extraindo lista...";
+
         try
         {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", $"{ConfigManager.AppName}/1.0");
-            var json = await client.GetStringAsync(url);
-            var data = JsonConvert.DeserializeObject<JToken>(json)
-                ?? throw new InvalidOperationException("JSON inválido.");
+            var result = await _linkListImportService
+                .ExtractAsync(url.Trim(), EditorSeparator, _sizeCfg)
+                .ConfigureAwait(true);
 
-            var extracted = CoreProcessor.ExtractListTextFromJsonData(data);
-            if (string.IsNullOrWhiteSpace(extracted))
-                throw new InvalidOperationException("Nenhuma linha foi extraída do link.");
+            if (!result.Success || result.Value == null)
+            {
+                if (result.Exception != null)
+                    AppLogger.Error("ExtractFromLink", result.TechnicalMessage, result.Exception);
+                else
+                    AppLogger.Warning("ExtractFromLink", result.TechnicalMessage);
 
-            InputText = extracted;
-            _currentFile = null;
-            CurrentFileLabel = "Arquivo atual: (lista extraída do link)";
-            StatusText = "Lista extraída do link.";
-            ClearSearchHighlight(keepStatus: true);
-            ProcessAndPreview();
+                StatusText = result.UserMessage;
+                MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (destination == ExtractedListDestination.NewList)
+            {
+                ApplyExtractedNewList(result.Value.Text);
+                ProcessAndPreview(consumeTrialCredit: false);
+                StatusText = "Nova lista criada com sucesso.";
+                AppLogger.Info("ExtractFromLink", $"Nova lista criada por link com {result.Value.LineCount} registro(s).");
+            }
+            else
+            {
+                AppendExtractedList(result.Value.Text);
+                ProcessAndPreview(consumeTrialCredit: false);
+                StatusText = $"Itens adicionados à lista atual: {result.Value.LineCount} registro(s).";
+                AppLogger.Info("ExtractFromLink", $"Lista do link adicionada com {result.Value.LineCount} registro(s).");
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            AppLogger.Error("ExtractFromLink", "Falha ao extrair lista do link.", ex);
-            StatusText = $"Erro: {ex.Message}";
-            MessageBox.Show($"Falha ao extrair a lista do link.\n\n{ex.Message}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            IsExtractingFromLink = false;
         }
+    }
+
+    private bool HasCurrentListContent() =>
+        !string.IsNullOrWhiteSpace(InputText)
+        || !string.IsNullOrWhiteSpace(OutputText)
+        || !string.IsNullOrWhiteSpace(JsonText);
+
+    private void ApplyExtractedNewList(string extracted)
+    {
+        InputText = extracted;
+        _currentFile = null;
+        CurrentFileLabel = "Arquivo atual: (lista extraída do link)";
+        ClearSearchHighlight(keepStatus: true);
+        ClearValidationHighlights();
+    }
+
+    private void AppendExtractedList(string extracted)
+    {
+        InputText = CombineInputText(InputText, extracted);
+        ClearSearchHighlight(keepStatus: true);
+        ClearValidationHighlights();
+    }
+
+    internal static string CombineInputText(string current, string extracted)
+    {
+        var currentText = (current ?? "").TrimEnd('\r', '\n');
+        var extractedText = (extracted ?? "").Trim('\r', '\n');
+        if (string.IsNullOrWhiteSpace(currentText))
+            return extractedText;
+        if (string.IsNullOrWhiteSpace(extractedText))
+            return currentText;
+        return currentText + "\n" + extractedText;
     }
 
     // ---------------------------------------------------------------
     // Processing
     // ---------------------------------------------------------------
-    private void ProcessAndPreview()
+    private void ProcessAndPreview(bool consumeTrialCredit = true)
     {
         try
         {
@@ -1006,7 +1074,8 @@ public class MainViewModel : INotifyPropertyChanged
                 _sizeCfg,
                 LabelToCaseMode(EditorCaseLabel),
                 LabelToSortMode(EditorSortLabel),
-                BuildJsonPieceMappingOptions()));
+                BuildJsonPieceMappingOptions(),
+                consumeTrialCredit));
 
             if (result.Status == ProcessingWorkflowStatus.EmptyInput)
             {

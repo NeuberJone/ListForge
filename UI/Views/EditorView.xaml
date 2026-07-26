@@ -34,7 +34,21 @@
         </StackPanel>
         <WrapPanel>
           <Button Content="Abrir Lista"          Command="{Binding OpenInputFileCommand}"     Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-          <Button Content="Extrair do link"      Command="{Binding ExtractFromLinkCommand}"   Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+          <Button x:Name="BtnExtractFromLink"
+                  Content="Extrair lista do link"
+                  Style="{StaticResource StdButton}"
+                  Margin="0,0,5,0"
+                  IsEnabled="{Binding IsExtractFromLinkEnabled}"
+                  Click="ExtractFromLinkMenuButton_Click">
+            <Button.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Criar nova lista"
+                          Command="{Binding PlacementTarget.DataContext.ExtractNewListFromLinkCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                <MenuItem Header="Adicionar &#x00E0; lista atual"
+                          Command="{Binding PlacementTarget.DataContext.AppendFromLinkCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+              </ContextMenu>
+            </Button.ContextMenu>
+          </Button>
           <Button Content="Salvar Entrada"       Command="{Binding SaveInputFileCommand}"     Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
           <Button Content="Salvar Como"          Command="{Binding SaveInputAsFileCommand}"   Style="{StaticResource StdButton}" Margin="0,0,12,0"/>
           <Button Content="Desfazer"             Command="{Binding UndoCommand}"              Style="{StaticResource StdButton}" Margin="0,0,5,0" ToolTip="Ctrl+Z no editor"/>

@@ -136,8 +136,17 @@ public partial class EditorView : UserControl
 
     private void RefreshAdvancedEditorOptionsVisibility(MainViewModel vm)
     {
-        PnlBulkAppend.Visibility = vm.ShowAdvancedEditorOptions ? Visibility.Visible : Visibility.Collapsed;
+        PnlBulkAppend.Visibility = Visibility.Visible;
         BtnAdvancedSave.Visibility = vm.ShowAdvancedSaveButton ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ExtractFromLinkMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.ContextMenu == null || !button.IsEnabled)
+            return;
+
+        button.ContextMenu.PlacementTarget = button;
+        button.ContextMenu.IsOpen = true;
     }
 
     // ---------------------------------------------------------------

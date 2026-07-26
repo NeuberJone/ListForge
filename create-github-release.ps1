@@ -17,7 +17,7 @@ Set-Location $repoRoot
 $tag = "v$Version"
 $versionDist = Join-Path $repoRoot "bin\Release\dist\$Version"
 $releaseDir = Join-Path $versionDist "Release"
-$releaseNotesPath = Join-Path $versionDist "RELEASE_NOTES_$Version.txt"
+$releaseNotesPath = Join-Path $releaseDir "RELEASE_NOTES_$Version.txt"
 
 $requiredArtifacts = @(
     (Join-Path $releaseDir "ListForge-Setup-$Version.exe"),
@@ -131,12 +131,20 @@ $artifacts = [System.Collections.Generic.List[string]]::new()
 $requiredArtifacts | ForEach-Object { $artifacts.Add($_) | Out-Null }
 $artifacts.Add($checksumsPath) | Out-Null
 
-$changelogSection = Get-ChangelogSection -ChangelogPath (Join-Path $repoRoot "CHANGELOG.md") -ReleaseVersion $Version
-if ([string]::IsNullOrWhiteSpace($changelogSection)) {
-    $changelogSection = "ListForge $Version"
-}
+if (-not (Test-Path -LiteralPath $releaseNotesPath) -or [string]::IsNullOrWhiteSpace((Get-Content -LiteralPath $releaseNotesPath -Raw -Encoding UTF8))) {
+    $changelogSection = Get-ChangelogSection -ChangelogPath (Join-Path $repoRoot "CHANGELOG.md") -ReleaseVersion $Version
+    if ([string]::IsNullOrWhiteSpace($changelogSection)) {
+        $changelogSection = "ListForge $Version"
+    }
 
-Set-Content -LiteralPath $releaseNotesPath -Value $changelogSection -Encoding UTF8
+    Set-Content -LiteralPath $releaseNotesPath -Value $changelogSection -Encoding UTF8
+}
+$artifacts.Add($releaseNotesPath) | Out-Null
+
+$updateManifestPath = Join-Path $releaseDir "update.json"
+if (Test-Path -LiteralPath $updateManifestPath) {
+    $artifacts.Add($updateManifestPath) | Out-Null
+}
 
 Write-Host "Release local validada." -ForegroundColor Green
 Write-Host "Versão: $Version"

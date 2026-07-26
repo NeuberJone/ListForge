@@ -19,7 +19,8 @@ public sealed record ProcessingWorkflowRequest(
     SizeConfig SizeConfig,
     string CaseMode,
     ListSortMode SortMode,
-    JsonPieceMappingOptions? JsonPieceMapping = null);
+    JsonPieceMappingOptions? JsonPieceMapping = null,
+    bool ConsumeTrialCredit = true);
 
 public sealed record ProcessingWorkflowResult(
     ProcessingWorkflowStatus Status,
@@ -72,7 +73,7 @@ public sealed class ProcessingWorkflowService
         if (pieceMappingIssues.Count > 0)
             return ProcessingWorkflowResult.ValidationFailed(pieceMappingIssues);
 
-        if (!_licenseService.CanProcess)
+        if (request.ConsumeTrialCredit && !_licenseService.CanProcess)
             return ProcessingWorkflowResult.Empty(ProcessingWorkflowStatus.TrialLimitReached);
 
         var output = ListProcessor.BuildOutput(rows, request.SizeConfig, request.CaseMode);
@@ -83,7 +84,8 @@ public sealed class ProcessingWorkflowService
             request.JsonPieceMapping ?? JsonPieceMappingOptions.Disabled);
         var preview = ListProcessor.BuildJsonPreview(orders);
 
-        _licenseService.ConsumeSuccessfulProcessing();
+        if (request.ConsumeTrialCredit)
+            _licenseService.ConsumeSuccessfulProcessing();
 
         return new ProcessingWorkflowResult(
             ProcessingWorkflowStatus.Success,
