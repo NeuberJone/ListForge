@@ -50,6 +50,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="10"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
 
           <CheckBox x:Name="ChkUseDefaultOutputDir"
@@ -96,6 +98,11 @@
                    Style="{StaticResource FormEntry}"
                    Width="80"
                    HorizontalAlignment="Left"/>
+
+          <CheckBox x:Name="ChkAllowOutputEditing"
+                    Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2"
+                    Content="Permitir edi&#x00E7;&#x00E3;o da sa&#x00ED;da e do JSON nesta sess&#x00E3;o"
+                    VerticalAlignment="Center"/>
         </Grid>
       </GroupBox>
 

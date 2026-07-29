@@ -133,6 +133,32 @@ public class JsonPieceMappingTests
     }
 
     [Fact]
+    public void EstimateRequiredSlots_UsesEmptyColumnPosition()
+    {
+        var service = new JsonPieceMappingService();
+
+        var slots = service.EstimateRequiredSlots(",,G\n,,,P", ",", Config);
+
+        Assert.Equal(2, slots);
+    }
+
+    [Fact]
+    public void EnabledAdvancedMapping_UsesEmptyColumnPosition()
+    {
+        var rows = ListProcessor.ProcessText(",,G\n,,,P", ",", Config);
+        var options = new JsonPieceMappingOptions(true,
+            [PieceTypeMapper.Tanktop, PieceTypeMapper.Vest]);
+
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config, "original", options);
+
+        Assert.Equal(2, orders.Count);
+        Assert.Equal("1-G", orders[0]["Tanktop"]);
+        Assert.Equal("", orders[0]["Vest"]);
+        Assert.Equal("", orders[1]["Tanktop"]);
+        Assert.Equal("1-P", orders[1]["Vest"]);
+    }
+
+    [Fact]
     public void EnabledAdvancedMapping_FailsWhenOrderHasFewerPositionsThanInput()
     {
         var service = new ProcessingWorkflowService();

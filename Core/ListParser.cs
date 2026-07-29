@@ -8,6 +8,27 @@ namespace ListForge.Core;
 public static class ListParser
 {
     public sealed record ValidationIssue(int LineNumber, string Message);
+    private sealed record HeaderContext(IReadOnlyList<string> Fields);
+
+    private static readonly Dictionary<string, string> PieceHeaderAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ShortSleeve"] = PieceTypeMapper.ShortSleeve,
+        ["Manga Curta"] = PieceTypeMapper.ShortSleeve,
+        ["MangaCurta"] = PieceTypeMapper.ShortSleeve,
+        ["Camiseta"] = PieceTypeMapper.ShortSleeve,
+        ["LongSleeve"] = PieceTypeMapper.LongSleeve,
+        ["Manga Longa"] = PieceTypeMapper.LongSleeve,
+        ["MangaLonga"] = PieceTypeMapper.LongSleeve,
+        ["Short"] = PieceTypeMapper.Short,
+        ["Bermuda"] = PieceTypeMapper.Short,
+        ["Pants"] = PieceTypeMapper.Pants,
+        ["Calca"] = PieceTypeMapper.Pants,
+        ["Calça"] = PieceTypeMapper.Pants,
+        ["Tanktop"] = PieceTypeMapper.Tanktop,
+        ["Regata"] = PieceTypeMapper.Tanktop,
+        ["Vest"] = PieceTypeMapper.Vest,
+        ["Colete"] = PieceTypeMapper.Vest,
+    };
 
     public static string NormalizeSeparator(string value)
     {
@@ -33,7 +54,60 @@ public static class ListParser
         catch { return SizeHelper.IsValidSize(text, config); }
     }
 
+    private static string InferPieceFieldFromColumn(int columnIndex)
+    {
+        var pieceIndex = columnIndex - 2;
+        return pieceIndex >= 0 && pieceIndex < PieceTypeMapper.JsonFields.Count
+            ? PieceTypeMapper.JsonFields[pieceIndex]
+            : "";
+    }
+
+    private static bool TryMapPieceHeader(string token, out string pieceField)
+    {
+        var key = token.Trim();
+        return PieceHeaderAliases.TryGetValue(key, out pieceField!);
+    }
+
+    private static bool IsNameHeader(string token) =>
+        token.Trim().Equals("Name", StringComparison.OrdinalIgnoreCase)
+        || token.Trim().Equals("Nome", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNumberHeader(string token) =>
+        token.Trim().Equals("Number", StringComparison.OrdinalIgnoreCase)
+        || token.Trim().Equals("Numero", StringComparison.OrdinalIgnoreCase)
+        || token.Trim().Equals("Número", StringComparison.OrdinalIgnoreCase);
+
+    private static HeaderContext? TryParseHeaderContext(IReadOnlyList<string> parts)
+    {
+        if (!parts.Any(part => TryMapPieceHeader(part, out _)))
+            return null;
+
+        var hasNameOrNumber = parts.Any(IsNameHeader) || parts.Any(IsNumberHeader);
+        if (!hasNameOrNumber && parts.Count(part => TryMapPieceHeader(part, out _)) < 2)
+            return null;
+
+        var fields = parts
+            .Select(part => TryMapPieceHeader(part, out var pieceField) ? pieceField : "")
+            .ToList();
+
+        return new HeaderContext(fields);
+    }
+
+    private static bool IsHeaderLine(string raw, string separator, out HeaderContext? context)
+    {
+        var parts = raw.Split(separator)
+            .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrEmpty(p))
+            .ToList();
+
+        context = TryParseHeaderContext(parts);
+        return context != null;
+    }
+
     public static ParsedRow? ParseLine(string line, string inputSeparator, SizeConfig sizeConfig)
+        => ParseLine(line, inputSeparator, sizeConfig, null);
+
+    private static ParsedRow? ParseLine(string line, string inputSeparator, SizeConfig sizeConfig, HeaderContext? headerContext)
     {
         var raw = line.Trim();
         if (string.IsNullOrEmpty(raw)) return null;
@@ -44,13 +118,22 @@ public static class ListParser
         var name = "";
         var number = "";
         var tams = new List<string>();
+        var pieceFields = new List<string>();
         var extras = new List<string>();
 
-        foreach (var token in parts)
+        for (var i = 0; i < parts.Count; i++)
         {
+            var token = parts[i];
             if (string.IsNullOrEmpty(token)) continue;
 
-            if (IsSize(token, sizeConfig)) { tams.Add(token); continue; }
+            if (IsSize(token, sizeConfig))
+            {
+                tams.Add(token);
+                pieceFields.Add(headerContext != null && i < headerContext.Fields.Count
+                    ? headerContext.Fields[i]
+                    : InferPieceFieldFromColumn(i));
+                continue;
+            }
             if (IsNumber(token) && string.IsNullOrEmpty(number)) { number = token; continue; }
             if (string.IsNullOrEmpty(name)) { name = token; continue; }
             extras.Add(token);
@@ -66,22 +149,31 @@ public static class ListParser
             number,
             tams,
             extras.Count >= 1 ? extras[0] : "",
-            extras.Count >= 2 ? extras[1] : "");
+            extras.Count >= 2 ? extras[1] : "",
+            pieceFields.Any(field => !string.IsNullOrEmpty(field)) ? pieceFields : null);
     }
 
     public static List<ParsedRow> ProcessText(string text, string inputSeparator, SizeConfig sizeConfig)
     {
         var parsed = new List<ParsedRow>();
         var lines = text.Split('\n');
+        var sep = NormalizeSeparator(inputSeparator);
+        HeaderContext? headerContext = null;
 
         for (var i = 0; i < lines.Length; i++)
         {
-            var line = lines[i];
+            var line = lines[i].Trim();
             if (string.IsNullOrWhiteSpace(line)) continue;
+
+            if (IsHeaderLine(line, sep, out var parsedHeader))
+            {
+                headerContext = parsedHeader;
+                continue;
+            }
 
             try
             {
-                var row = ParseLine(line, inputSeparator, sizeConfig);
+                var row = ParseLine(line, inputSeparator, sizeConfig, headerContext);
                 if (row != null) parsed.Add(row);
             }
             catch (ArgumentException ex)
@@ -102,6 +194,9 @@ public static class ListParser
         {
             var raw = lines[i].Trim();
             if (string.IsNullOrWhiteSpace(raw)) continue;
+
+            if (IsHeaderLine(raw, sep, out _))
+                continue;
 
             var parts = raw.Split(sep)
                 .Select(p => p.Trim())

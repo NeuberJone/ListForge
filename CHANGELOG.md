@@ -4,13 +4,20 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
-## [Unreleased]
+## [2.1.34] - 2026-07-29
 
 ### Alterado
 
+- Saída organizada e prévia JSON agora podem ser editadas de forma protegida durante a sessão, com aplicação validada ou descarte para voltar ao último resultado válido.
+- Importação e processamento de listas com cabeçalhos de peça reconhecidos preservam o tipo de peça correto no JSON, sem depender de uma linha fixa.
+- Atualizado o ícone do aplicativo usado no executável e no instalador.
 - A tela Sobre mantém o resultado da última verificação de atualização e exibe `Baixar agora` quando uma nova versão já foi encontrada.
 - A verificação automática dentro do intervalo de 24 horas passa a mostrar um status útil, como aplicativo atualizado ou atualização disponível.
 - Documentadas as etapas obrigatórias de tag versionada e publicação de Release no fluxo de distribuição.
+
+### Testes
+
+- Adicionados testes para preservação de seções por cabeçalho de peça, edição temporária da saída/JSON e referência do ícone oficial.
 
 ## [2.1.33] - 2026-07-24
 

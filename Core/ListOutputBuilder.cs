@@ -6,20 +6,34 @@ using ListForge.Models;
 
 namespace ListForge.Core;
 
-internal sealed record RowFragment(ParsedRow Row, string Group, IReadOnlyList<string> Socks);
+internal sealed record RowFragment(ParsedRow Row, string Group, IReadOnlyList<string> Socks, IReadOnlyList<string> PieceFields);
+internal sealed record SizeColumn(string PieceField, IReadOnlyList<string> Sizes);
 
 public static class ListOutputBuilder
 {
     internal static readonly string[] GroupRenderOrder = ["male", "female", "child"];
 
+    private static int PieceFieldIndex(string? pieceField)
+    {
+        var normalized = PieceTypeMapper.NormalizeKey(pieceField);
+        for (var i = 0; i < PieceTypeMapper.JsonFields.Count; i++)
+        {
+            if (PieceTypeMapper.JsonFields[i] == normalized)
+                return i;
+        }
+
+        return -1;
+    }
+
     internal static List<RowFragment> ExplodeRowFragments(ParsedRow row, SizeConfig config)
     {
-        var groupedColumns = GroupRenderOrder.ToDictionary(g => g, _ => new List<List<string>>());
+        var groupedColumns = GroupRenderOrder.ToDictionary(g => g, _ => new List<SizeColumn>());
         var exploded = new List<RowFragment>();
         var socks = new List<string>();
 
-        foreach (var token in row.Tams)
+        for (var tokenIndex = 0; tokenIndex < row.Tams.Count; tokenIndex++)
         {
+            var token = row.Tams[tokenIndex];
             var (qty, size) = SizeHelper.ParseQtyAndSize(token, config);
             var group = SizeHelper.SizeGroupOf(size, config);
 
@@ -30,7 +44,10 @@ public static class ListOutputBuilder
                 continue;
             }
 
-            groupedColumns[group].Add(Enumerable.Repeat(size, qty).ToList());
+            var pieceField = row.PieceFields != null && tokenIndex < row.PieceFields.Count
+                ? row.PieceFields[tokenIndex]
+                : "";
+            groupedColumns[group].Add(new SizeColumn(pieceField, Enumerable.Repeat(size, qty).ToList()));
         }
 
         foreach (var group in GroupRenderOrder)
@@ -38,21 +55,36 @@ public static class ListOutputBuilder
             var columns = groupedColumns[group];
             if (columns.Count == 0) continue;
 
-            var rowCount = columns.Max(c => c.Count);
+            var rowCount = columns.Max(c => c.Sizes.Count);
             for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
             {
-                var sizes = columns
-                    .Select(c => rowIndex < c.Count ? c[rowIndex] : "")
-                    .Where(s => !string.IsNullOrEmpty(s))
-                    .ToList();
+                var sizes = new List<string>();
+                var pieceFields = new List<string>();
+
+                foreach (var column in columns)
+                {
+                    if (rowIndex >= column.Sizes.Count)
+                        continue;
+
+                    var size = column.Sizes[rowIndex];
+                    if (string.IsNullOrEmpty(size))
+                        continue;
+
+                    sizes.Add(size);
+                    pieceFields.Add(column.PieceField);
+                }
 
                 if (sizes.Count > 0)
-                    exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, sizes, row.S2, row.S3), group, []));
+                    exploded.Add(new RowFragment(
+                        new ParsedRow(row.Name, row.Number, sizes, row.S2, row.S3),
+                        group,
+                        [],
+                        pieceFields));
             }
         }
 
         if (exploded.Count == 0 && socks.Count > 0)
-            exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, [], row.S2, row.S3), "", socks));
+            exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, [], row.S2, row.S3), "", socks, []));
         else if (socks.Count > 0)
             exploded[0] = exploded[0] with { Socks = socks };
 
@@ -65,7 +97,12 @@ public static class ListOutputBuilder
         foreach (var fragment in normalized)
         {
             if (!widths.ContainsKey(fragment.Group)) continue;
-            widths[fragment.Group] = System.Math.Max(widths[fragment.Group], fragment.Row.Tams.Count);
+            var maxPieceIndex = fragment.PieceFields
+                .Select(PieceFieldIndex)
+                .DefaultIfEmpty(-1)
+                .Max();
+            var width = maxPieceIndex >= 0 ? maxPieceIndex + 1 : fragment.Row.Tams.Count;
+            widths[fragment.Group] = System.Math.Max(widths[fragment.Group], width);
         }
         return widths;
     }
@@ -117,7 +154,28 @@ public static class ListOutputBuilder
                 {
                     if (group == fragment.Group)
                     {
-                        var groupSizes = row.Tams.Select(s => SizeHelper.FormatSizeToken(s, sizeConfig)).ToList();
+                        var groupSizes = Enumerable.Repeat("", widths[group]).ToList();
+                        var nextFreeColumn = 0;
+
+                        for (var sizeIndex = 0; sizeIndex < row.Tams.Count; sizeIndex++)
+                        {
+                            var formatted = SizeHelper.FormatSizeToken(row.Tams[sizeIndex], sizeConfig);
+                            var pieceIndex = sizeIndex < fragment.PieceFields.Count
+                                ? PieceFieldIndex(fragment.PieceFields[sizeIndex])
+                                : -1;
+                            var targetIndex = pieceIndex >= 0 && pieceIndex < groupSizes.Count
+                                ? pieceIndex
+                                : nextFreeColumn;
+
+                            while (targetIndex < groupSizes.Count && !string.IsNullOrEmpty(groupSizes[targetIndex]))
+                                targetIndex++;
+                            if (targetIndex >= groupSizes.Count)
+                                groupSizes.Add("");
+
+                            groupSizes[targetIndex] = formatted;
+                            nextFreeColumn = targetIndex + 1;
+                        }
+
                         groupSizes.AddRange(Enumerable.Repeat("", widths[group] - groupSizes.Count));
                         apparelCols.AddRange(groupSizes);
                     }
@@ -140,6 +198,12 @@ public static class ListOutputBuilder
 
                 if (hasS2) cols.Add(ListProcessor.ApplyCaseMode(row.S2, caseMode));
                 if (hasS3) cols.Add(ListProcessor.ApplyCaseMode(row.S3, caseMode));
+
+                if (!hasS2 && !hasS3)
+                {
+                    while (cols.Count > 2 && string.IsNullOrEmpty(cols[^1]))
+                        cols.RemoveAt(cols.Count - 1);
+                }
 
                 outLines.Add(string.Join(outputSeparator, cols));
             }

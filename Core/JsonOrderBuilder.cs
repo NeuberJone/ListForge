@@ -21,7 +21,7 @@ public static class JsonOrderBuilder
 
         var orders = new List<Dictionary<string, string>>();
         foreach (var row in rows)
-            orders.AddRange(BuildCustomPieceOrdersForRow(row, sizeConfig, caseMode, PieceTypeMapper.JsonFields));
+            orders.AddRange(BuildCustomPieceOrdersForRow(row, sizeConfig, caseMode, PieceTypeMapper.JsonFields, true));
 
         return orders;
     }
@@ -36,7 +36,7 @@ public static class JsonOrderBuilder
         var pieceOrder = pieceMappingOptions.NormalizedOrder;
 
         foreach (var row in rows)
-            orders.AddRange(BuildCustomPieceOrdersForRow(row, sizeConfig, caseMode, pieceOrder));
+            orders.AddRange(BuildCustomPieceOrdersForRow(row, sizeConfig, caseMode, pieceOrder, false));
 
         return orders;
     }
@@ -45,20 +45,32 @@ public static class JsonOrderBuilder
         ParsedRow row,
         SizeConfig sizeConfig,
         string caseMode,
-        IReadOnlyList<string> pieceOrder)
+        IReadOnlyList<string> pieceOrder,
+        bool useRowPieceFields)
     {
         var apparelIndex = 0;
         var groupOrder = new List<string>();
         var groupedPieces = new Dictionary<string, List<MappedPieceSize>>();
 
-        foreach (var tam in row.Tams)
+        for (var tamIndex = 0; tamIndex < row.Tams.Count; tamIndex++)
         {
+            var tam = row.Tams[tamIndex];
             var (qty, size) = SizeHelper.ParseQtyAndSize(tam, sizeConfig);
             var group = SizeHelper.SizeGroupOf(size, sizeConfig);
             if (group == SizeHelper.GroupSock)
                 continue;
 
-            var pieceField = apparelIndex < pieceOrder.Count
+            var sourcePieceField = useRowPieceFields && row.PieceFields != null && tamIndex < row.PieceFields.Count
+                ? row.PieceFields[tamIndex]
+                : "";
+            var sourcePieceIndex = !useRowPieceFields && row.PieceFields != null && tamIndex < row.PieceFields.Count
+                ? PieceFieldIndex(row.PieceFields[tamIndex])
+                : -1;
+            var pieceField = !string.IsNullOrWhiteSpace(sourcePieceField) && PieceTypeMapper.JsonFields.Contains(sourcePieceField)
+                ? sourcePieceField
+                : sourcePieceIndex >= 0 && sourcePieceIndex < pieceOrder.Count
+                ? pieceOrder[sourcePieceIndex]
+                : apparelIndex < pieceOrder.Count
                 ? pieceOrder[apparelIndex]
                 : PieceTypeMapper.ShortSleeve;
             apparelIndex++;
@@ -93,6 +105,18 @@ public static class JsonOrderBuilder
         }
 
         return orders;
+    }
+
+    private static int PieceFieldIndex(string? pieceField)
+    {
+        var normalized = PieceTypeMapper.NormalizeKey(pieceField);
+        for (var i = 0; i < PieceTypeMapper.JsonFields.Count; i++)
+        {
+            if (PieceTypeMapper.JsonFields[i] == normalized)
+                return i;
+        }
+
+        return -1;
     }
 
     private static Dictionary<string, string> CreateOrder(

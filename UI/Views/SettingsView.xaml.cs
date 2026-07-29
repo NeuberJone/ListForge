@@ -38,6 +38,8 @@ public partial class SettingsView : UserControl
 
         TxtDefaultSeparator.SetBinding(TextBox.TextProperty,
             new Binding(nameof(vm.DefaultSeparator)) { Source = vm, Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+        ChkAllowOutputEditing.SetBinding(CheckBox.IsCheckedProperty,
+            new Binding(nameof(vm.AllowOutputEditing)) { Source = vm, Mode = BindingMode.TwoWay });
 
         // ---- Advanced export ----
         CmbAdvancedSaveMode.ItemsSource = vm.AdvancedSaveModeLabels;

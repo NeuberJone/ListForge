@@ -10,4 +10,5 @@ public sealed record ParsedRow(
     string Number,
     IReadOnlyList<string> Tams,
     string S2,
-    string S3);
+    string S3,
+    IReadOnlyList<string>? PieceFields = null);

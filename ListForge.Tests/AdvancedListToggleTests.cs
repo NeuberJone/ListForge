@@ -100,6 +100,33 @@ public class AdvancedListToggleTests
         Assert.False(File.Exists(ConfigManager.TrialStatePath));
     }
 
+    [Fact]
+    public void OutputEditingStartsDisabledAndIsSessionOnly()
+    {
+        using var env = AdvancedListToggleTestEnvironment.Create();
+        File.WriteAllText(ConfigManager.ConfigPath, """
+        {
+          "AllowOutputEditing": true
+        }
+        """);
+
+        var vm = new MainViewModel();
+
+        Assert.False(vm.AllowOutputEditing);
+        Assert.True(vm.IsGeneratedOutputReadOnly);
+
+        vm.AllowOutputEditing = true;
+        Assert.True(vm.AllowOutputEditing);
+
+        Assert.Null(typeof(AppConfig).GetProperty("AllowOutputEditing"));
+        vm.SaveSettingsCommand.Execute(null);
+        var cfgText = File.ReadAllText(ConfigManager.ConfigPath);
+        Assert.DoesNotContain("AllowOutputEditing", cfgText);
+
+        var nextVm = new MainViewModel();
+        Assert.False(nextVm.AllowOutputEditing);
+    }
+
     private sealed class AdvancedListToggleTestEnvironment : IDisposable
     {
         private readonly string _root;

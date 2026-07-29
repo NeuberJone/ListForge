@@ -32,7 +32,7 @@ public static class JsonListImporter
             .ToList();
     }
 
-    public static string ExtractListTextFromJsonData(object data, string outputSeparator = ",")
+    public static string ExtractListTextFromJsonData(object data, string outputSeparator = ",", bool includeHeader = false)
     {
         List<Dictionary<string, object?>> orders;
 
@@ -53,6 +53,8 @@ public static class JsonListImporter
 
         var fields = DecideEffectiveFields(orders);
         var lines = new List<string>();
+        if (includeHeader && fields.Any(field => PieceTypeMapper.JsonFields.Contains(field)))
+            lines.Add(string.Join(outputSeparator, fields));
 
         foreach (var entry in orders)
         {

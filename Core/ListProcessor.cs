@@ -34,8 +34,8 @@ public static class ListProcessor
     // ---------------------------------------------------------------
     // JSON import extraction
     // ---------------------------------------------------------------
-    public static string ExtractListTextFromJsonData(object data, string outputSeparator = ",") =>
-        JsonListImporter.ExtractListTextFromJsonData(data, outputSeparator);
+    public static string ExtractListTextFromJsonData(object data, string outputSeparator = ",", bool includeHeader = false) =>
+        JsonListImporter.ExtractListTextFromJsonData(data, outputSeparator, includeHeader);
 
     // ---------------------------------------------------------------
     // Line parsing

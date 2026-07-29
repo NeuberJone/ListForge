@@ -77,7 +77,7 @@ public sealed class LinkListImportService : IDisposable
             }
 
             var separator = ListProcessor.NormalizeSeparator(outputSeparator);
-            var extracted = ListProcessor.ExtractListTextFromJsonData(data, separator);
+            var extracted = ListProcessor.ExtractListTextFromJsonData(data, separator, includeHeader: true);
             if (string.IsNullOrWhiteSpace(extracted))
             {
                 return OperationResult<LinkListImportResult>.Fail(

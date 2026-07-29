@@ -266,6 +266,19 @@ public partial class EditorView : UserControl
         if (OutputTabs.SelectedItem is not TabItem tab) return;
         var tag = tab.Tag as string ?? "list";
 
+        if (_vm != null && !_vm.TryLeaveOutputSection(tag))
+        {
+            foreach (var item in OutputTabs.Items.OfType<TabItem>())
+            {
+                if (string.Equals(item.Tag as string, _vm.SelectedOutputSection, StringComparison.OrdinalIgnoreCase))
+                {
+                    OutputTabs.SelectedItem = item;
+                    break;
+                }
+            }
+            return;
+        }
+
         LnbOutput.Visibility = tag == "list" ? Visibility.Visible : Visibility.Collapsed;
         LnbJson.Visibility = tag == "json" ? Visibility.Visible : Visibility.Collapsed;
 

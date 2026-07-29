@@ -290,6 +290,134 @@ public class ListProcessorTests
     }
 
     [Fact]
+    public void ProcessText_RepeatedPieceHeadersPreserveSecondPiece()
+    {
+        var lines = Enumerable.Range(1, 20)
+            .Select(i => $"PLAYER {i},{i},G")
+            .Concat([
+                "",
+                "Name,Number,LongSleeve",
+                "PLAYER 21,21,M",
+                "PLAYER 22,22,P",
+            ]);
+        var input = string.Join("\n", lines);
+
+        var rows = ListProcessor.ProcessText(input, ",", Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.Equal(22, rows.Count);
+        Assert.Equal("1-G", orders[0]["ShortSleeve"]);
+        Assert.Equal("", orders[0]["LongSleeve"]);
+        Assert.Equal("", orders[20]["ShortSleeve"]);
+        Assert.Equal("1-M", orders[20]["LongSleeve"]);
+        Assert.Equal("", orders[21]["ShortSleeve"]);
+        Assert.Equal("1-P", orders[21]["LongSleeve"]);
+        Assert.Equal("PLAYER 21", orders[20]["Name"]);
+    }
+
+    [Fact]
+    public void ProcessText_EmptyColumnsInferPieceTypeForJson()
+    {
+        var input = string.Join('\n',
+            ",,G",
+            ",,P",
+            "Fé Gramacho,,M",
+            "Mateus,,10A",
+            ",,,P",
+            ",,,M",
+            ",,,G");
+
+        var rows = ListProcessor.ProcessText(input, ",", Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.Equal("1-G", orders[0]["ShortSleeve"]);
+        Assert.Equal("", orders[0]["LongSleeve"]);
+        Assert.Equal("1-P", orders[1]["ShortSleeve"]);
+        Assert.Equal("", orders[1]["LongSleeve"]);
+        Assert.Equal("1-P", orders[4]["LongSleeve"]);
+        Assert.Equal("", orders[4]["ShortSleeve"]);
+        Assert.Equal("1-M", orders[5]["LongSleeve"]);
+        Assert.Equal("1-G", orders[6]["LongSleeve"]);
+    }
+
+    [Fact]
+    public void BuildOutput_EmptyColumnsPreservePieceColumns()
+    {
+        var input = string.Join('\n',
+            ",,G",
+            ",,,P",
+            ",,,M");
+
+        var rows = ListProcessor.ProcessText(input, ",", Config);
+        var output = ListProcessor.BuildOutput(rows, Config);
+
+        Assert.Equal(",,G\n,,,P\n,,,M", output);
+    }
+
+    [Fact]
+    public void ProcessText_PieceHeaderTransitionWorksOnAnyLine()
+    {
+        var input = """
+        Name,Number,Short
+        A,1,G
+        B,2,M
+        Name,Number,Vest
+        C,3,P
+        """;
+
+        var rows = ListProcessor.ProcessText(input, ",", Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.Equal(["1-G", "1-M", ""], orders.Select(o => o["Short"]));
+        Assert.Equal(["", "", "1-P"], orders.Select(o => o["Vest"]));
+    }
+
+    [Fact]
+    public void ProcessText_ThreePieceSectionsKeepOrderAndDoNotDuplicateRows()
+    {
+        var input = """
+        Name,Number,ShortSleeve
+        A,1,G
+        Name,Number,LongSleeve
+        B,2,M
+        Name,Number,Tanktop
+        C,3,P
+        """;
+
+        var rows = ListProcessor.ProcessText(input, ",", Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.Equal(3, rows.Count);
+        Assert.Equal(["A", "B", "C"], orders.Select(o => o["Name"]));
+        Assert.Equal("1-G", orders[0]["ShortSleeve"]);
+        Assert.Equal("1-M", orders[1]["LongSleeve"]);
+        Assert.Equal("1-P", orders[2]["Tanktop"]);
+    }
+
+    [Fact]
+    public void ExtractListTextFromJsonData_CanIncludeHeaderToPreservePieceFields()
+    {
+        var data = JObject.Parse("""
+        {
+          "orders": [
+            { "Name": "ANA", "Number": "10", "ShortSleeve": "G" },
+            { "Name": "BIA", "Number": "11", "LongSleeve": "M" }
+          ]
+        }
+        """);
+
+        var text = ListProcessor.ExtractListTextFromJsonData(data, includeHeader: true);
+        var rows = ListProcessor.ProcessText(text, ",", Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.StartsWith("Name,Number,ShortSleeve,LongSleeve", text);
+        Assert.Equal("1-G", orders[0]["ShortSleeve"]);
+        Assert.Equal("", orders[0]["LongSleeve"]);
+        Assert.Equal("", orders[1]["ShortSleeve"]);
+        Assert.Equal("1-M", orders[1]["LongSleeve"]);
+    }
+
+    [Fact]
     public void ProcessText_InvalidInputIncludesLineNumber()
     {
         var ex = Assert.Throws<ArgumentException>(() =>

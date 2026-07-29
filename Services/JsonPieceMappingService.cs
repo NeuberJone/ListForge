@@ -42,7 +42,20 @@ public sealed class JsonPieceMappingService
         var max = 0;
         foreach (var row in rows)
         {
-            var count = row.Tams.Count(token => IsApparelSize(token, sizeConfig));
+            var count = 0;
+            var sequentialCount = 0;
+            for (var i = 0; i < row.Tams.Count; i++)
+            {
+                if (!IsApparelSize(row.Tams[i], sizeConfig))
+                    continue;
+
+                sequentialCount++;
+                var pieceIndex = row.PieceFields != null && i < row.PieceFields.Count
+                    ? PieceFieldIndex(row.PieceFields[i])
+                    : -1;
+                count = System.Math.Max(count, pieceIndex >= 0 ? pieceIndex + 1 : sequentialCount);
+            }
+
             if (count > max) max = count;
         }
         return max;
@@ -60,10 +73,19 @@ public sealed class JsonPieceMappingService
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
 
-            var count = line
-                .Split(sep)
-                .Select(part => part.Trim())
-                .Count(token => IsApparelSize(token, sizeConfig));
+            var count = 0;
+            var sequentialCount = 0;
+            var parts = line.Split(sep).Select(part => part.Trim()).ToList();
+            for (var i = 0; i < parts.Count; i++)
+            {
+                if (!IsApparelSize(parts[i], sizeConfig))
+                    continue;
+
+                sequentialCount++;
+                var columnPosition = i >= 2 ? i - 1 : sequentialCount;
+                count = System.Math.Max(count, columnPosition);
+            }
+
             if (count > max) max = count;
         }
 
@@ -87,5 +109,17 @@ public sealed class JsonPieceMappingService
         {
             return false;
         }
+    }
+
+    private static int PieceFieldIndex(string? pieceField)
+    {
+        var normalized = PieceTypeMapper.NormalizeKey(pieceField);
+        for (var i = 0; i < PieceTypeMapper.JsonFields.Count; i++)
+        {
+            if (PieceTypeMapper.JsonFields[i] == normalized)
+                return i;
+        }
+
+        return -1;
     }
 }

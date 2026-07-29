@@ -12,6 +12,8 @@ using ListForge.Core;
 using ListForge.Models;
 using ListForge.Services;
 using Microsoft.Win32;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using AppLogger = ListForge.Core.AppLogger;
 using CoreHelper = ListForge.Core.SizeHelper;
 using CoreProcessor = ListForge.Core.ListProcessor;
@@ -36,6 +38,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly DistributionInfoService _distributionInfoService = new();
     private readonly GitHubUpdateService _githubUpdateService = new();
     private readonly UpdateInstallerService _updateInstallerService = new();
+    private bool _isLoadingConfig;
     private bool _isRefreshingAdvancedJsonPieceSlots;
     private DistributionInfo _distributionInfo;
     private CancellationTokenSource? _updateCancellation;
@@ -65,6 +68,9 @@ public class MainViewModel : INotifyPropertyChanged
     private List<ParsedRow> _rows = [];
     private List<Dictionary<string, string>> _lastOrders = [];
     private string _lastJson = "";
+    private string _lastValidOutputText = "";
+    private string _lastValidJsonText = "";
+    private bool _isUpdatingGeneratedText;
 
     // ---------------------------------------------------------------
     // Bound properties — editor
@@ -83,6 +89,9 @@ public class MainViewModel : INotifyPropertyChanged
     private string _selectedOutputSection = "list";
     private string _selectedSockSize = "";
     private bool _showJsonSection;
+    private bool _allowOutputEditing;
+    private bool _hasPendingOutputEdit;
+    private bool _hasPendingJsonEdit;
 
     public string InputText
     {
@@ -96,8 +105,38 @@ public class MainViewModel : INotifyPropertyChanged
             RefreshAdvancedJsonPieceSlots();
         }
     }
-    public string OutputText { get => _outputText; set => Set(ref _outputText, value); }
-    public string JsonText { get => _jsonText; set => Set(ref _jsonText, value); }
+    public string OutputText
+    {
+        get => _outputText;
+        set
+        {
+            if (EqualityComparer<string>.Default.Equals(_outputText, value)) return;
+            _outputText = value;
+            Notify();
+            if (!_isUpdatingGeneratedText && AllowOutputEditing)
+            {
+                HasPendingOutputEdit = !string.Equals(_outputText, _lastValidOutputText, StringComparison.Ordinal);
+                if (HasPendingOutputEdit)
+                    HasPendingJsonEdit = false;
+            }
+        }
+    }
+    public string JsonText
+    {
+        get => _jsonText;
+        set
+        {
+            if (EqualityComparer<string>.Default.Equals(_jsonText, value)) return;
+            _jsonText = value;
+            Notify();
+            if (!_isUpdatingGeneratedText && AllowOutputEditing)
+            {
+                HasPendingJsonEdit = !string.Equals(_jsonText, _lastValidJsonText, StringComparison.Ordinal);
+                if (HasPendingJsonEdit)
+                    HasPendingOutputEdit = false;
+            }
+        }
+    }
     public string EditorSeparator
     {
         get => _editorSeparator;
@@ -118,6 +157,73 @@ public class MainViewModel : INotifyPropertyChanged
     public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
     public string SelectedOutputSection { get => _selectedOutputSection; set => Set(ref _selectedOutputSection, value); }
     public string SelectedSockSize { get => _selectedSockSize; set => Set(ref _selectedSockSize, value); }
+    public bool AllowOutputEditing
+    {
+        get => _allowOutputEditing;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_allowOutputEditing, value)) return;
+
+            if (!value && HasPendingOutputOrJsonEdit)
+            {
+                var result = MessageBox.Show(
+                    "Existem alterações na saída ou no JSON. Clique em Sim para aplicar, Não para descartar ou Cancelar para continuar editando.",
+                    ConfigManager.AppName,
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Cancel)
+                {
+                    Notify();
+                    return;
+                }
+
+                if (result == MessageBoxResult.Yes && !ApplyOutputEdits())
+                {
+                    Notify();
+                    return;
+                }
+
+                if (result == MessageBoxResult.No)
+                    DiscardOutputEdits();
+            }
+
+            _allowOutputEditing = value;
+            Notify();
+            Notify(nameof(IsGeneratedOutputReadOnly));
+            Notify(nameof(CanApplyOutputEdits));
+            Notify(nameof(CanDiscardOutputEdits));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+    public bool IsGeneratedOutputReadOnly => !AllowOutputEditing;
+    public bool HasPendingOutputEdit
+    {
+        get => _hasPendingOutputEdit;
+        private set
+        {
+            Set(ref _hasPendingOutputEdit, value);
+            Notify(nameof(HasPendingOutputOrJsonEdit));
+            Notify(nameof(CanApplyOutputEdits));
+            Notify(nameof(CanDiscardOutputEdits));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+    public bool HasPendingJsonEdit
+    {
+        get => _hasPendingJsonEdit;
+        private set
+        {
+            Set(ref _hasPendingJsonEdit, value);
+            Notify(nameof(HasPendingOutputOrJsonEdit));
+            Notify(nameof(CanApplyOutputEdits));
+            Notify(nameof(CanDiscardOutputEdits));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+    public bool HasPendingOutputOrJsonEdit => HasPendingOutputEdit || HasPendingJsonEdit;
+    public bool CanApplyOutputEdits => AllowOutputEditing && HasPendingOutputOrJsonEdit;
+    public bool CanDiscardOutputEdits => AllowOutputEditing && HasPendingOutputOrJsonEdit;
     public bool ShowJsonSection
     {
         get => _showJsonSection;
@@ -227,7 +333,8 @@ public class MainViewModel : INotifyPropertyChanged
             Notify(nameof(ShowAdvancedSaveButton));
             Notify(nameof(ShowAdvancedJsonOptions));
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
-            SaveAdvancedListSettings();
+            if (!_isLoadingConfig)
+                SaveAdvancedListSettings();
         }
     }
     public bool UseDefaultOutputDir { get => _useDefaultOutputDir; set { Set(ref _useDefaultOutputDir, value); Notify(nameof(OutputDirEnabled)); } }
@@ -392,6 +499,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand CopyOutputCommand { get; }
     public ICommand SaveOutputCommand { get; }
     public ICommand AdvancedSaveCommand { get; }
+    public ICommand ApplyOutputEditsCommand { get; }
+    public ICommand DiscardOutputEditsCommand { get; }
     public ICommand CopyJsonCommand { get; }
     public ICommand GenerateJsonCommand { get; }
     public ICommand ClearAllCommand { get; }
@@ -449,6 +558,8 @@ public class MainViewModel : INotifyPropertyChanged
         CopyOutputCommand = new RelayCommand(CopyOutput);
         SaveOutputCommand = new RelayCommand(SaveOutput);
         AdvancedSaveCommand = new RelayCommand(AdvancedSave);
+        ApplyOutputEditsCommand = new RelayCommand(() => ApplyOutputEdits(), () => CanApplyOutputEdits);
+        DiscardOutputEditsCommand = new RelayCommand(DiscardOutputEdits, () => CanDiscardOutputEdits);
         CopyJsonCommand = new RelayCommand(CopyJson);
         GenerateJsonCommand = new RelayCommand(GenerateJson);
         ClearAllCommand = new RelayCommand(ClearAll);
@@ -846,22 +957,30 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     private void LoadConfigIntoProperties()
     {
-        AdvancedListEnabled = _cfg.UseAdvancedJsonPieceMapping;
-        UseDefaultOutputDir = _cfg.UseDefaultOutputDir;
-        OutputDir = _cfg.OutputDir;
-        UseDefaultListName = _cfg.UseDefaultListName;
-        DefaultListName = _cfg.DefaultListName;
-        DefaultCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
-        DefaultSeparator = _cfg.DefaultInputSeparator;
-        AdvancedSaveModeLabel = AdvancedSaveModeToLabel(ParseAdvancedSaveMode(_cfg.AdvancedSaveMode));
-        ThemeName = NormalizeThemeName(_cfg.ThemeName);
-        CheckUpdatesOnStartup = _cfg.CheckUpdatesOnStartup;
-        EditorSeparator = _cfg.DefaultInputSeparator;
-        EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
-        EditorFontSize = _cfg.EditorFontSize;
-        ShowJsonSection = AdvancedListEnabled;
-        RefreshAdvancedJsonPieceSlots(_cfg.AdvancedJsonPieceOrder);
-        RestoreCachedUpdateState();
+        _isLoadingConfig = true;
+        try
+        {
+            AdvancedListEnabled = _cfg.UseAdvancedJsonPieceMapping;
+            UseDefaultOutputDir = _cfg.UseDefaultOutputDir;
+            OutputDir = _cfg.OutputDir;
+            UseDefaultListName = _cfg.UseDefaultListName;
+            DefaultListName = _cfg.DefaultListName;
+            DefaultCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
+            DefaultSeparator = _cfg.DefaultInputSeparator;
+            AdvancedSaveModeLabel = AdvancedSaveModeToLabel(ParseAdvancedSaveMode(_cfg.AdvancedSaveMode));
+            ThemeName = NormalizeThemeName(_cfg.ThemeName);
+            CheckUpdatesOnStartup = _cfg.CheckUpdatesOnStartup;
+            EditorSeparator = _cfg.DefaultInputSeparator;
+            EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
+            EditorFontSize = _cfg.EditorFontSize;
+            ShowJsonSection = AdvancedListEnabled;
+            RefreshAdvancedJsonPieceSlots(_cfg.AdvancedJsonPieceOrder);
+            RestoreCachedUpdateState();
+        }
+        finally
+        {
+            _isLoadingConfig = false;
+        }
     }
 
     private void LoadSizeConfigIntoBindings()
@@ -1286,8 +1405,7 @@ public class MainViewModel : INotifyPropertyChanged
             _lastOrders = result.Orders;
             _lastJson = result.JsonPreview;
 
-            OutputText = result.OutputText;
-            JsonText = result.JsonPreview;
+            SetGeneratedTexts(result.OutputText, result.JsonPreview);
             SelectedOutputSection = "list";
             ClearValidationHighlights();
 
@@ -1316,6 +1434,121 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     // Output actions
     // ---------------------------------------------------------------
+    private void SetGeneratedTexts(string output, string json)
+    {
+        _isUpdatingGeneratedText = true;
+        try
+        {
+            OutputText = output;
+            JsonText = json;
+            _lastValidOutputText = output;
+            _lastValidJsonText = json;
+            HasPendingOutputEdit = false;
+            HasPendingJsonEdit = false;
+        }
+        finally
+        {
+            _isUpdatingGeneratedText = false;
+        }
+    }
+
+    private bool ApplyOutputEdits()
+    {
+        if (!HasPendingOutputOrJsonEdit)
+            return true;
+
+        try
+        {
+            var input = HasPendingJsonEdit
+                ? CoreProcessor.ExtractListTextFromJsonData(JObject.Parse(JsonText), EditorSeparator, includeHeader: true)
+                : OutputText;
+
+            var result = _processingWorkflowService.Execute(new ProcessingWorkflowRequest(
+                input,
+                EditorSeparator,
+                _sizeCfg,
+                LabelToCaseMode(EditorCaseLabel),
+                LabelToSortMode(EditorSortLabel),
+                BuildJsonPieceMappingOptions(),
+                ConsumeTrialCredit: false));
+
+            if (result.Status == ProcessingWorkflowStatus.ValidationFailed)
+            {
+                var issue = result.ValidationIssues.FirstOrDefault();
+                var message = HasPendingJsonEdit
+                    ? "O JSON contém erros e não pôde ser aplicado."
+                    : issue != null
+                        ? $"A lista de saída contém dados inválidos na linha {issue.LineNumber}."
+                        : "A lista de saída contém dados inválidos.";
+                StatusText = message;
+                MessageBox.Show(message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            if (result.Status != ProcessingWorkflowStatus.Success)
+            {
+                var message = HasPendingJsonEdit
+                    ? "O JSON contém erros e não pôde ser aplicado."
+                    : "A lista de saída não pôde ser aplicada.";
+                StatusText = message;
+                MessageBox.Show(message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            _rows = result.Rows;
+            _lastOrders = result.Orders;
+            _lastJson = result.JsonPreview;
+            SetGeneratedTexts(result.OutputText, result.JsonPreview);
+            StatusText = "Alterações aplicadas.";
+            return true;
+        }
+        catch (JsonReaderException ex)
+        {
+            AppLogger.Warning("ApplyJsonEdit", "JSON editado possui erro de sintaxe.", ex);
+            var message = $"O JSON contém erros e não pôde ser aplicado. Linha {ex.LineNumber}, posição {ex.LinePosition}.";
+            StatusText = message;
+            MessageBox.Show(message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("ApplyOutputEdit", "Falha ao aplicar edição manual da saída.", ex);
+            var message = HasPendingJsonEdit
+                ? "O JSON contém erros e não pôde ser aplicado."
+                : "A lista de saída contém dados inválidos.";
+            StatusText = message;
+            MessageBox.Show(message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+    }
+
+    private void DiscardOutputEdits()
+    {
+        SetGeneratedTexts(_lastValidOutputText, _lastValidJsonText);
+        StatusText = "Alterações descartadas.";
+    }
+
+    public bool TryLeaveOutputSection(string targetSection)
+    {
+        if (!HasPendingOutputOrJsonEdit || string.Equals(SelectedOutputSection, targetSection, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var result = MessageBox.Show(
+            "Existem alterações pendentes. Clique em Sim para aplicar, Não para descartar ou Cancelar para continuar editando.",
+            ConfigManager.AppName,
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Cancel)
+            return false;
+
+        if (result == MessageBoxResult.Yes)
+            return ApplyOutputEdits();
+
+        DiscardOutputEdits();
+        return true;
+    }
+
     private void AdvancedSave()
     {
         if (!AdvancedListEnabled)
@@ -1733,7 +1966,6 @@ public class MainViewModel : INotifyPropertyChanged
         RequestThemeChange?.Invoke(ThemeName);
 
         StatusText = "Configurações salvas.";
-        MessageBox.Show("Configurações salvas com sucesso.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private JsonPieceMappingOptions BuildJsonPieceMappingOptions() =>
