@@ -32,6 +32,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly ProcessingWorkflowService _processingWorkflowService;
     private readonly OutputExportService _outputExportService = new();
     private readonly AdvancedSaveService _advancedSaveService = new();
+    private readonly SettingsExportService _settingsExportService = new();
     private readonly FileImportService _fileImportService = new();
     private readonly LinkListImportService _linkListImportService = new();
     private readonly JsonPieceMappingService _jsonPieceMappingService = new();
@@ -457,8 +458,7 @@ public class MainViewModel : INotifyPropertyChanged
     public bool AboutIsTrial => _aboutService.IsTrial;
     public string AboutTrialStatus => _aboutService.TrialStatus;
     public string AboutLicenseSummary => _aboutService.LicenseSummary;
-    private bool _supportPackageIncludeLogs = true;
-    public bool SupportPackageIncludeLogs { get => _supportPackageIncludeLogs; set => Set(ref _supportPackageIncludeLogs, value); }
+    public bool SupportPackageIncludeLogs => true;
 
     // ---------------------------------------------------------------
     // Size group vars (for settings UI)
@@ -510,6 +510,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand OpenLogsFolderCommand { get; }
     public ICommand CopyAboutInfoCommand { get; }
     public ICommand GenerateSupportPackageCommand { get; }
+    public ICommand ExportSettingsCommand { get; }
+    public ICommand ImportSettingsCommand { get; }
     public ICommand CleanSpacesCommand { get; }
     public ICommand ResetSeparatorCommand { get; }
     public ICommand FindNextCommand { get; }
@@ -569,6 +571,8 @@ public class MainViewModel : INotifyPropertyChanged
         OpenLogsFolderCommand = new RelayCommand(OpenLogsFolder);
         CopyAboutInfoCommand = new RelayCommand(CopyAboutInfo);
         GenerateSupportPackageCommand = new RelayCommand(GenerateSupportPackage);
+        ExportSettingsCommand = new RelayCommand(ExportSettings);
+        ImportSettingsCommand = new RelayCommand(ImportSettings);
         CleanSpacesCommand = new RelayCommand(CleanSpaces);
         ResetSeparatorCommand = new RelayCommand(() => { EditorSeparator = ","; StatusText = "Separador redefinido para \",\"."; });
         FindNextCommand = new RelayCommand(FindNext);
@@ -588,11 +592,6 @@ public class MainViewModel : INotifyPropertyChanged
             ? $"Pronto. Trial: {_licenseService.RemainingProcessings}/{_licenseService.ProcessingLimit} processamento(s) restante(s)."
             : "Pronto.";
 
-        if (!string.IsNullOrEmpty(_cfg.LastOpenedFile))
-        {
-            _currentFile = _cfg.LastOpenedFile;
-            CurrentFileLabel = $"Arquivo atual: {_currentFile}";
-        }
     }
 
     public event Action<string>? RequestThemeChange;
@@ -1078,8 +1077,6 @@ public class MainViewModel : INotifyPropertyChanged
         {
             _currentFile = path;
             CurrentFileLabel = $"Arquivo atual: {path}";
-            _cfg.LastOpenedFile = path;
-            ConfigManager.SaveConfig(_cfg);
         }
         else
         {
@@ -1124,8 +1121,6 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            _cfg.LastOpenedFile = _currentFile;
-            ConfigManager.SaveConfig(_cfg);
             StatusText = $"Entrada salva: {Path.GetFileName(_currentFile)}";
         }
         catch (Exception ex)
@@ -1160,8 +1155,6 @@ public class MainViewModel : INotifyPropertyChanged
 
             _currentFile = dlg.FileName;
             CurrentFileLabel = $"Arquivo atual: {dlg.FileName}";
-            _cfg.LastOpenedFile = dlg.FileName;
-            ConfigManager.SaveConfig(_cfg);
             StatusText = $"Entrada salva como: {Path.GetFileName(dlg.FileName)}";
         }
         catch (Exception ex)
@@ -1215,9 +1208,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void GenerateSupportPackage()
     {
-        var warning = SupportPackageIncludeLogs
-            ? "Os logs podem conter caminhos de arquivos. Revise o pacote antes de enviar."
-            : "O pacote será gerado sem logs recentes. Revise o pacote antes de enviar.";
+        const string warning = "Os logs podem conter caminhos de arquivos. Revise o pacote antes de enviar.";
 
         if (MessageBox.Show(warning, ConfigManager.AppName, MessageBoxButton.OKCancel, MessageBoxImage.Information) != MessageBoxResult.OK)
             return;
@@ -1226,8 +1217,12 @@ public class MainViewModel : INotifyPropertyChanged
         if (dlg.ShowDialog() != true)
             return;
 
-        var options = new SupportPackageOptions(IncludeLogs: SupportPackageIncludeLogs);
-        var result = _supportPackageService.Generate(dlg.FolderName, _aboutService.BuildInfo(), options);
+        if (!TryBuildSettingsExportSnapshot(out var settingsSnapshot))
+            return;
+
+        var snapshot = new SupportPackageSnapshot(InputText ?? "", _lastValidOutputText ?? "", settingsSnapshot!);
+        var options = new SupportPackageOptions(IncludeLogs: true);
+        var result = _supportPackageService.Generate(dlg.FolderName, _aboutService.BuildInfo(), options, snapshot);
         if (!result.Success || result.Value == null)
         {
             if (result.Exception != null)
@@ -1243,6 +1238,134 @@ public class MainViewModel : INotifyPropertyChanged
             ConfigManager.AppName,
             MessageBoxButton.OK,
             MessageBoxImage.Information);
+    }
+
+    private void ExportSettings()
+    {
+        if (!TryBuildSettingsExportSnapshot(out var snapshot))
+            return;
+
+        var dlg = new SaveFileDialog
+        {
+            Title = "ListForge — Exportar configurações",
+            DefaultExt = ".json",
+            Filter = "JSON|*.json|Todos|*.*",
+            FileName = SettingsExportService.BuildDefaultFileName(InstalledVersion),
+        };
+        if (dlg.ShowDialog() != true)
+            return;
+
+        var result = _settingsExportService.ExportToFile(dlg.FileName, snapshot!);
+        if (!result.Success)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        StatusText = $"Configurações exportadas: {Path.GetFileName(dlg.FileName)}";
+        MessageBox.Show(
+            $"Configurações exportadas com sucesso.\n\n{dlg.FileName}",
+            ConfigManager.AppName,
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    private void ImportSettings()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "ListForge — Importar configurações",
+            DefaultExt = ".json",
+            Filter = "JSON|*.json|Todos|*.*",
+        };
+        if (dlg.ShowDialog() != true)
+            return;
+
+        if (MessageBox.Show(
+                "Importar as configurações deste arquivo?\n\nAs preferências importáveis serão aplicadas e salvas. O arquivo atual, a entrada, a saída e o JSON não serão alterados.",
+                ConfigManager.AppName,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var result = _settingsExportService.ImportFromFile(dlg.FileName, _cfg, _sizeCfg);
+        if (!result.Success || result.Value == null)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        _cfg = result.Value.Config;
+        _sizeCfg = result.Value.Sizes;
+
+        try
+        {
+            ConfigManager.SaveConfig(_cfg);
+            ConfigManager.SaveSizeConfig(_sizeCfg);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("SettingsImport", "Falha ao salvar configurações importadas.", ex);
+            MessageBox.Show("As configurações foram lidas, mas não puderam ser salvas.\n\n" + ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        LoadConfigIntoProperties();
+        LoadSizeConfigIntoBindings();
+        RefreshSizeSummary();
+        RefreshSockSizeOptions();
+        RequestThemeChange?.Invoke(ThemeName);
+
+        StatusText = $"Configurações importadas: {Path.GetFileName(dlg.FileName)}";
+        MessageBox.Show(
+            "Configurações importadas com sucesso.",
+            ConfigManager.AppName,
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    private bool TryBuildSettingsExportSnapshot(out SettingsExportSnapshot? snapshot)
+    {
+        snapshot = null;
+
+        SizeConfig sizes;
+        try
+        {
+            sizes = BuildSizeConfigFromUI();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("SettingsExport", "Falha ao validar configurações antes da exportação.", ex);
+            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+
+        var config = new AppConfig
+        {
+            ShowJsonTab = AdvancedListEnabled,
+            ShowGenerateJsonButton = AdvancedListEnabled,
+            ShowCopyJsonButton = AdvancedListEnabled,
+            UseAdvancedJsonPieceMapping = AdvancedListEnabled,
+            AdvancedJsonPieceOrder = AdvancedJsonPieceSlots
+                .Select(slot => PieceTypeMapper.NormalizeKey(slot.SelectedPieceType))
+                .Where(PieceTypeMapper.IsKnownKey)
+                .ToList(),
+            AdvancedSaveMode = AdvancedSaveModeToConfigValue(AdvancedSaveModeLabelToMode(AdvancedSaveModeLabel)),
+            UseDefaultOutputDir = UseDefaultOutputDir,
+            OutputDir = "",
+            UseDefaultListName = UseDefaultListName,
+            DefaultListName = DefaultListName.Trim(),
+            DefaultCaseMode = LabelToCaseMode(DefaultCaseLabel),
+            DefaultInputSeparator = string.IsNullOrWhiteSpace(DefaultSeparator) ? "," : DefaultSeparator.Trim(),
+            ThemeName = ThemeName,
+            EditorFontSize = ClampEditorFontSize(EditorFontSize),
+            CheckUpdatesOnStartup = CheckUpdatesOnStartup,
+        };
+
+        snapshot = new SettingsExportSnapshot(config, sizes, InstalledVersion);
+        return true;
     }
 
     // ---------------------------------------------------------------
@@ -1941,8 +2064,6 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.ThemeName = ThemeName;
         _cfg.EditorFontSize = ClampEditorFontSize(EditorFontSize);
         _cfg.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
-        _cfg.LastOpenedFile = _currentFile ?? "";
-
         try
         {
             ConfigManager.SaveConfig(_cfg);

@@ -9,7 +9,7 @@ namespace ListForge.Tests;
 public class SupportPackageServiceTests
 {
     [Fact]
-    public void Generate_CreatesZipWithSupportInfoAndSummaries()
+    public void Generate_CreatesZipWithSupportInfoSummariesAndSessionFiles()
     {
         using var env = SupportPackageTestEnvironment.Create();
         var service = new SupportPackageService();
@@ -22,6 +22,9 @@ public class SupportPackageServiceTests
         Assert.Contains(archive.Entries, entry => entry.FullName == "support-info.txt");
         Assert.Contains(archive.Entries, entry => entry.FullName == "config-summary.txt");
         Assert.Contains(archive.Entries, entry => entry.FullName == "sizes-summary.txt");
+        Assert.Contains(archive.Entries, entry => entry.FullName == "lista-entrada.txt");
+        Assert.Contains(archive.Entries, entry => entry.FullName == "lista-saida.txt");
+        Assert.Contains(archive.Entries, entry => entry.FullName == "configuracoes.json");
 
         var supportInfo = ReadEntry(archive, "support-info.txt");
         Assert.Contains("Privacidade", supportInfo);
@@ -55,7 +58,7 @@ public class SupportPackageServiceTests
         Assert.Contains("logs/listforge-2026-06-02.log", entryNames);
         Assert.DoesNotContain(entryNames, name => name.Contains("trial", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(entryNames, name => name.Contains("lista-real", StringComparison.OrdinalIgnoreCase));
-        Assert.DoesNotContain(entryNames, name => name.Contains("saida", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(entryNames, name => name.Contains("saida-organizada", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(entryNames, name => name.Contains("dist", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(entryNames, name => name.Contains(".git", StringComparison.OrdinalIgnoreCase));
     }
@@ -74,7 +77,7 @@ public class SupportPackageServiceTests
         Assert.DoesNotContain(archive.Entries, entry => entry.FullName.StartsWith("logs/", StringComparison.Ordinal));
 
         var supportInfo = ReadEntry(archive, "support-info.txt");
-        Assert.Contains("Logs recentes incluídos: não", supportInfo);
+        Assert.Contains("Logs recentes incluidos: nao", supportInfo);
         Assert.Contains("Revise o pacote antes de enviar", supportInfo);
     }
 
@@ -114,13 +117,43 @@ public class SupportPackageServiceTests
         Assert.True(result.Success);
         using var archive = ZipFile.OpenRead(result.Value!);
         var configSummary = ReadEntry(archive, "config-summary.txt");
+        var exportedSettings = ReadEntry(archive, "configuracoes.json");
         Assert.DoesNotContain("SecretOutput", configSummary);
         Assert.DoesNotContain("secret-list.csv", configSummary);
+        Assert.DoesNotContain("SecretOutput", exportedSettings);
+        Assert.DoesNotContain("secret-list.csv", exportedSettings);
+        Assert.DoesNotContain("LastOpenedFile", exportedSettings);
+        Assert.DoesNotContain("TrialState", exportedSettings);
         Assert.Contains("ThemeName", configSummary);
     }
 
     [Fact]
-    public void Generate_WorksWithoutLogs()
+    public void Generate_IncludesCurrentInputOutputAndExportedSettings()
+    {
+        using var env = SupportPackageTestEnvironment.Create();
+        var service = new SupportPackageService();
+        var snapshot = new SupportPackageSnapshot(
+            "ANA,10,G",
+            "ANA,10,G",
+            new SettingsExportSnapshot(
+                new AppConfig { ThemeName = "SISBolt", DefaultListName = "pedido" },
+                SizeConfig.Default(),
+                "2.1.35"));
+
+        var result = service.Generate(env.OutputDir, env.AboutInfo, new SupportPackageOptions(IncludeLogs: false), snapshot);
+
+        Assert.True(result.Success);
+        using var archive = ZipFile.OpenRead(result.Value!);
+        Assert.Equal("ANA,10,G", ReadEntry(archive, "lista-entrada.txt"));
+        Assert.Equal("ANA,10,G", ReadEntry(archive, "lista-saida.txt"));
+        var settings = ReadEntry(archive, "configuracoes.json");
+        Assert.Contains("\"schemaVersion\": 1", settings);
+        Assert.Contains("\"applicationVersion\": \"2.1.35\"", settings);
+        Assert.Contains("SISBolt", settings);
+    }
+
+    [Fact]
+    public void Generate_WorksWithoutLogsAndWithoutListContent()
     {
         using var env = SupportPackageTestEnvironment.Create();
         var service = new SupportPackageService();
@@ -130,6 +163,8 @@ public class SupportPackageServiceTests
         Assert.True(result.Success);
         using var archive = ZipFile.OpenRead(result.Value!);
         Assert.DoesNotContain(archive.Entries, entry => entry.FullName.StartsWith("logs/", StringComparison.Ordinal));
+        Assert.Equal("", ReadEntry(archive, "lista-entrada.txt"));
+        Assert.Equal("", ReadEntry(archive, "lista-saida.txt"));
     }
 
     private static string ReadEntry(ZipArchive archive, string name)
@@ -169,9 +204,9 @@ public class SupportPackageServiceTests
 
             var aboutInfo = new AboutInfo(
                 "ListForge",
-                "2.1.23",
+                "2.1.35",
                 "Trial",
-                "Não definido",
+                "Nao definido",
                 true,
                 5,
                 10,

@@ -13,9 +13,25 @@ public sealed record SupportPackageOptions(
     int MaxLogFiles = 5,
     long MaxTotalLogSizeBytes = 1_048_576);
 
+public sealed record SupportPackageSnapshot(
+    string InputText,
+    string OutputText,
+    SettingsExportSnapshot Settings);
+
 public sealed class SupportPackageService
 {
     private static readonly SupportPackageOptions DefaultOptions = new();
+    private readonly SettingsExportService _settingsExportService;
+
+    public SupportPackageService()
+        : this(new SettingsExportService())
+    {
+    }
+
+    public SupportPackageService(SettingsExportService settingsExportService)
+    {
+        _settingsExportService = settingsExportService;
+    }
 
     public OperationResult<string> Generate(string outputDirectory, AboutInfo aboutInfo)
     {
@@ -24,14 +40,29 @@ public sealed class SupportPackageService
 
     public OperationResult<string> Generate(string outputDirectory, AboutInfo aboutInfo, SupportPackageOptions options)
     {
+        var snapshot = new SupportPackageSnapshot(
+            "",
+            "",
+            new SettingsExportSnapshot(ConfigManager.LoadConfig(), ConfigManager.LoadSizeConfig(), aboutInfo.Version));
+        return Generate(outputDirectory, aboutInfo, options, snapshot);
+    }
+
+    public OperationResult<string> Generate(
+        string outputDirectory,
+        AboutInfo aboutInfo,
+        SupportPackageOptions options,
+        SupportPackageSnapshot snapshot)
+    {
         try
         {
-            return OperationResult<string>.Ok(GeneratePackage(outputDirectory, aboutInfo, NormalizeOptions(options)));
+            return OperationResult<string>.Ok(
+                GeneratePackage(outputDirectory, aboutInfo, NormalizeOptions(options), snapshot),
+                "Pacote de suporte gerado com sucesso.");
         }
         catch (Exception ex)
         {
             return OperationResult<string>.Fail(
-                $"Falha ao gerar pacote de suporte.\n\n{ex.Message}",
+                "Falha ao gerar pacote de suporte.",
                 "Falha ao gerar pacote de suporte.",
                 ex,
                 "SupportPackageFailed");
@@ -48,16 +79,23 @@ public sealed class SupportPackageService
             Math.Clamp(options.MaxTotalLogSizeBytes, 0, 5 * 1_048_576));
     }
 
-    private static string GeneratePackage(string outputDirectory, AboutInfo aboutInfo, SupportPackageOptions options)
+    private string GeneratePackage(
+        string outputDirectory,
+        AboutInfo aboutInfo,
+        SupportPackageOptions options,
+        SupportPackageSnapshot snapshot)
     {
         Directory.CreateDirectory(outputDirectory);
 
         var packagePath = CreatePackagePath(outputDirectory);
         using var archive = ZipFile.Open(packagePath, ZipArchiveMode.Create);
 
-        AddTextEntry(archive, "support-info.txt", BuildSupportInfo(aboutInfo, options));
-        AddTextEntry(archive, "config-summary.txt", BuildConfigSummary(ConfigManager.LoadConfig()));
-        AddTextEntry(archive, "sizes-summary.txt", BuildSizeSummary(ConfigManager.LoadSizeConfig()));
+        AddTextEntry(archive, "support-info.txt", BuildSupportInfo(aboutInfo, options, snapshot));
+        AddTextEntry(archive, "config-summary.txt", BuildConfigSummary(snapshot.Settings.Config));
+        AddTextEntry(archive, "sizes-summary.txt", BuildSizeSummary(snapshot.Settings.Sizes));
+        AddTextEntry(archive, "lista-entrada.txt", snapshot.InputText ?? "");
+        AddTextEntry(archive, "lista-saida.txt", snapshot.OutputText ?? "");
+        AddTextEntry(archive, "configuracoes.json", _settingsExportService.BuildJson(snapshot.Settings));
 
         if (options.IncludeLogs)
             AddRecentLogs(archive, options);
@@ -82,23 +120,26 @@ public sealed class SupportPackageService
         }
     }
 
-    private static string BuildSupportInfo(AboutInfo info, SupportPackageOptions options)
+    private static string BuildSupportInfo(AboutInfo info, SupportPackageOptions options, SupportPackageSnapshot snapshot)
     {
         var lines = new[]
         {
             "ListForge",
-            $"Versão: {info.Version}",
-            $"Edição: {info.Edition}",
+            $"Versao: {info.Version}",
+            $"Edicao: {info.Edition}",
             $"Gerado em: {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
             $"Sistema operacional: {RuntimeInformation.OSDescription}",
             $"Arquitetura: {RuntimeInformation.OSArchitecture}",
-            $"Pasta de configuração: {info.ConfigPath}",
+            $"Pasta de configuracao: {info.ConfigPath}",
             $"Pasta de logs: {info.LogsPath}",
-            $"Logs recentes incluídos: {(options.IncludeLogs ? "sim" : "não")}",
+            $"Logs recentes incluidos: {(options.IncludeLogs ? "sim" : "nao")}",
             $"Limite de arquivos de log: {options.MaxLogFiles}",
             $"Limite total de logs: {options.MaxTotalLogSizeBytes} bytes",
+            $"Entrada atual incluida: {(string.IsNullOrEmpty(snapshot.InputText) ? "vazia" : "sim")}",
+            $"Saida atual incluida: {(string.IsNullOrEmpty(snapshot.OutputText) ? "vazia" : "sim")}",
+            "Configuracoes exportadas incluidas: sim",
             "",
-            "Privacidade: este pacote não inclui conteúdo completo de listas, saída organizada, JSON de listas reais, arquivos do usuário, estado interno do Trial, tokens, senhas, chaves, build/dist ou repositório Git.",
+            "Privacidade: este pacote inclui a entrada atual, a saida atual e as configuracoes exportadas para diagnostico. Ele nao inclui JSON de listas reais, arquivos externos do usuario, estado interno do Trial, tokens, senhas, chaves, build/dist ou repositorio Git.",
             "Os logs podem conter caminhos de arquivos. Revise o pacote antes de enviar.",
         };
 

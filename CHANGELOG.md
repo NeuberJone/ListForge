@@ -4,6 +4,20 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.35] - 2026-07-29
+
+### Adicionado
+
+- Opções **Importar configurações** e **Exportar configurações** na tela de Configurações, usando JSON versionado com preferências seguras do usuário.
+- Pacote de suporte passa a incluir `lista-entrada.txt`, `lista-saida.txt` e `configuracoes.json`, além dos diagnósticos já existentes.
+- Acesso ao pacote de suporte movido para o menu lateral, disponível em qualquer tela.
+- Testes para importação/exportação de configurações, pacote de suporte com snapshot da sessão e reinicialização sem arquivo atual.
+
+### Corrigido
+
+- Nova execução do ListForge não restaura automaticamente o arquivo atual da sessão anterior.
+- Campo legado de arquivo aberto é ignorado ao carregar configurações antigas e não é salvo novamente.
+
 ## [2.1.34] - 2026-07-29
 
 ### Alterado

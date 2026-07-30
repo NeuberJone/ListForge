@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.34-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.35-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -290,13 +290,47 @@ A tela Sobre exibe informações úteis para identificação da instalação e s
 
 Ela também possui ações para copiar as informações do produto para suporte, verificar atualizações, baixar a atualização disponível, gerar pacote de suporte, abrir a pasta de configuração e abrir a pasta de logs.
 
+## Sessão e arquivo atual
+
+Cada nova execução do ListForge começa como uma nova sessão, sem arquivo atual definido automaticamente. O usuário precisa abrir, importar ou salvar uma lista explicitamente para que um arquivo passe a ser tratado como atual naquela sessão.
+
+As preferências permanentes continuam sendo carregadas normalmente, como tema, tamanho da fonte, separador padrão, opções de processamento e atualização. O caminho do arquivo aberto anteriormente não é restaurado como arquivo ativo e não é salvo novamente no `config.json`.
+
+## Importar e exportar configurações
+
+A tela **Configurações** possui as ações **Importar configurações** e **Exportar configurações**.
+
+Ao exportar, o ListForge gera um arquivo JSON UTF-8 com estrutura versionada para diagnóstico, conferência ou backup manual de preferências.
+
+O nome sugerido segue o formato:
+
+```text
+ListForge-Configuracoes-X.Y.Z-AAAA-MM-DD-HHmmss.json
+```
+
+O arquivo inclui preferências permitidas, como opções visuais, processamento, Lista avançada, exportação avançada, atualização e tamanhos configurados.
+
+Ao importar, o ListForge aplica apenas os campos permitidos desse JSON e atualiza a tela imediatamente. O arquivo atual, a entrada, a saída organizada e a prévia JSON da sessão aberta não são alterados.
+
+Não são importados nem exportados: arquivo atual, conteúdo da entrada, saída organizada, JSON de listas, estado temporário de edição, dados internos de licença/Trial, tokens, senhas, chaves ou credenciais.
+
 ## Pacote de suporte
 
-A tela Sobre possui a ação **Gerar pacote de suporte**, que cria um arquivo `.zip` para diagnóstico técnico.
+O menu lateral possui a ação **Gerar pacote de suporte**, que cria um arquivo `.zip` para diagnóstico técnico em qualquer tela.
 
-O pacote inclui informações do produto, resumo seguro de configurações e tamanhos configurados. A tela Sobre permite escolher se os logs recentes serão incluídos pela opção **Incluir logs recentes**.
+O pacote inclui informações do produto, resumo seguro de configurações, tamanhos configurados, entrada atual, saída atual, logs recentes permitidos e uma exportação das configurações atuais. O menu lateral deixa a ação **Gerar pacote de suporte** disponível em qualquer tela.
 
-O pacote nunca inclui conteúdo completo da entrada, saída organizada, JSON de listas reais, arquivos de listas do usuário, dados internos de licença/Trial, tokens, senhas, chaves, build/dist ou repositório Git. Quando os logs são incluídos, o ListForge limita a seleção aos arquivos recentes permitidos.
+Novos arquivos incluídos no ZIP:
+
+```text
+lista-entrada.txt
+lista-saida.txt
+configuracoes.json
+```
+
+Se não houver entrada ou saída na sessão atual, os arquivos correspondentes são incluídos vazios e o pacote não reutiliza conteúdo de sessões anteriores.
+
+O pacote nunca inclui JSON de listas reais, arquivos externos de listas do usuário, dados internos de licença/Trial, tokens, senhas, chaves, build/dist ou repositório Git. Quando os logs são incluídos, o ListForge limita a seleção aos arquivos recentes permitidos.
 
 Antes da geração, o ListForge avisa que logs podem conter caminhos de arquivos. Ao gerar o pacote, escolha a pasta de destino e revise o ZIP antes de enviar para suporte.
 
@@ -677,7 +711,7 @@ Esse fluxo não gera instalador, onefile ou artefatos de release.
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.31`.
+O projeto está configurado para Windows x64 e versão `2.1.35`.
 
 ### Script de release
 
@@ -718,19 +752,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.34\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.35\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.34\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.35\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.34\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.35\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -739,16 +773,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.34\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.35\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.34\Installer
+bin\Release\dist\2.1.35\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.34\SHA256SUMS.txt
+bin\Release\dist\2.1.35\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -756,7 +790,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.34\Release
+bin\Release\dist\2.1.35\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:

@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace ListForge.Models;
 
 public sealed class AppConfig
@@ -31,5 +33,6 @@ public sealed class AppConfig
     public string LastAvailableUpdateChecksumsUrl { get; set; } = "";
     public long LastAvailableUpdateChecksumsSizeBytes { get; set; }
     public string LastAvailableUpdateChecksumsSha256 { get; set; } = "";
+    [JsonIgnore]
     public string LastOpenedFile { get; set; } = "";
 }

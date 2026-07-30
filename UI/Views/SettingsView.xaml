@@ -257,6 +257,16 @@
                 Style="{StaticResource AccentButton}"
                 Margin="0,0,10,0"
                 Padding="16,8"/>
+        <Button Content="Importar configurações"
+                Command="{Binding ImportSettingsCommand}"
+                Style="{StaticResource StdButton}"
+                Margin="0,0,10,0"
+                Padding="14,8"/>
+        <Button Content="Exportar configurações"
+                Command="{Binding ExportSettingsCommand}"
+                Style="{StaticResource StdButton}"
+                Margin="0,0,10,0"
+                Padding="14,8"/>
         <Button Content="Restaurar padrão (geral)"
                 Command="{Binding RestoreDefaultSettingsCommand}"
                 Style="{StaticResource StdButton}"
