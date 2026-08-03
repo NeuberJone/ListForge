@@ -13,9 +13,9 @@
     <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
-    <Version>2.1.36</Version>
-    <FileVersion>2.1.36.0</FileVersion>
-    <AssemblyVersion>2.1.36.0</AssemblyVersion>
+    <Version>2.1.37</Version>
+    <FileVersion>2.1.37.0</FileVersion>
+    <AssemblyVersion>2.1.37.0</AssemblyVersion>
     <ListForgeDistribution Condition="'$(ListForgeDistribution)' == ''">Development</ListForgeDistribution>
   </PropertyGroup>
 

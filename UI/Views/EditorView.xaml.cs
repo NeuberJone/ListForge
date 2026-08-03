@@ -101,6 +101,13 @@ public partial class EditorView : UserControl
         // ---- File label ----
         LblCurrentFile.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
             new System.Windows.Data.Binding(nameof(vm.CurrentFileLabel)) { Source = vm });
+        CmbWorkProfile.ItemsSource = vm.WorkProfiles;
+        CmbWorkProfile.SetBinding(ComboBox.SelectedItemProperty,
+            new System.Windows.Data.Binding(nameof(vm.SelectedWorkProfile))
+            {
+                Source = vm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+            });
         TglAdvancedList.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty,
             new System.Windows.Data.Binding(nameof(vm.AdvancedListEnabled))
             {

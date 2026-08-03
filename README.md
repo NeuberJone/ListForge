@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.36-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.37-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -65,7 +65,7 @@ Configuração de tamanhos masculinos, femininos, infantis e meião.
 
 O ListForge trabalha como uma estação de preparação de listas. O usuário pode colar dados manualmente, abrir arquivos, extrair conteúdo de documentos, reconhecer texto em imagens por OCR, limpar separadores, processar os registros e salvar o resultado.
 
-A interface é organizada em áreas de entrada, saída, prévia JSON, configurações e manual. As preferências do usuário são persistidas localmente e incluem separador padrão, modo de capitalização, pasta de saída, nome padrão da lista, tema visual, tamanho da fonte dos editores, verificação de atualizações e grupos de tamanho.
+A interface é organizada em áreas de entrada, saída, prévia JSON, configurações e manual. As preferências do usuário são persistidas localmente e incluem separador padrão, modo de capitalização, pasta de saída, nome padrão da lista, perfis de trabalho, tema visual, tamanho da fonte dos editores, verificação de atualizações e grupos de tamanho.
 
 ## Problema que o projeto resolve
 
@@ -308,6 +308,20 @@ O recurso vem desativado por padrão e pode ser ligado em **Configurações > Mo
 
 O efeito de calor acontece como uma sobreposição rápida na janela do Editor após processamento bem-sucedido. O Modo Forja não altera entrada, saída, JSON, importação, exportação, Trial ou qualquer regra de processamento. Quando desligado, nenhum efeito visual é exibido.
 
+## Perfis de trabalho
+
+Os **Perfis de trabalho** salvam conjuntos reutilizáveis de configurações para alternar rapidamente entre fluxos diferentes de lista.
+
+Cada perfil guarda configurações de trabalho como separador, capitalização, ordenação do Editor, Lista avançada, ordem dos tipos de peça do JSON, tipo de Salvar avançado, pasta padrão de saída e nome padrão da lista.
+
+O perfil protegido **Padrão** é criado automaticamente em instalações novas ou existentes. Em instalações atualizadas, ele parte das configurações atuais do usuário para preservar o comportamento anterior.
+
+No Editor, o seletor **Perfil de trabalho** permite trocar rapidamente o perfil ativo. Em Configurações > Perfis de trabalho, é possível criar perfil, salvar alterações no perfil, descartar alterações, renomear, duplicar, excluir e restaurar o perfil Padrão.
+
+Ao trocar de perfil, o ListForge aplica as configurações de trabalho sem apagar a entrada atual, a saída, a prévia JSON ou arquivos abertos. Se houver alterações não salvas no perfil ativo, o usuário pode salvar, descartar ou cancelar a troca.
+
+Os perfis são incluídos na exportação/importação de configurações e no pacote de suporte por meio de `configuracoes.json`. Eles não armazenam conteúdo de listas, saída organizada, JSON real, licença, estado Trial, tokens, senhas ou chaves.
+
 ## Importar e exportar configurações
 
 A tela **Configurações** possui as ações **Importar configurações** e **Exportar configurações**.
@@ -320,7 +334,7 @@ O nome sugerido segue o formato:
 ListForge-Configuracoes-X.Y.Z-AAAA-MM-DD-HHmmss.json
 ```
 
-O arquivo inclui preferências permitidas, como opções visuais, Modo Forja, processamento, Lista avançada, exportação avançada, atualização e tamanhos configurados.
+O arquivo inclui preferências permitidas, como opções visuais, Modo Forja, processamento, Lista avançada, Perfis de trabalho, exportação avançada, atualização e tamanhos configurados.
 
 Ao importar, o ListForge aplica apenas os campos permitidos desse JSON e atualiza a tela imediatamente. O arquivo atual, a entrada, a saída organizada e a prévia JSON da sessão aberta não são alterados.
 
@@ -622,9 +636,10 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `test-release.ps1` valida os artefatos locais de uma versão, confere hashes, nomes versionados, release notes e manifest de atualização.
 * `docs/SMOKE_TEST.md` descreve o roteiro manual de smoke test antes de publicar uma release.
 * `TestAssets/Samples` contém listas de exemplo para validar fluxo principal, erro de entrada, Lista avançada, JSON, dados completos e volume manual.
-* `Services` contém serviços extraídos do ViewModel para importação, exportação, processamento, licença, suporte, informações da tela Sobre e abertura de pastas.
+* `Services` contém serviços extraídos do ViewModel para importação, exportação, processamento, licença, suporte, perfis de trabalho, informações da tela Sobre e abertura de pastas.
 * `Services/GitHubUpdateService.cs`, `Services/UpdateInstallerService.cs`, `Services/UpdateProcessLauncher.cs` e `Services/DistributionInfoService.cs` concentram consulta de atualização por manifest/GitHub, validação de instalador, abertura segura de processos e identificação da distribuição atual.
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
+* `Services/WorkProfileService.cs` gerencia criação, validação, aplicação e persistência dos Perfis de trabalho.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
 * `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/AdvancedSaveService.cs`, `Services/ProcessingWorkflowService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.
@@ -743,7 +758,7 @@ As entradas de teste ficam em `TestAssets\Samples` e cobrem lista válida simple
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.36`.
+O projeto está configurado para Windows x64 e versão `2.1.37`.
 
 ### Script de release
 
@@ -784,19 +799,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.36\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.37\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.36\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.37\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.36\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.37\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -805,16 +820,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.36\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.37\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.36\Installer
+bin\Release\dist\2.1.37\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.36\SHA256SUMS.txt
+bin\Release\dist\2.1.37\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -822,7 +837,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.36\Release
+bin\Release\dist\2.1.37\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:

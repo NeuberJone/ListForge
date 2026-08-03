@@ -153,6 +153,9 @@ public sealed class SettingsExportService
                 config.UseAdvancedJsonPieceMapping,
                 config.AdvancedJsonPieceOrder,
                 config.AdvancedSaveMode,
+                config.WorkProfilesSchemaVersion,
+                config.ActiveWorkProfileId,
+                config.WorkProfiles,
             },
             Output = new
             {
@@ -213,6 +216,10 @@ public sealed class SettingsExportService
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             config.AdvancedSaveMode = NormalizeAdvancedSaveMode(ReadString(processing, "advancedSaveMode", config.AdvancedSaveMode));
+
+            config.WorkProfilesSchemaVersion = ReadInt(processing, "workProfilesSchemaVersion", config.WorkProfilesSchemaVersion);
+            config.ActiveWorkProfileId = ReadString(processing, "activeWorkProfileId", config.ActiveWorkProfileId);
+            config.WorkProfiles = ReadWorkProfiles(processing, "workProfiles");
         }
 
         var output = ReadObject(settings, "output");
@@ -265,6 +272,14 @@ public sealed class SettingsExportService
         var token = ReadToken(obj, name);
         return token is Newtonsoft.Json.Linq.JArray arr
             ? arr.Values<string>().Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).ToList()
+            : [];
+    }
+
+    private static List<WorkProfile> ReadWorkProfiles(Newtonsoft.Json.Linq.JObject obj, string name)
+    {
+        var token = ReadToken(obj, name);
+        return token is Newtonsoft.Json.Linq.JArray arr
+            ? arr.ToObject<List<WorkProfile>>() ?? []
             : [];
     }
 

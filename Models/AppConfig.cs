@@ -16,6 +16,9 @@ public sealed class AppConfig
     public string DefaultListName { get; set; } = "lista";
     public string DefaultCaseMode { get; set; } = "original";
     public string DefaultInputSeparator { get; set; } = ",";
+    public int WorkProfilesSchemaVersion { get; set; } = 1;
+    public string ActiveWorkProfileId { get; set; } = "";
+    public List<WorkProfile> WorkProfiles { get; set; } = [];
     public string ThemeName { get; set; } = "ListForge Dark";
     public double EditorFontSize { get; set; } = 13;
     public bool ForgeModeEnabled { get; set; } = false;

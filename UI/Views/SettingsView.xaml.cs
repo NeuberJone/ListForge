@@ -35,6 +35,13 @@ public partial class SettingsView : UserControl
         TxtEditorFontSize.SetBinding(TextBlock.TextProperty,
             new Binding(nameof(vm.EditorFontSize)) { Source = vm, StringFormat = "{0:0}px" });
 
+        // ---- Work profiles ----
+        CmbSettingsWorkProfile.ItemsSource = vm.WorkProfiles;
+        CmbSettingsWorkProfile.SetBinding(Selector.SelectedItemProperty,
+            new Binding(nameof(vm.SelectedWorkProfile)) { Source = vm, Mode = BindingMode.TwoWay });
+        TxtWorkProfileStatus.SetBinding(TextBlock.TextProperty,
+            new Binding(nameof(vm.WorkProfileChangeStatus)) { Source = vm });
+
         // ---- Output ----
         ChkUseDefaultOutputDir.SetBinding(CheckBox.IsCheckedProperty,
             new Binding(nameof(vm.UseDefaultOutputDir)) { Source = vm, Mode = BindingMode.TwoWay });

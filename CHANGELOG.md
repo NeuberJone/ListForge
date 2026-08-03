@@ -4,6 +4,16 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.37] - 2026-08-03
+
+### Adicionado
+
+- Perfis de trabalho para salvar e reutilizar conjuntos de configurações de processamento, Lista avançada, tipos de peça e saída.
+- Perfil protegido **Padrão**, criado automaticamente para preservar configurações de instalações existentes.
+- Seletor rápido de perfil no Editor e gerenciamento completo em Configurações, com criação, salvamento, descarte, renomeação, duplicação, exclusão e restauração do padrão.
+- Exportação/importação de configurações e pacote de suporte passam a representar os perfis de trabalho sem incluir conteúdo de listas, JSON real ou detalhes internos de Trial.
+- Testes automatizados para criação, validação, duplicação, exclusão, restauração e detecção de alterações dos perfis de trabalho.
+
 ## [2.1.36] - 2026-07-30
 
 ### Adicionado

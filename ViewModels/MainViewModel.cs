@@ -36,11 +36,13 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly FileImportService _fileImportService = new();
     private readonly LinkListImportService _linkListImportService = new();
     private readonly JsonPieceMappingService _jsonPieceMappingService = new();
+    private readonly WorkProfileService _workProfileService = new();
     private readonly DistributionInfoService _distributionInfoService = new();
     private readonly GitHubUpdateService _githubUpdateService = new();
     private readonly UpdateInstallerService _updateInstallerService = new();
     private bool _isLoadingConfig;
     private bool _isRefreshingAdvancedJsonPieceSlots;
+    private bool _isApplyingWorkProfile;
     private DistributionInfo _distributionInfo;
     private CancellationTokenSource? _updateCancellation;
     private DateTimeOffset? _lastManualUpdateCheckUtc;
@@ -72,6 +74,8 @@ public class MainViewModel : INotifyPropertyChanged
     private string _lastValidOutputText = "";
     private string _lastValidJsonText = "";
     private bool _isUpdatingGeneratedText;
+    private WorkProfile? _selectedWorkProfile;
+    private bool _hasUnsavedWorkProfileChanges;
 
     // ---------------------------------------------------------------
     // Bound properties — editor
@@ -147,10 +151,11 @@ public class MainViewModel : INotifyPropertyChanged
             _editorSeparator = value;
             Notify();
             RefreshAdvancedJsonPieceSlots();
+            MarkWorkProfileChanged();
         }
     }
-    public string EditorCaseLabel { get => _editorCaseLabel; set => Set(ref _editorCaseLabel, value); }
-    public string EditorSortLabel { get => _editorSortLabel; set => Set(ref _editorSortLabel, value); }
+    public string EditorCaseLabel { get => _editorCaseLabel; set { Set(ref _editorCaseLabel, value); MarkWorkProfileChanged(); } }
+    public string EditorSortLabel { get => _editorSortLabel; set { Set(ref _editorSortLabel, value); MarkWorkProfileChanged(); } }
     public string FindText { get => _findText; set { Set(ref _findText, value); ClearSearchHighlight(keepStatus: true); } }
     public string ReplaceText { get => _replaceText; set => Set(ref _replaceText, value); }
     public bool FindMatchCase { get => _findMatchCase; set { Set(ref _findMatchCase, value); ClearSearchHighlight(keepStatus: true); } }
@@ -344,15 +349,16 @@ public class MainViewModel : INotifyPropertyChanged
             Notify(nameof(AdvancedJsonPieceSlotsEnabled));
             if (!_isLoadingConfig)
                 SaveAdvancedListSettings();
+            MarkWorkProfileChanged();
         }
     }
-    public bool UseDefaultOutputDir { get => _useDefaultOutputDir; set { Set(ref _useDefaultOutputDir, value); Notify(nameof(OutputDirEnabled)); } }
-    public string OutputDir { get => _outputDir; set => Set(ref _outputDir, value); }
-    public bool UseDefaultListName { get => _useDefaultListName; set { Set(ref _useDefaultListName, value); Notify(nameof(DefaultListNameEnabled)); } }
-    public string DefaultListName { get => _defaultListName; set => Set(ref _defaultListName, value); }
-    public string DefaultCaseLabel { get => _defaultCaseLabel; set => Set(ref _defaultCaseLabel, value); }
-    public string DefaultSeparator { get => _defaultSeparator; set => Set(ref _defaultSeparator, value); }
-    public string AdvancedSaveModeLabel { get => _advancedSaveModeLabel; set => Set(ref _advancedSaveModeLabel, value); }
+    public bool UseDefaultOutputDir { get => _useDefaultOutputDir; set { Set(ref _useDefaultOutputDir, value); Notify(nameof(OutputDirEnabled)); MarkWorkProfileChanged(); } }
+    public string OutputDir { get => _outputDir; set { Set(ref _outputDir, value); MarkWorkProfileChanged(); } }
+    public bool UseDefaultListName { get => _useDefaultListName; set { Set(ref _useDefaultListName, value); Notify(nameof(DefaultListNameEnabled)); MarkWorkProfileChanged(); } }
+    public string DefaultListName { get => _defaultListName; set { Set(ref _defaultListName, value); MarkWorkProfileChanged(); } }
+    public string DefaultCaseLabel { get => _defaultCaseLabel; set { Set(ref _defaultCaseLabel, value); MarkWorkProfileChanged(); } }
+    public string DefaultSeparator { get => _defaultSeparator; set { Set(ref _defaultSeparator, value); MarkWorkProfileChanged(); } }
+    public string AdvancedSaveModeLabel { get => _advancedSaveModeLabel; set { Set(ref _advancedSaveModeLabel, value); MarkWorkProfileChanged(); } }
     public bool CheckUpdatesOnStartup
     {
         get => _checkUpdatesOnStartup;
@@ -522,6 +528,41 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
     public string UpdateStatusText { get => _updateStatusText; private set => Set(ref _updateStatusText, value); }
+    public ObservableCollection<WorkProfile> WorkProfiles { get; } = [];
+    public WorkProfile? SelectedWorkProfile
+    {
+        get => _selectedWorkProfile;
+        set
+        {
+            if (ReferenceEquals(_selectedWorkProfile, value))
+                return;
+
+            ChangeSelectedWorkProfile(value);
+        }
+    }
+    public bool HasUnsavedWorkProfileChanges
+    {
+        get => _hasUnsavedWorkProfileChanges;
+        private set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_hasUnsavedWorkProfileChanges, value)) return;
+            _hasUnsavedWorkProfileChanges = value;
+            Notify();
+            Notify(nameof(WorkProfileChangeStatus));
+            Notify(nameof(ActiveWorkProfileDisplayName));
+            RefreshWorkProfileDisplayNames();
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+    public string ActiveWorkProfileDisplayName => SelectedWorkProfile == null
+        ? "Perfil de trabalho"
+        : HasUnsavedWorkProfileChanges ? $"{SelectedWorkProfile.Name}*" : SelectedWorkProfile.Name;
+    public string WorkProfileChangeStatus => HasUnsavedWorkProfileChanges
+        ? "Alterações não salvas no perfil"
+        : "Perfil salvo";
+    public bool CanManageSelectedWorkProfile => SelectedWorkProfile != null;
+    public bool CanRenameSelectedWorkProfile => SelectedWorkProfile != null && !SelectedWorkProfile.IsDefault;
+    public bool CanDeleteSelectedWorkProfile => SelectedWorkProfile != null && !SelectedWorkProfile.IsDefault;
 
     // ---------------------------------------------------------------
     // Bound properties — about
@@ -606,6 +647,13 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand CheckUpdatesCommand { get; }
     public ICommand DownloadAvailableUpdateCommand { get; }
     public ICommand CancelUpdateDownloadCommand { get; }
+    public ICommand CreateWorkProfileCommand { get; }
+    public ICommand SaveWorkProfileCommand { get; }
+    public ICommand DiscardWorkProfileChangesCommand { get; }
+    public ICommand RenameWorkProfileCommand { get; }
+    public ICommand DuplicateWorkProfileCommand { get; }
+    public ICommand DeleteWorkProfileCommand { get; }
+    public ICommand RestoreDefaultWorkProfileCommand { get; }
 
     // Search state (exposed so View can use it)
     private List<(int start, int length)> _searchMatches = [];
@@ -624,8 +672,11 @@ public class MainViewModel : INotifyPropertyChanged
         _distributionInfo = _distributionInfoService.GetCurrentDistribution();
         _cfg = ConfigManager.LoadConfig();
         _sizeCfg = ConfigManager.LoadSizeConfig();
+        EnsureWorkProfiles(saveIfChanged: true);
         LoadConfigIntoProperties();
         LoadSizeConfigIntoBindings();
+        RefreshWorkProfiles();
+        ApplyActiveWorkProfileOnStartup();
         RefreshSizeSummary();
         RefreshSockSizeOptions();
 
@@ -667,6 +718,13 @@ public class MainViewModel : INotifyPropertyChanged
         CheckUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(isAutomatic: false), () => !IsUpdateBusy);
         DownloadAvailableUpdateCommand = new AsyncRelayCommand(DownloadAvailableUpdateAsync, () => !IsUpdateBusy && HasAvailableUpdate);
         CancelUpdateDownloadCommand = new RelayCommand(CancelUpdateDownload, () => IsUpdateBusy);
+        CreateWorkProfileCommand = new RelayCommand(CreateWorkProfile);
+        SaveWorkProfileCommand = new RelayCommand(SaveActiveWorkProfile, () => SelectedWorkProfile != null && HasUnsavedWorkProfileChanges);
+        DiscardWorkProfileChangesCommand = new RelayCommand(DiscardWorkProfileChanges, () => SelectedWorkProfile != null && HasUnsavedWorkProfileChanges);
+        RenameWorkProfileCommand = new RelayCommand(RenameWorkProfile, () => CanRenameSelectedWorkProfile);
+        DuplicateWorkProfileCommand = new RelayCommand(DuplicateWorkProfile, () => CanManageSelectedWorkProfile);
+        DeleteWorkProfileCommand = new RelayCommand(DeleteWorkProfile, () => CanDeleteSelectedWorkProfile);
+        RestoreDefaultWorkProfileCommand = new RelayCommand(RestoreDefaultWorkProfile);
         StatusText = _licenseService.IsTrial
             ? $"Pronto. Trial: {_licenseService.RemainingProcessings}/{_licenseService.ProcessingLimit} processamento(s) restante(s)."
             : "Pronto.";
@@ -1075,6 +1133,336 @@ public class MainViewModel : INotifyPropertyChanged
             b.BaseSizes = CoreHelper.TokensToCsv(group.BaseSizes);
             b.Prefixes = CoreHelper.TokensToCsv(group.Prefixes);
             b.Suffixes = CoreHelper.TokensToCsv(group.Suffixes);
+        }
+    }
+
+    private void EnsureWorkProfiles(bool saveIfChanged)
+    {
+        var before = JsonConvert.SerializeObject(_cfg.WorkProfiles);
+        var beforeActive = _cfg.ActiveWorkProfileId;
+        _workProfileService.EnsureProfiles(_cfg, _workProfileService.CaptureFromConfig(_cfg, "Original"));
+        var changed = before != JsonConvert.SerializeObject(_cfg.WorkProfiles)
+            || beforeActive != _cfg.ActiveWorkProfileId;
+
+        if (changed && saveIfChanged)
+        {
+            try { ConfigManager.SaveConfig(_cfg); }
+            catch (Exception ex) { AppLogger.Error("WorkProfiles", "Falha ao salvar perfis de trabalho.", ex, ConfigManager.ConfigPath); }
+        }
+    }
+
+    private void RefreshWorkProfiles()
+    {
+        WorkProfiles.Clear();
+        foreach (var profile in _cfg.WorkProfiles)
+            WorkProfiles.Add(profile);
+
+        var active = _workProfileService.GetActiveProfile(_cfg);
+        _selectedWorkProfile = active;
+        RefreshWorkProfileDisplayNames();
+        Notify(nameof(SelectedWorkProfile));
+        NotifyWorkProfileState();
+    }
+
+    private void RefreshWorkProfileDisplayNames()
+    {
+        foreach (var profile in WorkProfiles)
+            profile.DisplayName = ReferenceEquals(profile, SelectedWorkProfile) && HasUnsavedWorkProfileChanges
+                ? $"{profile.Name}*"
+                : profile.Name;
+
+        Notify(nameof(WorkProfiles));
+    }
+
+    private void ApplyActiveWorkProfileOnStartup()
+    {
+        var profile = _workProfileService.GetActiveProfile(_cfg);
+        if (profile == null)
+            return;
+
+        ApplyWorkProfileSettings(profile.Settings, persist: true);
+        HasUnsavedWorkProfileChanges = false;
+    }
+
+    private void ChangeSelectedWorkProfile(WorkProfile? profile)
+    {
+        if (profile == null)
+            return;
+
+        var previous = _selectedWorkProfile;
+        if (HasUnsavedWorkProfileChanges)
+        {
+            var choice = MessageBox.Show(
+                "Existem alterações não salvas no perfil atual.\n\nClique em Sim para salvar, Não para descartar ou Cancelar para continuar no perfil atual.",
+                ConfigManager.AppName,
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+
+            if (choice == MessageBoxResult.Cancel)
+            {
+                Notify(nameof(SelectedWorkProfile));
+                return;
+            }
+
+            if (choice == MessageBoxResult.Yes && !SaveActiveWorkProfile(showMessage: false))
+            {
+                Notify(nameof(SelectedWorkProfile));
+                return;
+            }
+
+            if (choice == MessageBoxResult.No && previous != null)
+                HasUnsavedWorkProfileChanges = false;
+        }
+
+        _selectedWorkProfile = profile;
+        _cfg.ActiveWorkProfileId = profile.Id;
+        ApplyWorkProfileSettings(profile.Settings, persist: true);
+        HasUnsavedWorkProfileChanges = false;
+        Notify(nameof(SelectedWorkProfile));
+        NotifyWorkProfileState();
+        StatusText = $"Perfil aplicado: {profile.Name}";
+    }
+
+    private void ApplyWorkProfileSettings(WorkProfileSettings settings, bool persist)
+    {
+        _isApplyingWorkProfile = true;
+        try
+        {
+            DefaultSeparator = settings.DefaultInputSeparator;
+            EditorSeparator = settings.DefaultInputSeparator;
+            DefaultCaseLabel = CaseModeToLabel(settings.DefaultCaseMode);
+            EditorCaseLabel = CaseModeToLabel(settings.DefaultCaseMode);
+            EditorSortLabel = settings.EditorSortMode;
+            AdvancedListEnabled = settings.UseAdvancedJsonPieceMapping;
+            AdvancedSaveModeLabel = AdvancedSaveModeToLabel(ParseAdvancedSaveMode(settings.AdvancedSaveMode));
+            UseDefaultOutputDir = settings.UseDefaultOutputDir;
+            OutputDir = settings.OutputDir;
+            UseDefaultListName = settings.UseDefaultListName;
+            DefaultListName = settings.DefaultListName;
+            ShowJsonSection = AdvancedListEnabled;
+            RefreshAdvancedJsonPieceSlots(settings.AdvancedJsonPieceOrder);
+            ApplyWorkProfileSettingsToConfig(settings);
+
+            if (persist)
+                ConfigManager.SaveConfig(_cfg);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("WorkProfiles", "Falha ao aplicar perfil de trabalho.", ex);
+            MessageBox.Show("Não foi possível aplicar o perfil selecionado.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isApplyingWorkProfile = false;
+        }
+    }
+
+    private void ApplyWorkProfileSettingsToConfig(WorkProfileSettings settings)
+    {
+        _cfg.DefaultInputSeparator = string.IsNullOrWhiteSpace(settings.DefaultInputSeparator) ? "," : settings.DefaultInputSeparator.Trim();
+        _cfg.DefaultCaseMode = LabelToCaseMode(CaseModeToLabel(settings.DefaultCaseMode));
+        _cfg.UseAdvancedJsonPieceMapping = settings.UseAdvancedJsonPieceMapping;
+        _cfg.ShowJsonTab = settings.UseAdvancedJsonPieceMapping;
+        _cfg.ShowGenerateJsonButton = settings.UseAdvancedJsonPieceMapping;
+        _cfg.ShowCopyJsonButton = settings.UseAdvancedJsonPieceMapping;
+        _cfg.AdvancedJsonPieceOrder = settings.AdvancedJsonPieceOrder
+            .Select(PieceTypeMapper.NormalizeKey)
+            .Where(PieceTypeMapper.IsKnownKey)
+            .ToList();
+        _cfg.AdvancedSaveMode = AdvancedSaveModeToConfigValue(AdvancedSaveModeLabelToMode(AdvancedSaveModeToLabel(ParseAdvancedSaveMode(settings.AdvancedSaveMode))));
+        _cfg.UseDefaultOutputDir = settings.UseDefaultOutputDir;
+        _cfg.OutputDir = settings.OutputDir.Trim();
+        _cfg.UseDefaultListName = settings.UseDefaultListName;
+        _cfg.DefaultListName = string.IsNullOrWhiteSpace(settings.DefaultListName) ? "lista" : settings.DefaultListName.Trim();
+        if (SelectedWorkProfile != null)
+            _cfg.ActiveWorkProfileId = SelectedWorkProfile.Id;
+    }
+
+    private WorkProfileSettings CaptureWorkProfileSettingsFromUi() =>
+        new()
+        {
+            DefaultInputSeparator = string.IsNullOrWhiteSpace(DefaultSeparator) ? "," : DefaultSeparator.Trim(),
+            DefaultCaseMode = LabelToCaseMode(DefaultCaseLabel),
+            EditorSortMode = EditorSortLabel,
+            UseAdvancedJsonPieceMapping = AdvancedListEnabled,
+            AdvancedJsonPieceOrder = AdvancedJsonPieceSlots
+                .Select(slot => PieceTypeMapper.NormalizeKey(slot.SelectedPieceType))
+                .Where(PieceTypeMapper.IsKnownKey)
+                .ToList(),
+            AdvancedSaveMode = AdvancedSaveModeToConfigValue(AdvancedSaveModeLabelToMode(AdvancedSaveModeLabel)),
+            UseDefaultOutputDir = UseDefaultOutputDir,
+            OutputDir = OutputDir.Trim(),
+            UseDefaultListName = UseDefaultListName,
+            DefaultListName = string.IsNullOrWhiteSpace(DefaultListName) ? "lista" : DefaultListName.Trim(),
+        };
+
+    private void MarkWorkProfileChanged()
+    {
+        if (_isLoadingConfig || _isApplyingWorkProfile || SelectedWorkProfile == null)
+            return;
+
+        HasUnsavedWorkProfileChanges = _workProfileService.HasUnsavedChanges(_cfg, CaptureWorkProfileSettingsFromUi());
+    }
+
+    private void NotifyWorkProfileState()
+    {
+        Notify(nameof(ActiveWorkProfileDisplayName));
+        Notify(nameof(WorkProfileChangeStatus));
+        Notify(nameof(CanManageSelectedWorkProfile));
+        Notify(nameof(CanRenameSelectedWorkProfile));
+        Notify(nameof(CanDeleteSelectedWorkProfile));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private void CreateWorkProfile()
+    {
+        var name = ListForge.UI.Views.InputDialog.Show("Nome do novo perfil:", ConfigManager.AppName);
+        if (name == null)
+            return;
+
+        var result = _workProfileService.CreateProfile(_cfg, name, CaptureWorkProfileSettingsFromUi());
+        if (!result.Success || result.Value == null)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SaveWorkProfileConfigOrShowError();
+        var createdId = result.Value.Id;
+        RefreshWorkProfiles();
+        SelectedWorkProfile = WorkProfiles.FirstOrDefault(p => p.Id == createdId);
+        HasUnsavedWorkProfileChanges = false;
+        StatusText = $"Perfil criado: {result.Value.Name}";
+    }
+
+    private bool SaveActiveWorkProfile(bool showMessage = true)
+    {
+        var result = _workProfileService.SaveActiveProfile(_cfg, CaptureWorkProfileSettingsFromUi());
+        if (!result.Success)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        ApplyWorkProfileSettingsToConfig(CaptureWorkProfileSettingsFromUi());
+        if (!SaveWorkProfileConfigOrShowError())
+            return false;
+
+        HasUnsavedWorkProfileChanges = false;
+        RefreshWorkProfiles();
+        StatusText = "Alterações salvas no perfil.";
+        if (showMessage)
+            MessageBox.Show("Alterações salvas no perfil.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+        return true;
+    }
+
+    private void SaveActiveWorkProfile() => SaveActiveWorkProfile(showMessage: true);
+
+    private void DiscardWorkProfileChanges()
+    {
+        var profile = SelectedWorkProfile;
+        if (profile == null)
+            return;
+
+        ApplyWorkProfileSettings(profile.Settings, persist: true);
+        HasUnsavedWorkProfileChanges = false;
+        StatusText = "Alterações do perfil descartadas.";
+    }
+
+    private void RenameWorkProfile()
+    {
+        var profile = SelectedWorkProfile;
+        if (profile == null)
+            return;
+
+        var name = ListForge.UI.Views.InputDialog.Show("Novo nome do perfil:", ConfigManager.AppName, profile.Name);
+        if (name == null)
+            return;
+
+        var result = _workProfileService.RenameProfile(_cfg, profile.Id, name);
+        if (!result.Success)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SaveWorkProfileConfigOrShowError();
+        RefreshWorkProfiles();
+        StatusText = "Perfil renomeado.";
+    }
+
+    private void DuplicateWorkProfile()
+    {
+        var profile = SelectedWorkProfile;
+        if (profile == null)
+            return;
+
+        var result = _workProfileService.DuplicateProfile(_cfg, profile.Id);
+        if (!result.Success || result.Value == null)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SaveWorkProfileConfigOrShowError();
+        var duplicatedId = result.Value.Id;
+        RefreshWorkProfiles();
+        SelectedWorkProfile = WorkProfiles.FirstOrDefault(p => p.Id == duplicatedId);
+        StatusText = $"Perfil duplicado: {result.Value.Name}";
+    }
+
+    private void DeleteWorkProfile()
+    {
+        var profile = SelectedWorkProfile;
+        if (profile == null)
+            return;
+
+        if (MessageBox.Show($"Deseja excluir o perfil \"{profile.Name}\"?", ConfigManager.AppName, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        var result = _workProfileService.DeleteProfile(_cfg, profile.Id);
+        if (!result.Success)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SaveWorkProfileConfigOrShowError();
+        RefreshWorkProfiles();
+        ApplyActiveWorkProfileOnStartup();
+        StatusText = "Perfil excluído.";
+    }
+
+    private void RestoreDefaultWorkProfile()
+    {
+        if (MessageBox.Show("Restaurar o perfil Padrão para as configurações oficiais?", ConfigManager.AppName, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        var result = _workProfileService.RestoreDefaultProfile(_cfg);
+        if (!result.Success)
+        {
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SaveWorkProfileConfigOrShowError();
+        RefreshWorkProfiles();
+        ApplyActiveWorkProfileOnStartup();
+        StatusText = "Perfil Padrão restaurado.";
+    }
+
+    private bool SaveWorkProfileConfigOrShowError()
+    {
+        try
+        {
+            ConfigManager.SaveConfig(_cfg);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("WorkProfiles", "Falha ao salvar perfis de trabalho.", ex, ConfigManager.ConfigPath);
+            MessageBox.Show("Não foi possível salvar os perfis de trabalho.\n\n" + ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
     }
 
@@ -2196,6 +2584,7 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.ForgeSparksEnabled = ForgeSparksEnabled;
         _cfg.ForgeImpactEnabled = ForgeImpactEnabled;
         _cfg.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
+        ApplyWorkProfileSettingsToConfig(CaptureWorkProfileSettingsFromUi());
         try
         {
             ConfigManager.SaveConfig(_cfg);
@@ -2280,7 +2669,10 @@ public class MainViewModel : INotifyPropertyChanged
     private void AdvancedJsonPieceSlot_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (!_isRefreshingAdvancedJsonPieceSlots && e.PropertyName == nameof(AdvancedJsonPieceSlot.SelectedPieceType))
+        {
             RefreshAdvancedJsonPieceSlotOptions();
+            MarkWorkProfileChanged();
+        }
     }
 
     private void RefreshAdvancedJsonPieceSlotOptions()
