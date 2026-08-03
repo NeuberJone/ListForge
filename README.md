@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.38-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.39-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -20,6 +20,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 * Expande quantidades por tamanho, como `2-G` ou `3-M`.
 * Importa conteúdo de texto, planilhas, PDFs, documentos, imagens e links JSON.
 * Gera saída textual e prévia JSON.
+* Mantém histórico local dos últimos processamentos com arquivo de saída gerado.
 * Mantém configurações por usuário e backups automáticos.
 * Possui versão completa e build Trial com limite de processamentos.
 * Verifica atualizações por manifest HTTPS público, com download validado por SHA-256.
@@ -114,6 +115,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 * Geração de saída textual.
 * Geração, cópia e prévia de JSON.
 * **Salvar avançado** para exportar entrada, saída e JSON em conjunto.
+* Aba **Histórico** com data, origem segura, quantidade de linhas processadas e caminho da saída salva.
 * Backups automáticos ao sobrescrever arquivos.
 * Logs internos diários para diagnóstico técnico.
 * Configurações persistentes por usuário.
@@ -493,6 +495,14 @@ Quando a opção está desativada, o ListForge mantém o comportamento padrão. 
 
 O JSON é encapsulado com metadados básicos como `title`, `order_number`, `client_name`, `unique_name_chars` e `unique_nickname_chars`.
 
+## Histórico de processamentos
+
+A aba **Histórico** no menu lateral mostra os últimos processamentos que geraram um arquivo de saída salvo. Ela registra somente metadados: nome seguro da origem, data local de exibição, quantidade oficial de linhas processadas e caminho do arquivo gerado.
+
+O histórico não armazena conteúdo completo da entrada, da saída organizada, do JSON, links reais, caminho do arquivo de entrada, dados internos de Trial, tokens, senhas ou chaves. Para arquivos importados, a origem exibida usa apenas o nome do arquivo. Para conteúdo colado ou link, a origem aparece como **Texto colado** ou **Lista extraída de link**.
+
+Use **Abrir pasta da saída** para selecionar o arquivo salvo no Explorador de Arquivos. Use **Limpar histórico** para apagar somente os metadados locais do histórico, sem remover arquivos de saída.
+
 ## Backups automáticos
 
 Antes de sobrescrever um arquivo existente, a aplicação cria uma cópia na pasta de backups. O nome do backup usa o nome do arquivo original e um carimbo de data e hora.
@@ -560,6 +570,7 @@ ListForge/
 │  ├─ AppConfig.cs
 │  ├─ DistributionKind.cs
 │  ├─ ParsedRow.cs
+│  ├─ ProcessingHistory.cs
 │  ├─ SizeConfig.cs
 │  └─ UpdateReleaseInfo.cs
 ├─ Services/
@@ -573,6 +584,7 @@ ListForge/
 │  ├─ JsonPieceMappingService.cs
 │  ├─ LocalTrialLicenseService.cs
 │  ├─ OutputExportService.cs
+│  ├─ ProcessingHistoryService.cs
 │  ├─ ProcessingWorkflowService.cs
 │  ├─ SupportPackageService.cs
 │  ├─ UpdateInstallerService.cs
@@ -590,6 +602,7 @@ ListForge/
 │  ├─ ListProcessorTests.cs
 │  ├─ OperationResultTests.cs
 │  ├─ OutputExportServiceTests.cs
+│  ├─ ProcessingHistoryServiceTests.cs
 │  ├─ SupportPackageServiceTests.cs
 │  ├─ TextSearchHelperTests.cs
 │  ├─ TrialManagerTests.cs
@@ -612,6 +625,8 @@ ListForge/
 │  └─ Views/
 │     ├─ EditorView.xaml
 │     ├─ EditorView.xaml.cs
+│     ├─ HistoryView.xaml
+│     ├─ HistoryView.xaml.cs
 │     ├─ InputDialog.xaml.cs
 │     ├─ MainWindow.xaml
 │     ├─ MainWindow.xaml.cs
@@ -649,6 +664,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Services/GitHubUpdateService.cs`, `Services/UpdateInstallerService.cs`, `Services/UpdateProcessLauncher.cs` e `Services/DistributionInfoService.cs` concentram consulta de atualização por manifest/GitHub, validação de instalador, abertura segura de processos e identificação da distribuição atual.
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
 * `Services/WorkProfileService.cs` gerencia criação, validação, aplicação e persistência dos Perfis de trabalho.
+* `Services/ProcessingHistoryService.cs` registra metadados seguros dos últimos processamentos salvos, sem armazenar conteúdo completo de entrada, saída ou JSON.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
 * `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/AdvancedSaveService.cs`, `Services/ProcessingWorkflowService.cs`, `Services/ProcessingPreviewService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.

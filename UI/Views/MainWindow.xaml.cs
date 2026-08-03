@@ -24,6 +24,7 @@ public partial class MainWindow : Window
             : "Organização e transformação de listas";
 
         EditorViewControl.SetViewModel(_vm);
+        HistoryViewControl.SetViewModel(_vm);
         SettingsViewControl.SetViewModel(_vm);
         AboutViewControl.SetViewModel(_vm);
 
@@ -60,6 +61,7 @@ public partial class MainWindow : Window
         _currentScreen = key;
 
         EditorViewControl.Visibility = key == "editor" ? Visibility.Visible : Visibility.Collapsed;
+        HistoryViewControl.Visibility = key == "history" ? Visibility.Visible : Visibility.Collapsed;
         SettingsViewControl.Visibility = key == "settings" ? Visibility.Visible : Visibility.Collapsed;
         ManualViewControl.Visibility = key == "manual" ? Visibility.Visible : Visibility.Collapsed;
         AboutViewControl.Visibility = key == "about" ? Visibility.Visible : Visibility.Collapsed;
@@ -72,6 +74,7 @@ public partial class MainWindow : Window
 
         TopbarTitle.Text = key switch
         {
+            "history" => "Histórico",
             "settings" => "Configurações",
             "manual" => "Manual",
             "about" => "Sobre",
@@ -79,6 +82,7 @@ public partial class MainWindow : Window
         };
 
         BtnNavEditor.Style = (Style)FindResource(key == "editor" ? "SidebarButtonActive" : "SidebarButton");
+        BtnNavHistory.Style = (Style)FindResource(key == "history" ? "SidebarButtonActive" : "SidebarButton");
         BtnNavSettings.Style = (Style)FindResource(key == "settings" ? "SidebarButtonActive" : "SidebarButton");
         BtnNavManual.Style = (Style)FindResource(key == "manual" ? "SidebarButtonActive" : "SidebarButton");
         BtnNavAbout.Style = (Style)FindResource(key == "about" ? "SidebarButtonActive" : "SidebarButton");
@@ -93,6 +97,7 @@ public partial class MainWindow : Window
     }
 
     private void NavEditor_Click(object sender, RoutedEventArgs e) => ShowScreen("editor");
+    private void NavHistory_Click(object sender, RoutedEventArgs e) => ShowScreen("history");
     private void NavSettings_Click(object sender, RoutedEventArgs e) => ShowScreen("settings");
     private void NavManual_Click(object sender, RoutedEventArgs e) => ShowScreen("manual");
     private void NavAbout_Click(object sender, RoutedEventArgs e) => ShowScreen("about");
@@ -159,15 +164,18 @@ public partial class MainWindow : Window
         ViewsHost.Children.Clear();
 
         EditorViewControl = new EditorView();
+        HistoryViewControl = new HistoryView();
         SettingsViewControl = new SettingsView();
         ManualViewControl = new ManualView();
         AboutViewControl = new AboutView();
 
         EditorViewControl.SetViewModel(_vm);
+        HistoryViewControl.SetViewModel(_vm);
         SettingsViewControl.SetViewModel(_vm);
         AboutViewControl.SetViewModel(_vm);
 
         ViewsHost.Children.Add(EditorViewControl);
+        ViewsHost.Children.Add(HistoryViewControl);
         ViewsHost.Children.Add(SettingsViewControl);
         ViewsHost.Children.Add(ManualViewControl);
         ViewsHost.Children.Add(AboutViewControl);

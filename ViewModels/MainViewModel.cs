@@ -38,6 +38,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly JsonPieceMappingService _jsonPieceMappingService = new();
     private readonly WorkProfileService _workProfileService = new();
     private readonly ProcessingPreviewService _processingPreviewService;
+    private readonly ProcessingHistoryService _processingHistoryService = new();
     private readonly DistributionInfoService _distributionInfoService = new();
     private readonly GitHubUpdateService _githubUpdateService = new();
     private readonly UpdateInstallerService _updateInstallerService = new();
@@ -77,7 +78,9 @@ public class MainViewModel : INotifyPropertyChanged
     private string _lastValidJsonText = "";
     private bool _isUpdatingGeneratedText;
     private WorkProfile? _selectedWorkProfile;
+    private ProcessingHistoryEntry? _selectedHistoryEntry;
     private bool _hasUnsavedWorkProfileChanges;
+    private string _currentSourceType = ProcessingHistorySourceTypes.PastedText;
 
     // ---------------------------------------------------------------
     // Bound properties — editor
@@ -597,6 +600,27 @@ public class MainViewModel : INotifyPropertyChanged
     public bool SupportPackageIncludeLogs => true;
 
     // ---------------------------------------------------------------
+    // Bound properties — history
+    // ---------------------------------------------------------------
+    public ObservableCollection<ProcessingHistoryEntry> ProcessingHistoryEntries { get; } = [];
+    public ProcessingHistoryEntry? SelectedHistoryEntry
+    {
+        get => _selectedHistoryEntry;
+        set
+        {
+            if (ReferenceEquals(_selectedHistoryEntry, value)) return;
+            _selectedHistoryEntry = value;
+            Notify();
+            Notify(nameof(CanOpenSelectedHistoryOutput));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+    public bool HasProcessingHistoryEntries => ProcessingHistoryEntries.Count > 0;
+    public bool ShowEmptyProcessingHistory => !HasProcessingHistoryEntries;
+    public bool CanOpenSelectedHistoryOutput => SelectedHistoryEntry != null;
+    public string ProcessingHistoryPath => Path.Combine(ConfigManager.AppDir, "processing-history.json");
+
+    // ---------------------------------------------------------------
     // Size group vars (for settings UI)
     // ---------------------------------------------------------------
     public Dictionary<string, SizeGroupBindings> SizeGroupBindings { get; } = new()
@@ -647,6 +671,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand OpenLogsFolderCommand { get; }
     public ICommand CopyAboutInfoCommand { get; }
     public ICommand GenerateSupportPackageCommand { get; }
+    public ICommand OpenSelectedHistoryOutputCommand { get; }
+    public ICommand ClearProcessingHistoryCommand { get; }
     public ICommand ExportSettingsCommand { get; }
     public ICommand ImportSettingsCommand { get; }
     public ICommand CleanSpacesCommand { get; }
@@ -720,6 +746,8 @@ public class MainViewModel : INotifyPropertyChanged
         OpenLogsFolderCommand = new RelayCommand(OpenLogsFolder);
         CopyAboutInfoCommand = new RelayCommand(CopyAboutInfo);
         GenerateSupportPackageCommand = new RelayCommand(GenerateSupportPackage);
+        OpenSelectedHistoryOutputCommand = new RelayCommand(OpenSelectedHistoryOutput, () => CanOpenSelectedHistoryOutput);
+        ClearProcessingHistoryCommand = new RelayCommand(ClearProcessingHistory, () => HasProcessingHistoryEntries);
         ExportSettingsCommand = new RelayCommand(ExportSettings);
         ImportSettingsCommand = new RelayCommand(ImportSettings);
         CleanSpacesCommand = new RelayCommand(CleanSpaces);
@@ -747,6 +775,7 @@ public class MainViewModel : INotifyPropertyChanged
         StatusText = _licenseService.IsTrial
             ? $"Pronto. Trial: {_licenseService.RemainingProcessings}/{_licenseService.ProcessingLimit} processamento(s) restante(s)."
             : "Pronto.";
+        LoadProcessingHistory();
 
     }
 
@@ -1567,11 +1596,13 @@ public class MainViewModel : INotifyPropertyChanged
         if (imported.IsPlainText)
         {
             _currentFile = path;
+            _currentSourceType = ProcessingHistorySourceTypes.File;
             CurrentFileLabel = $"Arquivo atual: {path}";
         }
         else
         {
             _currentFile = null;
+            _currentSourceType = ProcessingHistorySourceTypes.ImportedFile;
             CurrentFileLabel = $"Importado de: {Path.GetFileName(path)}";
         }
 
@@ -1645,6 +1676,7 @@ public class MainViewModel : INotifyPropertyChanged
             }
 
             _currentFile = dlg.FileName;
+            _currentSourceType = ProcessingHistorySourceTypes.File;
             CurrentFileLabel = $"Arquivo atual: {dlg.FileName}";
             StatusText = $"Entrada salva como: {Path.GetFileName(dlg.FileName)}";
         }
@@ -1940,6 +1972,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         InputText = extracted;
         _currentFile = null;
+        _currentSourceType = ProcessingHistorySourceTypes.Link;
         CurrentFileLabel = "Arquivo atual: (lista extraída do link)";
         ClearSearchHighlight(keepStatus: true);
         ClearValidationHighlights();
@@ -2224,6 +2257,9 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
+            var sourceTypeAfterApply = HasPendingJsonEdit
+                ? ProcessingHistorySourceTypes.EditedJson
+                : ProcessingHistorySourceTypes.EditedOutput;
             var input = HasPendingJsonEdit
                 ? CoreProcessor.ExtractListTextFromJsonData(JObject.Parse(JsonText), EditorSeparator, includeHeader: true)
                 : OutputText;
@@ -2264,6 +2300,11 @@ public class MainViewModel : INotifyPropertyChanged
             _lastOrders = result.Orders;
             _lastJson = result.JsonPreview;
             SetGeneratedTexts(result.OutputText, result.JsonPreview);
+            _currentFile = null;
+            _currentSourceType = sourceTypeAfterApply;
+            CurrentFileLabel = sourceTypeAfterApply == ProcessingHistorySourceTypes.EditedJson
+                ? "Arquivo atual: (JSON editado)"
+                : "Arquivo atual: (lista de saída editada)";
             StatusText = "Alterações aplicadas.";
             return true;
         }
@@ -2372,6 +2413,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
 
         var saved = result.Value;
+        RegisterProcessingHistory(ResolveAdvancedSaveHistoryPath(saved), ResolveHistoryProcessedCount(preferJsonCount: true));
         StatusText = saved.Mode == AdvancedSaveMode.Zip
             ? $"Salvar avançado gerado: {Path.GetFileName(saved.ZipPath)}"
             : $"Salvar avançado gerado: {saved.FilePaths.Count} arquivo(s).";
@@ -2425,6 +2467,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
 
         var path = result.Value;
+        RegisterProcessingHistory(path, ResolveHistoryProcessedCount(preferJsonCount: false));
         StatusText = $"Saída salva: {Path.GetFileName(path)}";
         MessageBox.Show($"Saída salva:\n{path}", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
     }
@@ -2448,6 +2491,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
 
         var path = result.Value;
+        RegisterProcessingHistory(path, ResolveHistoryProcessedCount(preferJsonCount: true));
         StatusText = $"JSON gerado: {Path.GetFileName(path)}";
         MessageBox.Show($"JSON gerado:\n{path}\n\nRegistros: {_lastOrders.Count}",
             ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
@@ -2546,6 +2590,120 @@ public class MainViewModel : INotifyPropertyChanged
         return dlg.FolderName;
     }
 
+    private void LoadProcessingHistory()
+    {
+        ProcessingHistoryEntries.Clear();
+        foreach (var entry in _processingHistoryService.Load())
+            ProcessingHistoryEntries.Add(entry);
+
+        SelectedHistoryEntry = ProcessingHistoryEntries.FirstOrDefault();
+        NotifyProcessingHistoryState();
+    }
+
+    private void NotifyProcessingHistoryState()
+    {
+        Notify(nameof(HasProcessingHistoryEntries));
+        Notify(nameof(ShowEmptyProcessingHistory));
+        Notify(nameof(CanOpenSelectedHistoryOutput));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private void RegisterProcessingHistory(string? outputPath, int processedLineCount)
+    {
+        if (string.IsNullOrWhiteSpace(outputPath))
+            return;
+
+        var source = ProcessingHistoryService.BuildSafeSource(_currentFile, CurrentFileLabel, _currentSourceType);
+        var result = _processingHistoryService.Add(new ProcessingHistoryEntry
+        {
+            SourceDisplayName = source.DisplayName,
+            SourceType = source.SourceType,
+            ProcessedLineCount = processedLineCount,
+            OutputPath = outputPath,
+        });
+
+        if (!result.Success || result.Value == null)
+        {
+            if (result.Exception != null)
+                AppLogger.Error("ProcessingHistory", result.TechnicalMessage, result.Exception);
+
+            StatusText = "Processamento concluído, mas não foi possível atualizar o histórico.";
+            return;
+        }
+
+        ProcessingHistoryEntries.Insert(0, result.Value);
+        while (ProcessingHistoryEntries.Count > ProcessingHistoryService.MaxEntries)
+            ProcessingHistoryEntries.RemoveAt(ProcessingHistoryEntries.Count - 1);
+
+        SelectedHistoryEntry = result.Value;
+        NotifyProcessingHistoryState();
+    }
+
+    private static string? ResolveAdvancedSaveHistoryPath(AdvancedSaveResult saved)
+    {
+        if (!string.IsNullOrWhiteSpace(saved.ZipPath))
+            return saved.ZipPath;
+
+        return saved.FilePaths.FirstOrDefault(path => string.Equals(Path.GetExtension(path), ".json", StringComparison.OrdinalIgnoreCase))
+            ?? saved.FilePaths.FirstOrDefault();
+    }
+
+    private int ResolveHistoryProcessedCount(bool preferJsonCount)
+    {
+        if (preferJsonCount && _lastOrders.Count > 0)
+            return _lastOrders.Count;
+
+        return _rows.Count > 0 ? _rows.Count : _lastOrders.Count;
+    }
+
+    private void OpenSelectedHistoryOutput()
+    {
+        if (SelectedHistoryEntry == null)
+            return;
+
+        var result = _processingHistoryService.OpenOutputFolder(SelectedHistoryEntry);
+        if (!result.Success)
+        {
+            if (result.Exception != null)
+                AppLogger.Error("ProcessingHistory", result.TechnicalMessage, result.Exception, SelectedHistoryEntry.OutputPath);
+
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        StatusText = "Pasta da saída aberta.";
+    }
+
+    private void ClearProcessingHistory()
+    {
+        if (!HasProcessingHistoryEntries)
+            return;
+
+        var confirm = MessageBox.Show(
+            "Deseja apagar todo o histórico de processamentos?",
+            ConfigManager.AppName,
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        var result = _processingHistoryService.Clear();
+        if (!result.Success)
+        {
+            if (result.Exception != null)
+                AppLogger.Error("ProcessingHistory", result.TechnicalMessage, result.Exception);
+
+            MessageBox.Show(result.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        ProcessingHistoryEntries.Clear();
+        SelectedHistoryEntry = null;
+        NotifyProcessingHistoryState();
+        StatusText = "Histórico limpo.";
+    }
+
     private void PickOutputFolder()
     {
         var dlg = new OpenFolderDialog { Title = "Escolha a pasta padrão de saída" };
@@ -2565,6 +2723,7 @@ public class MainViewModel : INotifyPropertyChanged
         _lastOrders = [];
         _lastJson = "";
         _currentFile = null;
+        _currentSourceType = ProcessingHistorySourceTypes.PastedText;
         CurrentFileLabel = "Arquivo atual: (nova lista)";
         ClearSearchHighlight(keepStatus: true);
         ClearValidationHighlights();

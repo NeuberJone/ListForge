@@ -46,6 +46,11 @@
                   Style="{StaticResource SidebarButtonActive}"
                   Click="NavEditor_Click"
                   Margin="0,0,0,4"/>
+          <Button x:Name="BtnNavHistory"
+                  Content="Histórico"
+                  Style="{StaticResource SidebarButton}"
+                  Click="NavHistory_Click"
+                  Margin="0,0,0,4"/>
           <Button x:Name="BtnNavSettings"
                   Content="Configurações"
                   Style="{StaticResource SidebarButton}"
@@ -140,6 +145,7 @@
       <!-- Views (layered via Visibility) -->
       <Grid x:Name="ViewsHost" Grid.Row="1">
         <views:EditorView x:Name="EditorViewControl" Visibility="Visible"/>
+        <views:HistoryView x:Name="HistoryViewControl" Visibility="Collapsed"/>
         <views:SettingsView x:Name="SettingsViewControl" Visibility="Collapsed"/>
         <views:ManualView x:Name="ManualViewControl" Visibility="Collapsed"/>
         <views:AboutView x:Name="AboutViewControl" Visibility="Collapsed"/>

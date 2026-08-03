@@ -4,6 +4,15 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.39] - 2026-08-03
+
+### Adicionado
+
+- Aba **Histórico** para consultar os últimos processamentos com arquivo de saída salvo.
+- Persistência local segura de metadados do histórico, limitada aos 100 registros mais recentes, sem armazenar conteúdo completo de listas, JSON real, links, arquivo de entrada ou dados internos de Trial.
+- Ações para abrir a pasta da saída selecionada e limpar somente os metadados do histórico.
+- Testes automatizados para persistência, limite, origem segura, arquivo corrompido e limpeza do histórico.
+
 ## [2.1.38] - 2026-08-03
 
 ### Adicionado
