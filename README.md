@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.37-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.38-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -188,6 +188,14 @@ Linha 18: mais de 6 tamanhos
 
 As linhas apontadas ficam destacadas na numeração da entrada para facilitar a revisão. Erros de pré-validação não consomem crédito da versão Trial, porque o processamento final não é executado.
 
+## Prévia de impacto do processamento
+
+O botão **Processar** abre uma prévia antes de executar o processamento final. Essa prévia usa a mesma pipeline oficial do processamento e mostra um resumo do impacto da lista atual: total de registros analisados, registros válidos, registros com possíveis problemas, registros inválidos, distribuição de tamanhos, distribuição de tipos de peça, destino previsto de saída, perfil de trabalho ativo, estado da Lista avançada e avisos não bloqueantes.
+
+Se houver edição pendente na Lista organizada ou na Prévia JSON, o ListForge pede para aplicar, descartar ou cancelar antes de montar a prévia. A análise não consome crédito Trial. O crédito só é consumido quando o usuário confirma em **Processar agora** e o processamento termina com sucesso.
+
+O botão **Processar rápido** mantém o comportamento direto anterior, sem abrir a prévia. Ele também respeita a mesma regra de Trial: erro de entrada, validação inválida, cancelamento e falhas anteriores à conclusão não consomem crédito.
+
 ## Suporte a quantidades por tamanho
 
 Tamanhos podem vir com quantidade usando o formato `quantidade-tamanho`.
@@ -237,6 +245,7 @@ A suíte inclui:
 
 * testes unitários do processamento, tamanhos, ordenação, importação, logs, busca/substituição, Trial/licença e serviços internos;
 * testes de integração do fluxo principal sem abrir a UI WPF;
+* testes da prévia de impacto, cobrindo análise sem consumo Trial e confirmação com consumo apenas após sucesso;
 * testes de entradas grandes com 1.000 linhas, cobrindo validação, processamento, ordenação, expansão de quantidades e JSON;
 * testes do atualizador com HTTP simulado, validação de assets, hashes, downloads parciais, cancelamento, tipo de distribuição e script do instalador.
 
@@ -298,7 +307,7 @@ As preferências permanentes continuam sendo carregadas normalmente, como tema, 
 
 ## Modo Forja
 
-O **Modo Forja** é um recurso visual opcional inspirado em aço, calor, brasas, faíscas e impacto. Quando ativado, o botão **Processar** passa a aparecer como **Forjar**, o campo ativo ganha um brilho quente, e o editor adiciona faíscas curtas enquanto o usuário digita na entrada, na saída editável, na prévia JSON editável e nos campos editáveis das Configurações. Ao forjar, o botão recebe brilho, pulso e uma rajada pequena de faíscas próxima ao botão.
+O **Modo Forja** é um recurso visual opcional inspirado em aço, calor, brasas, faíscas e impacto. Quando ativado, o campo ativo ganha um brilho quente, e o editor adiciona faíscas curtas enquanto o usuário digita na entrada, na saída editável, na prévia JSON editável e nos campos editáveis das Configurações. Ao processar a lista, o botão recebe brilho, pulso e uma rajada pequena de faíscas próxima ao botão.
 
 O recurso vem desativado por padrão e pode ser ligado em **Configurações > Modo Forja**. Também é possível controlar individualmente os efeitos:
 
@@ -642,7 +651,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Services/WorkProfileService.cs` gerencia criação, validação, aplicação e persistência dos Perfis de trabalho.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
-* `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/AdvancedSaveService.cs`, `Services/ProcessingWorkflowService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.
+* `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/AdvancedSaveService.cs`, `Services/ProcessingWorkflowService.cs`, `Services/ProcessingPreviewService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.
 * `Core/AppLogger.cs` registra logs internos diários para suporte e diagnóstico.
 * `Core/ListProcessor.cs` funciona como fachada de compatibilidade para as chamadas públicas de processamento.
 * `Core/ListParser.cs` concentra separadores, limpeza por separador, parsing de linha e preservação da ordem de entrada.
@@ -758,7 +767,7 @@ As entradas de teste ficam em `TestAssets\Samples` e cobrem lista válida simple
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.37`.
+O projeto está configurado para Windows x64 e versão `2.1.38`.
 
 ### Script de release
 
@@ -799,19 +808,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.37\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.38\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.37\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.38\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.37\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.38\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -820,16 +829,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.37\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.38\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.37\Installer
+bin\Release\dist\2.1.38\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.37\SHA256SUMS.txt
+bin\Release\dist\2.1.38\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -837,7 +846,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.37\Release
+bin\Release\dist\2.1.38\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:

@@ -4,6 +4,14 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.38] - 2026-08-03
+
+### Adicionado
+
+- Prévia de impacto antes do processamento, com resumo de registros, avisos, inválidos, tamanhos, tipos de peça, destino de saída, perfil ativo e estado da Lista avançada.
+- Botão **Processar rápido** para manter o processamento direto sem abrir a prévia.
+- Testes automatizados para garantir que a prévia usa a mesma pipeline oficial e não consome crédito Trial antes da confirmação.
+
 ## [2.1.37] - 2026-08-03
 
 ### Adicionado

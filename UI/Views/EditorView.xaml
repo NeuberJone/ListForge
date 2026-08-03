@@ -28,18 +28,16 @@
                      FontWeight="Bold"
                      VerticalAlignment="Center"
                      Margin="0,0,8,0"/>
-          <TextBlock Text="Lista avançada"
+          <ComboBox x:Name="CmbWorkProfile"
+                    Width="190"
+                    Margin="0,0,18,0"/>
+          <TextBlock Text="Tipo de lista"
                      Foreground="{StaticResource TextBrush}"
                      FontWeight="Bold"
                      VerticalAlignment="Center"
                      Margin="0,0,8,0"/>
-          <ComboBox x:Name="CmbWorkProfile"
-                    Width="190"
-                    Margin="0,0,18,0"
-                    ToolTip="Seleciona rapidamente um conjunto salvo de configura&#x00E7;&#x00F5;es."/>
           <ToggleButton x:Name="TglAdvancedList"
                         Style="{StaticResource AnimatedToggleSwitchStyle}"
-                        ToolTip="Exibe opções avançadas da lista e do JSON."
                         KeyDown="AdvancedListToggle_KeyDown"/>
         </StackPanel>
         <WrapPanel>
@@ -89,13 +87,20 @@
         <Button x:Name="BtnProcess"
                 Content="{Binding ProcessButtonText}"
                 Command="{Binding ProcessCommand}"
+                IsEnabled="{Binding IsProcessingActionEnabled}"
                 Style="{StaticResource AccentButton}"
+                Margin="0,0,5,0"
                 PreviewMouseDown="ProcessButton_PreviewMouseDown"
                 RenderTransformOrigin="0.5,0.5">
           <Button.RenderTransform>
             <ScaleTransform x:Name="ProcessButtonScale" ScaleX="1" ScaleY="1"/>
           </Button.RenderTransform>
         </Button>
+        <Button x:Name="BtnQuickProcess"
+                Content="{Binding QuickProcessButtonText}"
+                Command="{Binding QuickProcessCommand}"
+                IsEnabled="{Binding IsProcessingActionEnabled}"
+                Style="{StaticResource StdButton}"/>
       </WrapPanel>
     </Grid>
 

@@ -37,12 +37,14 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly LinkListImportService _linkListImportService = new();
     private readonly JsonPieceMappingService _jsonPieceMappingService = new();
     private readonly WorkProfileService _workProfileService = new();
+    private readonly ProcessingPreviewService _processingPreviewService;
     private readonly DistributionInfoService _distributionInfoService = new();
     private readonly GitHubUpdateService _githubUpdateService = new();
     private readonly UpdateInstallerService _updateInstallerService = new();
     private bool _isLoadingConfig;
     private bool _isRefreshingAdvancedJsonPieceSlots;
     private bool _isApplyingWorkProfile;
+    private bool _isProcessingBusy;
     private DistributionInfo _distributionInfo;
     private CancellationTokenSource? _updateCancellation;
     private DateTimeOffset? _lastManualUpdateCheckUtc;
@@ -474,7 +476,21 @@ public class MainViewModel : INotifyPropertyChanged
     public string ForgeTemperatureText => ForgeModeEnabled
         ? (_forgeIsHot ? "Temperatura: aço vivo" : "Temperatura: brasa baixa")
         : "Modo Forja desativado";
-    public string ProcessButtonText => ForgeModeEnabled ? "Forjar" : "Processar";
+    public string ProcessButtonText => "Processar";
+    public string QuickProcessButtonText => "Processar rápido";
+    public bool IsProcessingActionEnabled => !IsProcessingBusy;
+    public bool IsProcessingBusy
+    {
+        get => _isProcessingBusy;
+        private set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_isProcessingBusy, value)) return;
+            _isProcessingBusy = value;
+            Notify();
+            Notify(nameof(IsProcessingActionEnabled));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
     public string SizeSummary { get => _sizeSummary; set => Set(ref _sizeSummary, value); }
     public bool OutputDirEnabled => !UseDefaultOutputDir;
     public bool DefaultListNameEnabled => !UseDefaultListName;
@@ -616,6 +632,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ExtractNewListFromLinkCommand { get; }
     public ICommand AppendFromLinkCommand { get; }
     public ICommand ProcessCommand { get; }
+    public ICommand QuickProcessCommand { get; }
     public ICommand CopyOutputCommand { get; }
     public ICommand SaveOutputCommand { get; }
     public ICommand AdvancedSaveCommand { get; }
@@ -669,6 +686,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         _aboutService = new AboutService(_licenseService);
         _processingWorkflowService = new ProcessingWorkflowService(_licenseService);
+        _processingPreviewService = new ProcessingPreviewService(_processingWorkflowService);
         _distributionInfo = _distributionInfoService.GetCurrentDistribution();
         _cfg = ConfigManager.LoadConfig();
         _sizeCfg = ConfigManager.LoadSizeConfig();
@@ -686,7 +704,8 @@ public class MainViewModel : INotifyPropertyChanged
         ExtractFromLinkCommand = new AsyncRelayCommand(() => ExtractFromLinkAsync(ExtractedListDestination.NewList), () => !IsExtractingFromLink);
         ExtractNewListFromLinkCommand = new AsyncRelayCommand(() => ExtractFromLinkAsync(ExtractedListDestination.NewList), () => !IsExtractingFromLink);
         AppendFromLinkCommand = new AsyncRelayCommand(() => ExtractFromLinkAsync(ExtractedListDestination.CurrentList), () => !IsExtractingFromLink);
-        ProcessCommand = new RelayCommand(() => ProcessAndPreview());
+        ProcessCommand = new RelayCommand(AnalyzeAndProcessWithPreview, () => !IsProcessingBusy);
+        QuickProcessCommand = new RelayCommand(() => ProcessAndPreview(), () => !IsProcessingBusy);
         CopyOutputCommand = new RelayCommand(CopyOutput);
         SaveOutputCommand = new RelayCommand(SaveOutput);
         AdvancedSaveCommand = new RelayCommand(AdvancedSave);
@@ -1947,10 +1966,69 @@ public class MainViewModel : INotifyPropertyChanged
     // ---------------------------------------------------------------
     // Processing
     // ---------------------------------------------------------------
-    private void ProcessAndPreview(bool consumeTrialCredit = true)
+    private void AnalyzeAndProcessWithPreview()
     {
+        if (IsProcessingBusy)
+            return;
+
         try
         {
+            IsProcessingBusy = true;
+            if (!EnsureNoPendingOutputOrJsonEdits())
+                return;
+
+            var snapshot = BuildProcessingPreviewSnapshot();
+            var preview = _processingPreviewService.Analyze(snapshot);
+            if (preview.AnalysisResult.Status == ProcessingWorkflowStatus.ValidationFailed)
+            {
+                var validationIssues = preview.AnalysisResult.ValidationIssues;
+                ValidationHighlightLines = validationIssues.Select(issue => issue.LineNumber).ToArray();
+                if (validationIssues.Count > 0)
+                    RequestScrollToLine?.Invoke(validationIssues[0].LineNumber);
+            }
+            else
+            {
+                ClearValidationHighlights();
+            }
+
+            StatusText = $"Prévia: {preview.TotalRecords} registro(s), {preview.InvalidRecords} inválido(s), {preview.WarningRecords} aviso(s).";
+            var owner = Application.Current?.MainWindow;
+            var confirmed = owner != null
+                ? ListForge.UI.Views.ProcessingPreviewDialog.ShowDialog(owner, preview)
+                : false;
+            if (!confirmed)
+            {
+                StatusText = "Processamento aguardando confirmação.";
+                return;
+            }
+
+            var result = _processingPreviewService.ExecuteConfirmed(preview);
+            HandleProcessingWorkflowResult(result);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("ProcessPreview", "Falha ao analisar ou processar lista.", ex);
+            GotoErrorLine(ex.Message);
+            StatusText = $"Erro: {ex.Message}";
+            MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsProcessingBusy = false;
+        }
+    }
+
+    private void ProcessAndPreview(bool consumeTrialCredit = true)
+    {
+        if (IsProcessingBusy)
+            return;
+
+        try
+        {
+            IsProcessingBusy = true;
+            if (!EnsureNoPendingOutputOrJsonEdits())
+                return;
+
             var result = _processingWorkflowService.Execute(new ProcessingWorkflowRequest(
                 InputText,
                 EditorSeparator,
@@ -1960,57 +2038,7 @@ public class MainViewModel : INotifyPropertyChanged
                 BuildJsonPieceMappingOptions(),
                 consumeTrialCredit));
 
-            if (result.Status == ProcessingWorkflowStatus.EmptyInput)
-            {
-                MessageBox.Show("Cole ou abra uma lista na entrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (result.Status == ProcessingWorkflowStatus.ValidationFailed)
-            {
-                var validationIssues = result.ValidationIssues;
-                ValidationHighlightLines = validationIssues.Select(issue => issue.LineNumber).ToArray();
-                var summary = string.Join("\n", validationIssues
-                    .Take(12)
-                    .Select(issue => $"Linha {issue.LineNumber}: {issue.Message}"));
-                if (validationIssues.Count > 12)
-                    summary += $"\n... e mais {validationIssues.Count - 12} linha(s).";
-
-                AppLogger.Warning("ValidateInput", $"Pré-validação encontrou {validationIssues.Count} problema(s).");
-                RequestScrollToLine?.Invoke(validationIssues[0].LineNumber);
-                StatusText = $"Pré-validação: {validationIssues.Count} problema(s) encontrado(s).";
-                MessageBox.Show(summary, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (result.Status == ProcessingWorkflowStatus.TrialLimitReached)
-            {
-                var message = "Limite de processamentos da versão Trial atingido.";
-                AppLogger.Warning("ProcessList", message);
-                StatusText = message;
-                MessageBox.Show(message, ConfigManager.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (result.Status == ProcessingWorkflowStatus.NoRows)
-            {
-                AppLogger.Warning("ProcessList", "Processamento não encontrou linhas válidas.");
-                MessageBox.Show("Nenhuma linha válida encontrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            RefreshAboutInfo();
-
-            _rows = result.Rows;
-            _lastOrders = result.Orders;
-            _lastJson = result.JsonPreview;
-
-            SetGeneratedTexts(result.OutputText, result.JsonPreview);
-            SelectedOutputSection = "list";
-            ClearValidationHighlights();
-
-            StatusText = $"Processado: {result.Rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{_licenseService.ProcessingStatusSuffix}";
-            TriggerForgeEffect();
+            HandleProcessingWorkflowResult(result);
         }
         catch (Exception ex)
         {
@@ -2019,6 +2047,129 @@ public class MainViewModel : INotifyPropertyChanged
             StatusText = $"Erro: {ex.Message}";
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        finally
+        {
+            IsProcessingBusy = false;
+        }
+    }
+
+    private ProcessingPreviewSnapshot BuildProcessingPreviewSnapshot()
+    {
+        var request = new ProcessingWorkflowRequest(
+            InputText,
+            EditorSeparator,
+            _sizeCfg,
+            LabelToCaseMode(EditorCaseLabel),
+            LabelToSortMode(EditorSortLabel),
+            BuildJsonPieceMappingOptions(),
+            ConsumeTrialCredit: false);
+
+        return new ProcessingPreviewSnapshot(
+            request,
+            ActiveWorkProfileDisplayName,
+            HasUnsavedWorkProfileChanges,
+            AdvancedListEnabled,
+            ResolveOutputDirDescription(),
+            ResolveOutputNameDescription());
+    }
+
+    private string ResolveOutputDirDescription()
+    {
+        if (!UseDefaultOutputDir)
+            return string.IsNullOrWhiteSpace(OutputDir) ? "não definida" : OutputDir.Trim();
+
+        var currentDir = !string.IsNullOrWhiteSpace(_currentFile)
+            ? Path.GetDirectoryName(_currentFile)
+            : null;
+        return string.IsNullOrWhiteSpace(currentDir) ? "pasta da lista atual" : currentDir;
+    }
+
+    private string ResolveOutputNameDescription()
+    {
+        if (UseDefaultListName)
+            return CoreProcessor.SanitizeBaseFilename(string.IsNullOrWhiteSpace(DefaultListName) ? "lista" : DefaultListName);
+
+        if (!string.IsNullOrWhiteSpace(_currentFile))
+            return CoreProcessor.SanitizeBaseFilename(Path.GetFileNameWithoutExtension(_currentFile));
+
+        return "lista";
+    }
+
+    private bool EnsureNoPendingOutputOrJsonEdits()
+    {
+        if (!HasPendingOutputOrJsonEdit)
+            return true;
+
+        var result = MessageBox.Show(
+            "Existem alterações pendentes na saída ou no JSON. Clique em Sim para aplicar, Não para descartar ou Cancelar para continuar editando.",
+            ConfigManager.AppName,
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Cancel)
+            return false;
+
+        if (result == MessageBoxResult.Yes)
+            return ApplyOutputEdits();
+
+        DiscardOutputEdits();
+        return true;
+    }
+
+    private void HandleProcessingWorkflowResult(ProcessingWorkflowResult result)
+    {
+        if (result.Status == ProcessingWorkflowStatus.EmptyInput)
+        {
+            MessageBox.Show("Cole ou abra uma lista na entrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (result.Status == ProcessingWorkflowStatus.ValidationFailed)
+        {
+            var validationIssues = result.ValidationIssues;
+            ValidationHighlightLines = validationIssues.Select(issue => issue.LineNumber).ToArray();
+            var summary = string.Join("\n", validationIssues
+                .Take(12)
+                .Select(issue => $"Linha {issue.LineNumber}: {issue.Message}"));
+            if (validationIssues.Count > 12)
+                summary += $"\n... e mais {validationIssues.Count - 12} linha(s).";
+
+            AppLogger.Warning("ValidateInput", $"Pré-validação encontrou {validationIssues.Count} problema(s).");
+            if (validationIssues.Count > 0)
+                RequestScrollToLine?.Invoke(validationIssues[0].LineNumber);
+            StatusText = $"Pré-validação: {validationIssues.Count} problema(s) encontrado(s).";
+            MessageBox.Show(summary, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (result.Status == ProcessingWorkflowStatus.TrialLimitReached)
+        {
+            var message = "Limite de processamentos da versão Trial atingido.";
+            AppLogger.Warning("ProcessList", message);
+            StatusText = message;
+            MessageBox.Show(message, ConfigManager.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (result.Status == ProcessingWorkflowStatus.NoRows)
+        {
+            AppLogger.Warning("ProcessList", "Processamento não encontrou linhas válidas.");
+            MessageBox.Show("Nenhuma linha válida encontrada.", ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        RefreshAboutInfo();
+
+        _rows = result.Rows;
+        _lastOrders = result.Orders;
+        _lastJson = result.JsonPreview;
+
+        SetGeneratedTexts(result.OutputText, result.JsonPreview);
+        SelectedOutputSection = "list";
+        ClearValidationHighlights();
+
+        StatusText = $"Processado: {result.Rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{_licenseService.ProcessingStatusSuffix}";
+        TriggerForgeEffect();
     }
 
     private void TriggerForgeEffect()
