@@ -619,6 +619,9 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `.github/workflows/ci.yml` valida automaticamente restore, build e testes em Windows a cada push ou pull request para `main`.
 * `build-release.ps1` automatiza a geração de artefatos versionados e marca a distribuição como instalável, portátil ou Trial.
 * `create-github-release.ps1` valida artefatos locais, exige `SHA256SUMS.txt` e prepara a publicação manual ou via GitHub CLI.
+* `test-release.ps1` valida os artefatos locais de uma versão, confere hashes, nomes versionados, release notes e manifest de atualização.
+* `docs/SMOKE_TEST.md` descreve o roteiro manual de smoke test antes de publicar uma release.
+* `TestAssets/Samples` contém listas de exemplo para validar fluxo principal, erro de entrada, Lista avançada, JSON, dados completos e volume manual.
 * `Services` contém serviços extraídos do ViewModel para importação, exportação, processamento, licença, suporte, informações da tela Sobre e abertura de pastas.
 * `Services/GitHubUpdateService.cs`, `Services/UpdateInstallerService.cs`, `Services/UpdateProcessLauncher.cs` e `Services/DistributionInfoService.cs` concentram consulta de atualização por manifest/GitHub, validação de instalador, abertura segura de processos e identificação da distribuição atual.
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
@@ -720,6 +723,23 @@ dotnet test --configuration Release
 ```
 
 Esse fluxo não gera instalador, onefile ou artefatos de release.
+
+## Smoke test de release
+
+Antes de publicar uma versão, use o roteiro em `docs/SMOKE_TEST.md`. Ele combina validação automática dos artefatos com uma conferida manual curta no aplicativo.
+
+Validação automática:
+
+```powershell
+dotnet restore
+dotnet build --configuration Release
+dotnet test --configuration Release
+.\test-release.ps1 -Version X.Y.Z
+```
+
+O script `test-release.ps1` confere os executáveis versionados, a pasta `Release`, `SHA256SUMS.txt`, `RELEASE_NOTES_X.Y.Z.txt`, hashes dos artefatos principais e `update.json`. Para uma build local sem manifest de atualização, use `-SkipUpdateManifest`.
+
+As entradas de teste ficam em `TestAssets\Samples` e cobrem lista válida simples, erro de entrada, Lista avançada, dados completos e uma base para teste manual de volume.
 
 ## Build e distribuição
 

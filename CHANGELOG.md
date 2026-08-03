@@ -14,6 +14,7 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 - Configurações individuais para ativar ou desativar calor, faíscas e impacto do Modo Forja.
 - Persistência, importação e exportação das preferências do Modo Forja no `config.json`.
 - Testes para garantir que o Modo Forja vem desativado por padrão e não altera o resultado do processamento.
+- Roteiro de smoke test de release, script de validação dos artefatos locais e listas de exemplo para conferência manual.
 
 ## [2.1.35] - 2026-07-29
 
