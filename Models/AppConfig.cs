@@ -18,6 +18,11 @@ public sealed class AppConfig
     public string DefaultInputSeparator { get; set; } = ",";
     public string ThemeName { get; set; } = "ListForge Dark";
     public double EditorFontSize { get; set; } = 13;
+    public bool ForgeModeEnabled { get; set; } = false;
+    public bool ForgeAnvilEnabled { get; set; } = true;
+    public bool ForgeHeatEnabled { get; set; } = true;
+    public bool ForgeSparksEnabled { get; set; } = true;
+    public bool ForgeImpactEnabled { get; set; } = true;
     public bool CheckUpdatesOnStartup { get; set; } = true;
     public DateTimeOffset? LastUpdateCheckUtc { get; set; }
     public string LastUpdateAvailability { get; set; } = "";

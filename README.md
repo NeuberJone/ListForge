@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.35-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.36-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -294,7 +294,19 @@ Ela também possui ações para copiar as informações do produto para suporte,
 
 Cada nova execução do ListForge começa como uma nova sessão, sem arquivo atual definido automaticamente. O usuário precisa abrir, importar ou salvar uma lista explicitamente para que um arquivo passe a ser tratado como atual naquela sessão.
 
-As preferências permanentes continuam sendo carregadas normalmente, como tema, tamanho da fonte, separador padrão, opções de processamento e atualização. O caminho do arquivo aberto anteriormente não é restaurado como arquivo ativo e não é salvo novamente no `config.json`.
+As preferências permanentes continuam sendo carregadas normalmente, como tema, tamanho da fonte, separador padrão, Modo Forja, opções de processamento e atualização. O caminho do arquivo aberto anteriormente não é restaurado como arquivo ativo e não é salvo novamente no `config.json`.
+
+## Modo Forja
+
+O **Modo Forja** é um recurso visual opcional inspirado em aço, calor, brasas, faíscas e impacto. Quando ativado, o botão **Processar** passa a aparecer como **Forjar**, o campo ativo ganha um brilho quente, e o editor adiciona faíscas curtas enquanto o usuário digita na entrada, na saída editável, na prévia JSON editável e nos campos editáveis das Configurações. Ao forjar, o botão recebe brilho, pulso e uma rajada pequena de faíscas próxima ao botão.
+
+O recurso vem desativado por padrão e pode ser ligado em **Configurações > Modo Forja**. Também é possível controlar individualmente os efeitos:
+
+* Calor;
+* Faíscas;
+* Impacto.
+
+O efeito de calor acontece como uma sobreposição rápida na janela do Editor após processamento bem-sucedido. O Modo Forja não altera entrada, saída, JSON, importação, exportação, Trial ou qualquer regra de processamento. Quando desligado, nenhum efeito visual é exibido.
 
 ## Importar e exportar configurações
 
@@ -308,7 +320,7 @@ O nome sugerido segue o formato:
 ListForge-Configuracoes-X.Y.Z-AAAA-MM-DD-HHmmss.json
 ```
 
-O arquivo inclui preferências permitidas, como opções visuais, processamento, Lista avançada, exportação avançada, atualização e tamanhos configurados.
+O arquivo inclui preferências permitidas, como opções visuais, Modo Forja, processamento, Lista avançada, exportação avançada, atualização e tamanhos configurados.
 
 Ao importar, o ListForge aplica apenas os campos permitidos desse JSON e atualiza a tela imediatamente. O arquivo atual, a entrada, a saída organizada e a prévia JSON da sessão aberta não são alterados.
 
@@ -711,7 +723,7 @@ Esse fluxo não gera instalador, onefile ou artefatos de release.
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.35`.
+O projeto está configurado para Windows x64 e versão `2.1.36`.
 
 ### Script de release
 
@@ -752,19 +764,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.35\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.36\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.35\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.36\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.35\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.36\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -773,16 +785,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.35\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.36\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.35\Installer
+bin\Release\dist\2.1.36\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.35\SHA256SUMS.txt
+bin\Release\dist\2.1.36\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -790,7 +802,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.35\Release
+bin\Release\dist\2.1.36\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:

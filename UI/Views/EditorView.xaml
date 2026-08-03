@@ -4,6 +4,7 @@
              xmlns:ctrl="clr-namespace:ListForge.UI.Controls"
              Background="{StaticResource AppBg}">
 
+  <Grid>
   <DockPanel>
 
     <!-- ============================================================
@@ -76,7 +77,16 @@
       </WrapPanel>
       <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
         <Button x:Name="BtnGenerateJson" Content="Gerar JSON" Command="{Binding GenerateJsonCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
-        <Button Content="Processar" Command="{Binding ProcessCommand}" Style="{StaticResource AccentButton}"/>
+        <Button x:Name="BtnProcess"
+                Content="{Binding ProcessButtonText}"
+                Command="{Binding ProcessCommand}"
+                Style="{StaticResource AccentButton}"
+                PreviewMouseDown="ProcessButton_PreviewMouseDown"
+                RenderTransformOrigin="0.5,0.5">
+          <Button.RenderTransform>
+            <ScaleTransform x:Name="ProcessButtonScale" ScaleX="1" ScaleY="1"/>
+          </Button.RenderTransform>
+        </Button>
       </WrapPanel>
     </Grid>
 
@@ -146,10 +156,15 @@
                        Text="Entrada / edi&#x00E7;&#x00E3;o"
                        FontSize="13" FontWeight="Bold"
                        Margin="12,10,12,6"/>
-            <ctrl:LineNumberedTextBox x:Name="LnbInput"
-                                      FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      HighlightedLineNumbers="{Binding ValidationHighlightLines}"
-                                      Margin="0,0,0,0"/>
+            <Grid>
+              <ctrl:LineNumberedTextBox x:Name="LnbInput"
+                                        FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        HighlightedLineNumbers="{Binding ValidationHighlightLines}"
+                                        Margin="0,0,0,0"/>
+              <Canvas x:Name="ForgeInputSparks"
+                      IsHitTestVisible="False"
+                      ClipToBounds="True"/>
+            </Grid>
           </DockPanel>
         </Border>
 
@@ -168,17 +183,42 @@
               <TabItem x:Name="TabJson" Header="Pr&#x00E9;via JSON" Tag="json"/>
             </TabControl>
 
-            <ctrl:LineNumberedTextBox x:Name="LnbOutput"
-                                      FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      IsReadOnly="{Binding IsGeneratedOutputReadOnly}"
-                                      Visibility="Visible"/>
-            <ctrl:LineNumberedTextBox x:Name="LnbJson"
-                                      FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      IsReadOnly="{Binding IsGeneratedOutputReadOnly}"
-                                      Visibility="Collapsed"/>
+            <Grid>
+              <ctrl:LineNumberedTextBox x:Name="LnbOutput"
+                                        FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsReadOnly="{Binding IsGeneratedOutputReadOnly}"
+                                        Visibility="Visible"/>
+              <Canvas x:Name="ForgeOutputSparks"
+                      IsHitTestVisible="False"
+                      ClipToBounds="True"/>
+              <ctrl:LineNumberedTextBox x:Name="LnbJson"
+                                        FontSize="{Binding EditorFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsReadOnly="{Binding IsGeneratedOutputReadOnly}"
+                                        Visibility="Collapsed"/>
+              <Canvas x:Name="ForgeJsonSparks"
+                      IsHitTestVisible="False"
+                      ClipToBounds="True"
+                      Visibility="Collapsed"/>
+            </Grid>
           </DockPanel>
         </Border>
       </Grid>
     </DockPanel>
   </DockPanel>
+  <Border x:Name="ForgeWindowHeat"
+          IsHitTestVisible="False"
+          Opacity="0">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
+        <GradientStop Color="#00E0571B" Offset="0"/>
+        <GradientStop Color="#30E0571B" Offset="0.46"/>
+        <GradientStop Color="#22FFC766" Offset="0.72"/>
+        <GradientStop Color="#00FFC766" Offset="1"/>
+      </LinearGradientBrush>
+    </Border.Background>
+  </Border>
+  <Canvas x:Name="ForgeWindowSparks"
+          IsHitTestVisible="False"
+          ClipToBounds="True"/>
+  </Grid>
 </UserControl>

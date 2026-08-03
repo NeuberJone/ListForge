@@ -138,6 +138,14 @@ public sealed class SettingsExportService
                 config.ShowGenerateJsonButton,
                 config.ShowCopyJsonButton,
             },
+            Forge = new
+            {
+                config.ForgeModeEnabled,
+                config.ForgeAnvilEnabled,
+                config.ForgeHeatEnabled,
+                config.ForgeSparksEnabled,
+                config.ForgeImpactEnabled,
+            },
             Processing = new
             {
                 config.DefaultCaseMode,
@@ -180,6 +188,16 @@ public sealed class SettingsExportService
             config.ShowJsonTab = ReadBool(display, "showJsonTab", config.ShowJsonTab);
             config.ShowGenerateJsonButton = ReadBool(display, "showGenerateJsonButton", config.ShowGenerateJsonButton);
             config.ShowCopyJsonButton = ReadBool(display, "showCopyJsonButton", config.ShowCopyJsonButton);
+        }
+
+        var forge = ReadObject(settings, "forge");
+        if (forge != null)
+        {
+            config.ForgeModeEnabled = ReadBool(forge, "forgeModeEnabled", config.ForgeModeEnabled);
+            config.ForgeAnvilEnabled = ReadBool(forge, "forgeAnvilEnabled", config.ForgeAnvilEnabled);
+            config.ForgeHeatEnabled = ReadBool(forge, "forgeHeatEnabled", config.ForgeHeatEnabled);
+            config.ForgeSparksEnabled = ReadBool(forge, "forgeSparksEnabled", config.ForgeSparksEnabled);
+            config.ForgeImpactEnabled = ReadBool(forge, "forgeImpactEnabled", config.ForgeImpactEnabled);
         }
 
         var processing = ReadObject(settings, "processing");

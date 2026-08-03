@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource AppBg}">
 
+  <Grid>
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="28,18,28,28">
 
@@ -30,6 +31,33 @@
                     IsSnapToTickEnabled="True"
                     VerticalAlignment="Center"/>
           </DockPanel>
+        </StackPanel>
+      </GroupBox>
+
+      <!-- ============================================================
+           Seção: Modo Forja
+      ============================================================ -->
+      <GroupBox Header="Modo Forja">
+        <StackPanel Margin="0,4,0,0">
+          <CheckBox Content="Ativar Modo Forja"
+                    IsChecked="{Binding ForgeModeEnabled, Mode=TwoWay}"
+                    FontWeight="Bold"
+                    Margin="0,0,0,8"/>
+          <TextBlock Text="Efeitos visuais opcionais inspirados em aço, calor, faíscas e impacto. Não alteram o processamento das listas."
+                      Foreground="{StaticResource TextMutedBrush}"
+                      TextWrapping="Wrap"
+                      Margin="0,0,0,10"/>
+          <WrapPanel>
+            <CheckBox Content="Calor"
+                      IsChecked="{Binding ForgeHeatEnabled, Mode=TwoWay}"
+                      Margin="0,0,18,6"/>
+            <CheckBox Content="Faíscas"
+                      IsChecked="{Binding ForgeSparksEnabled, Mode=TwoWay}"
+                      Margin="0,0,18,6"/>
+            <CheckBox Content="Impacto"
+                      IsChecked="{Binding ForgeImpactEnabled, Mode=TwoWay}"
+                      Margin="0,0,18,6"/>
+          </WrapPanel>
         </StackPanel>
       </GroupBox>
 
@@ -285,4 +313,8 @@
 
     </StackPanel>
   </ScrollViewer>
+  <Canvas x:Name="ForgeSettingsSparks"
+          IsHitTestVisible="False"
+          ClipToBounds="True"/>
+  </Grid>
 </UserControl>

@@ -4,6 +4,17 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.36] - 2026-07-30
+
+### Adicionado
+
+- Modo Forja opcional, com faíscas ao digitar na entrada, saída editável, JSON editável e campos editáveis das Configurações, além de aquecimento na janela do Editor e impacto visual ao processar.
+- Botão principal passa de **Processar** para **Forjar** quando o Modo Forja está ativo.
+- Efeitos visuais do Modo Forja simplificados com brilho no campo ativo, faíscas curtas, limite de partículas por camada, limpeza automática de efeitos e rajada pequena próxima ao botão ao forjar.
+- Configurações individuais para ativar ou desativar calor, faíscas e impacto do Modo Forja.
+- Persistência, importação e exportação das preferências do Modo Forja no `config.json`.
+- Testes para garantir que o Modo Forja vem desativado por padrão e não altera o resultado do processamento.
+
 ## [2.1.35] - 2026-07-29
 
 ### Adicionado

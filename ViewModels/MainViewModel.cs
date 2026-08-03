@@ -262,6 +262,14 @@ public class MainViewModel : INotifyPropertyChanged
     private string _themeName = "ListForge Dark";
     private string _advancedSaveModeLabel = AdvancedSaveLooseFilesLabel;
     private double _editorFontSize = 13;
+    private bool _forgeModeEnabled;
+    private bool _forgeAnvilEnabled = true;
+    private bool _forgeHeatEnabled = true;
+    private bool _forgeSparksEnabled = true;
+    private bool _forgeImpactEnabled = true;
+    private int _forgeEffectPulse;
+    private string _forgeStatusText = "Forja em repouso.";
+    private bool _forgeIsHot;
     private bool _checkUpdatesOnStartup = true;
     private bool _isUpdateBusy;
     private bool _isExtractingFromLink;
@@ -390,6 +398,77 @@ public class MainViewModel : INotifyPropertyChanged
             RequestThemeChange?.Invoke(normalized);
         }
     }
+    public bool ForgeModeEnabled
+    {
+        get => _forgeModeEnabled;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_forgeModeEnabled, value)) return;
+            _forgeModeEnabled = value;
+            Notify();
+            Notify(nameof(ProcessButtonText));
+            NotifyForgeState();
+            SaveForgeSettings();
+        }
+    }
+    public bool ForgeAnvilEnabled
+    {
+        get => _forgeAnvilEnabled;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_forgeAnvilEnabled, value)) return;
+            _forgeAnvilEnabled = value;
+            Notify();
+            NotifyForgeState();
+            SaveForgeSettings();
+        }
+    }
+    public bool ForgeHeatEnabled
+    {
+        get => _forgeHeatEnabled;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_forgeHeatEnabled, value)) return;
+            _forgeHeatEnabled = value;
+            Notify();
+            NotifyForgeState();
+            SaveForgeSettings();
+        }
+    }
+    public bool ForgeSparksEnabled
+    {
+        get => _forgeSparksEnabled;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_forgeSparksEnabled, value)) return;
+            _forgeSparksEnabled = value;
+            Notify();
+            NotifyForgeState();
+            SaveForgeSettings();
+        }
+    }
+    public bool ForgeImpactEnabled
+    {
+        get => _forgeImpactEnabled;
+        set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_forgeImpactEnabled, value)) return;
+            _forgeImpactEnabled = value;
+            Notify();
+            NotifyForgeState();
+            SaveForgeSettings();
+        }
+    }
+    public bool ShowForgePanel => ForgeModeEnabled && ForgeAnvilEnabled;
+    public bool ShowForgeHeat => ForgeModeEnabled && ForgeHeatEnabled;
+    public bool ShowForgeSparks => ForgeModeEnabled && ForgeSparksEnabled;
+    public bool ShowForgeImpact => ForgeModeEnabled && ForgeImpactEnabled;
+    public int ForgeEffectPulse { get => _forgeEffectPulse; private set => Set(ref _forgeEffectPulse, value); }
+    public string ForgeStatusText { get => _forgeStatusText; private set => Set(ref _forgeStatusText, value); }
+    public string ForgeTemperatureText => ForgeModeEnabled
+        ? (_forgeIsHot ? "Temperatura: aço vivo" : "Temperatura: brasa baixa")
+        : "Modo Forja desativado";
+    public string ProcessButtonText => ForgeModeEnabled ? "Forjar" : "Processar";
     public string SizeSummary { get => _sizeSummary; set => Set(ref _sizeSummary, value); }
     public bool OutputDirEnabled => !UseDefaultOutputDir;
     public bool DefaultListNameEnabled => !UseDefaultListName;
@@ -972,6 +1051,11 @@ public class MainViewModel : INotifyPropertyChanged
             EditorSeparator = _cfg.DefaultInputSeparator;
             EditorCaseLabel = CaseModeToLabel(_cfg.DefaultCaseMode);
             EditorFontSize = _cfg.EditorFontSize;
+            ForgeModeEnabled = _cfg.ForgeModeEnabled;
+            ForgeAnvilEnabled = _cfg.ForgeAnvilEnabled;
+            ForgeHeatEnabled = _cfg.ForgeHeatEnabled;
+            ForgeSparksEnabled = _cfg.ForgeSparksEnabled;
+            ForgeImpactEnabled = _cfg.ForgeImpactEnabled;
             ShowJsonSection = AdvancedListEnabled;
             RefreshAdvancedJsonPieceSlots(_cfg.AdvancedJsonPieceOrder);
             RestoreCachedUpdateState();
@@ -1361,6 +1445,11 @@ public class MainViewModel : INotifyPropertyChanged
             DefaultInputSeparator = string.IsNullOrWhiteSpace(DefaultSeparator) ? "," : DefaultSeparator.Trim(),
             ThemeName = ThemeName,
             EditorFontSize = ClampEditorFontSize(EditorFontSize),
+            ForgeModeEnabled = ForgeModeEnabled,
+            ForgeAnvilEnabled = ForgeAnvilEnabled,
+            ForgeHeatEnabled = ForgeHeatEnabled,
+            ForgeSparksEnabled = ForgeSparksEnabled,
+            ForgeImpactEnabled = ForgeImpactEnabled,
             CheckUpdatesOnStartup = CheckUpdatesOnStartup,
         };
 
@@ -1533,6 +1622,7 @@ public class MainViewModel : INotifyPropertyChanged
             ClearValidationHighlights();
 
             StatusText = $"Processado: {result.Rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{_licenseService.ProcessingStatusSuffix}";
+            TriggerForgeEffect();
         }
         catch (Exception ex)
         {
@@ -1541,6 +1631,19 @@ public class MainViewModel : INotifyPropertyChanged
             StatusText = $"Erro: {ex.Message}";
             MessageBox.Show(ex.Message, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void TriggerForgeEffect()
+    {
+        if (!ForgeModeEnabled)
+            return;
+
+        _forgeIsHot = true;
+        ForgeStatusText = "Forjado com sucesso.";
+        Notify(nameof(ForgeTemperatureText));
+
+        if (ShowForgeImpact || ShowForgeHeat || ShowForgeSparks)
+            ForgeEffectPulse++;
     }
 
     private void GotoErrorLine(string message)
@@ -2022,6 +2125,30 @@ public class MainViewModel : INotifyPropertyChanged
         catch (Exception ex) { AppLogger.Error("AdvancedList", "Falha ao salvar Lista avançada no config.json.", ex, ConfigManager.ConfigPath); }
     }
 
+    private void SaveForgeSettings()
+    {
+        if (_isLoadingConfig)
+            return;
+
+        _cfg.ForgeModeEnabled = ForgeModeEnabled;
+        _cfg.ForgeAnvilEnabled = ForgeAnvilEnabled;
+        _cfg.ForgeHeatEnabled = ForgeHeatEnabled;
+        _cfg.ForgeSparksEnabled = ForgeSparksEnabled;
+        _cfg.ForgeImpactEnabled = ForgeImpactEnabled;
+
+        try { ConfigManager.SaveConfig(_cfg); }
+        catch (Exception ex) { AppLogger.Error("ForgeMode", "Falha ao salvar Modo Forja no config.json.", ex, ConfigManager.ConfigPath); }
+    }
+
+    private void NotifyForgeState()
+    {
+        Notify(nameof(ShowForgePanel));
+        Notify(nameof(ShowForgeHeat));
+        Notify(nameof(ShowForgeSparks));
+        Notify(nameof(ShowForgeImpact));
+        Notify(nameof(ForgeTemperatureText));
+    }
+
     private void SaveSettings()
     {
         if (UseDefaultOutputDir && string.IsNullOrWhiteSpace(OutputDir))
@@ -2063,6 +2190,11 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.AdvancedSaveMode = AdvancedSaveModeToConfigValue(AdvancedSaveModeLabelToMode(AdvancedSaveModeLabel));
         _cfg.ThemeName = ThemeName;
         _cfg.EditorFontSize = ClampEditorFontSize(EditorFontSize);
+        _cfg.ForgeModeEnabled = ForgeModeEnabled;
+        _cfg.ForgeAnvilEnabled = ForgeAnvilEnabled;
+        _cfg.ForgeHeatEnabled = ForgeHeatEnabled;
+        _cfg.ForgeSparksEnabled = ForgeSparksEnabled;
+        _cfg.ForgeImpactEnabled = ForgeImpactEnabled;
         _cfg.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
         try
         {

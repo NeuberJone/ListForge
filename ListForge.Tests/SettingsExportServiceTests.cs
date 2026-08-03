@@ -19,6 +19,8 @@ public class SettingsExportServiceTests
             {
                 ThemeName = "SISBolt",
                 DefaultListName = "pedido",
+                ForgeModeEnabled = true,
+                ForgeHeatEnabled = false,
                 LastOpenedFile = @"C:\Users\user\lista.csv",
                 OutputDir = @"C:\Users\user\Output",
                 CheckUpdatesOnStartup = false,
@@ -40,6 +42,8 @@ public class SettingsExportServiceTests
         Assert.Equal("2.1.35", (string)parsed["applicationVersion"]!);
         Assert.Contains("SISBolt", json);
         Assert.Contains("pedido", json);
+        Assert.True((bool)parsed["settings"]!["forge"]!["forgeModeEnabled"]!);
+        Assert.False((bool)parsed["settings"]!["forge"]!["forgeHeatEnabled"]!);
         Assert.DoesNotContain("LastOpenedFile", json);
         Assert.DoesNotContain("lista.csv", json);
         Assert.DoesNotContain("SecretOutput", json);
@@ -78,6 +82,11 @@ public class SettingsExportServiceTests
                 ShowJsonTab = true,
                 ShowGenerateJsonButton = true,
                 ShowCopyJsonButton = true,
+                ForgeModeEnabled = true,
+                ForgeAnvilEnabled = true,
+                ForgeHeatEnabled = false,
+                ForgeSparksEnabled = true,
+                ForgeImpactEnabled = false,
                 UseAdvancedJsonPieceMapping = true,
                 AdvancedJsonPieceOrder = ["ShortSleeve", "Pants"],
                 AdvancedSaveMode = "Zip",
@@ -108,6 +117,11 @@ public class SettingsExportServiceTests
         Assert.Equal("SISBolt", imported.ThemeName);
         Assert.Equal(32, imported.EditorFontSize);
         Assert.True(imported.ShowJsonTab);
+        Assert.True(imported.ForgeModeEnabled);
+        Assert.True(imported.ForgeAnvilEnabled);
+        Assert.False(imported.ForgeHeatEnabled);
+        Assert.True(imported.ForgeSparksEnabled);
+        Assert.False(imported.ForgeImpactEnabled);
         Assert.True(imported.UseAdvancedJsonPieceMapping);
         Assert.Equal(["ShortSleeve", "Pants"], imported.AdvancedJsonPieceOrder);
         Assert.Equal("Zip", imported.AdvancedSaveMode);
