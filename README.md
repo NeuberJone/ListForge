@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.39-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.40-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -102,6 +102,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 
 * Processamento com separador configurável.
 * Pré-validação visual da entrada antes do processamento.
+* Comparação semântica entre entrada original e saída organizada, com filtros e diferenças por campo.
 * Ordenação opcional da lista processada em modo Original, Crescente ou Decrescente.
 * Validação de tamanhos por grupos configuráveis.
 * Preservação de seções com diferentes tipos de peça quando a entrada traz cabeçalhos reconhecidos.
@@ -198,6 +199,28 @@ Se houver edição pendente na Lista organizada ou na Prévia JSON, o ListForge 
 
 O botão **Processar rápido** mantém o comportamento direto anterior, sem abrir a prévia. Ele também respeita a mesma regra de Trial: erro de entrada, validação inválida, cancelamento e falhas anteriores à conclusão não consomem crédito.
 
+## Comparação entre entrada e saída
+
+Depois de gerar uma saída válida, use **Comparar entrada e saída** no rodapé do Editor. O botão permanece desabilitado enquanto não houver um processamento atual ou quando a entrada/saída tiver alterações pendentes.
+
+O comparador usa os registros estruturados do pipeline oficial, e não uma comparação ingênua entre a linha 1 da entrada e a linha 1 da saída. Por isso, mudanças legítimas de ordenação, expansão de quantidades, capitalização, separadores, grupos de tamanho, Lista avançada e múltiplos tipos de peça não aparecem automaticamente como perda de dados.
+
+A janela mostra a entrada original e a saída organizada lado a lado, com numeração de linhas. Em largura menor, os painéis ficam disponíveis em abas internas. O resumo e os filtros classificam cada ocorrência como:
+
+* correspondente;
+* apenas reorganizada;
+* transformada pelas regras configuradas;
+* alterada;
+* possivelmente ausente;
+* adicionada;
+* correspondência incerta.
+
+Duplicidades legítimas são comparadas por ocorrência: duas entradas iguais exigem duas ocorrências equivalentes na saída. Os botões **Diferença anterior** e **Próxima diferença** percorrem somente os itens que precisam de revisão. Ao selecionar um item, o painel de detalhes mostra campos como nome, número, apelido, tipo sanguíneo, tamanhos, tipos de peça e Meião.
+
+A comparação usa um snapshot único da entrada efetivamente processada, da saída e das configurações aplicadas. Se a entrada for alterada depois, execute o processamento novamente. Edições aplicadas à saída ou ao JSON são marcadas como manuais e comparadas contra a entrada processada.
+
+O recurso é somente de sessão: não grava conteúdo, pares comparados, diferenças, nomes, números ou tamanhos no histórico, nas configurações ou no pacote de suporte. Comparar, filtrar, navegar e copiar o relatório não altera a lista nem consome crédito Trial.
+
 ## Suporte a quantidades por tamanho
 
 Tamanhos podem vir com quantidade usando o formato `quantidade-tamanho`.
@@ -248,6 +271,7 @@ A suíte inclui:
 * testes unitários do processamento, tamanhos, ordenação, importação, logs, busca/substituição, Trial/licença e serviços internos;
 * testes de integração do fluxo principal sem abrir a UI WPF;
 * testes da prévia de impacto, cobrindo análise sem consumo Trial e confirmação com consumo apenas após sucesso;
+* testes do comparador semântico, cobrindo ordenação, transformações esperadas, ausências, adições, campos alterados, duplicidades, incerteza, peças, Meião e Trial;
 * testes de entradas grandes com 1.000 linhas, cobrindo validação, processamento, ordenação, expansão de quantidades e JSON;
 * testes do atualizador com HTTP simulado, validação de assets, hashes, downloads parciais, cancelamento, tipo de distribuição e script do instalador.
 
@@ -569,6 +593,7 @@ ListForge/
 ├─ Models/
 │  ├─ AppConfig.cs
 │  ├─ DistributionKind.cs
+│  ├─ ListComparison.cs
 │  ├─ ParsedRow.cs
 │  ├─ ProcessingHistory.cs
 │  ├─ SizeConfig.cs
@@ -582,6 +607,7 @@ ListForge/
 │  ├─ GitHubUpdateService.cs
 │  ├─ ILicenseService.cs
 │  ├─ JsonPieceMappingService.cs
+│  ├─ ListComparisonService.cs
 │  ├─ LocalTrialLicenseService.cs
 │  ├─ OutputExportService.cs
 │  ├─ ProcessingHistoryService.cs
@@ -596,6 +622,8 @@ ListForge/
 │  ├─ AppLoggerTests.cs
 │  ├─ JsonPieceMappingTests.cs
 │  ├─ LargeInputTests.cs
+│  ├─ ListComparisonServiceTests.cs
+│  ├─ ComparisonViewModelTests.cs
 │  ├─ ListForge.Tests.csproj
 │  ├─ LocalTrialLicenseServiceTests.cs
 │  ├─ MainFlowIntegrationTests.cs
@@ -610,6 +638,7 @@ ListForge/
 │  └─ SizeHelperTests.cs
 ├─ ViewModels/
 │  ├─ AsyncRelayCommand.cs
+│  ├─ ComparisonViewModel.cs
 │  ├─ MainViewModel.cs
 │  └─ RelayCommand.cs
 ├─ UI/
@@ -623,6 +652,8 @@ ListForge/
 │  │  ├─ LightTheme.xaml
 │  │  └─ SisBoltTheme.xaml
 │  └─ Views/
+│     ├─ ComparisonWindow.xaml
+│     ├─ ComparisonWindow.xaml.cs
 │     ├─ EditorView.xaml
 │     ├─ EditorView.xaml.cs
 │     ├─ HistoryView.xaml
@@ -665,6 +696,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
 * `Services/WorkProfileService.cs` gerencia criação, validação, aplicação e persistência dos Perfis de trabalho.
 * `Services/ProcessingHistoryService.cs` registra metadados seguros dos últimos processamentos salvos, sem armazenar conteúdo completo de entrada, saída ou JSON.
+* `Services/ListComparisonService.cs` compara registros estruturados por ocorrência, preserva duplicidades e classifica reorganizações, transformações, alterações, ausências, adições e correspondências incertas sem persistir conteúdo.
 * `Core/FileImporter.cs` concentra leitura de arquivos, OCR e normalização de textos importados.
 * `Core/OperationResult.cs` padroniza retornos de operações internas, separando mensagem ao usuário, detalhe técnico, exceção e código de erro.
 * `Services/FileImportService.cs`, `Services/OutputExportService.cs`, `Services/AdvancedSaveService.cs`, `Services/ProcessingWorkflowService.cs`, `Services/ProcessingPreviewService.cs` e `Services/SupportPackageService.cs` retornam resultados padronizados ou objetos de fluxo para facilitar testes, mensagens amigáveis e logging técnico.
@@ -679,8 +711,8 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `Core/SizeHelper.cs` concentra validação e montagem dos grupos de tamanho.
 * `Core/TextSearchHelper.cs` concentra busca e substituição de texto usada pelo editor.
 * `Config/ConfigManager.cs` gerencia configurações, tamanhos, backups e caminhos graváveis.
-* `Models` contém os objetos de configuração e linhas processadas.
-* `ListForge.Tests` contém testes unitários, testes de integração e cobertura de entradas grandes.
+* `Models` contém os objetos de configuração, linhas processadas e resultados de comparação mantidos somente na sessão.
+* `ListForge.Tests` contém testes unitários, testes de integração, cobertura de entradas grandes e cenários semânticos do comparador.
 
 ## Decisões técnicas
 
@@ -783,7 +815,7 @@ As entradas de teste ficam em `TestAssets\Samples` e cobrem lista válida simple
 
 ## Build e distribuição
 
-O projeto está configurado para Windows x64 e versão `2.1.38`.
+O projeto está configurado para Windows x64 e versão `2.1.40`.
 
 ### Script de release
 
@@ -824,19 +856,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.38\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.40\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.38\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.40\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.38\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.40\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -845,16 +877,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.38\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.40\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.38\Installer
+bin\Release\dist\2.1.40\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.38\SHA256SUMS.txt
+bin\Release\dist\2.1.40\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -862,7 +894,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.38\Release
+bin\Release\dist\2.1.40\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:

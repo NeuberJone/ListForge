@@ -83,6 +83,12 @@
         <Button x:Name="BtnCopyJson" Content="Copiar JSON" Command="{Binding CopyJsonCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
       </WrapPanel>
       <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+        <Button Content="Comparar entrada e sa&#x00ED;da"
+                Command="{Binding CompareInputOutputCommand}"
+                IsEnabled="{Binding CanCompareInputOutput}"
+                ToolTip="{Binding ComparisonActionTooltip}"
+                Style="{StaticResource StdButton}"
+                Margin="0,0,5,0"/>
         <Button x:Name="BtnGenerateJson" Content="Gerar JSON" Command="{Binding GenerateJsonCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
         <Button x:Name="BtnProcess"
                 Content="{Binding ProcessButtonText}"

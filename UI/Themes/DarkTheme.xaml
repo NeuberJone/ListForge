@@ -50,6 +50,9 @@
   <SolidColorBrush x:Key="EditorBg" Color="{StaticResource EditorBgColor}"/>
   <SolidColorBrush x:Key="EditorAlt" Color="{StaticResource EditorAltColor}"/>
   <SolidColorBrush x:Key="SelectionBrush" Color="{StaticResource SelectionColor}"/>
+  <SolidColorBrush x:Key="AlertBgBrush" Color="{StaticResource AlertBgColor}"/>
+  <SolidColorBrush x:Key="AlertBorderBrush" Color="{StaticResource AlertBorderColor}"/>
+  <SolidColorBrush x:Key="AlertTextBrush" Color="{StaticResource AlertTextColor}"/>
 
   <!-- Typography -->
   <FontFamily x:Key="AppFont">Segoe UI</FontFamily>

@@ -11,4 +11,6 @@ public sealed record ParsedRow(
     IReadOnlyList<string> Tams,
     string S2,
     string S3,
-    IReadOnlyList<string>? PieceFields = null);
+    IReadOnlyList<string>? PieceFields = null,
+    string SourceId = "",
+    int SourceLineNumber = 0);

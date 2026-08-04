@@ -39,6 +39,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly WorkProfileService _workProfileService = new();
     private readonly ProcessingPreviewService _processingPreviewService;
     private readonly ProcessingHistoryService _processingHistoryService = new();
+    private readonly ListComparisonService _listComparisonService = new();
     private readonly DistributionInfoService _distributionInfoService = new();
     private readonly GitHubUpdateService _githubUpdateService = new();
     private readonly UpdateInstallerService _updateInstallerService = new();
@@ -46,6 +47,7 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isRefreshingAdvancedJsonPieceSlots;
     private bool _isApplyingWorkProfile;
     private bool _isProcessingBusy;
+    private bool _isComparisonBusy;
     private DistributionInfo _distributionInfo;
     private CancellationTokenSource? _updateCancellation;
     private DateTimeOffset? _lastManualUpdateCheckUtc;
@@ -81,6 +83,9 @@ public class MainViewModel : INotifyPropertyChanged
     private ProcessingHistoryEntry? _selectedHistoryEntry;
     private bool _hasUnsavedWorkProfileChanges;
     private string _currentSourceType = ProcessingHistorySourceTypes.PastedText;
+    private ComparisonSnapshot? _comparisonSnapshot;
+    private long _inputRevision;
+    private long _comparisonInputRevision = -1;
 
     // ---------------------------------------------------------------
     // Bound properties — editor
@@ -110,9 +115,11 @@ public class MainViewModel : INotifyPropertyChanged
         {
             if (EqualityComparer<string>.Default.Equals(_inputText, value)) return;
             _inputText = value;
+            _inputRevision++;
             Notify();
             ClearValidationHighlights();
             RefreshAdvancedJsonPieceSlots();
+            NotifyComparisonState();
         }
     }
     public string OutputText
@@ -129,6 +136,7 @@ public class MainViewModel : INotifyPropertyChanged
                 if (HasPendingOutputEdit)
                     HasPendingJsonEdit = false;
             }
+            NotifyComparisonState();
         }
     }
     public string JsonText
@@ -145,6 +153,7 @@ public class MainViewModel : INotifyPropertyChanged
                 if (HasPendingJsonEdit)
                     HasPendingOutputEdit = false;
             }
+            NotifyComparisonState();
         }
     }
     public string EditorSeparator
@@ -204,6 +213,7 @@ public class MainViewModel : INotifyPropertyChanged
             Notify(nameof(IsGeneratedOutputReadOnly));
             Notify(nameof(CanApplyOutputEdits));
             Notify(nameof(CanDiscardOutputEdits));
+            NotifyComparisonState();
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -217,6 +227,7 @@ public class MainViewModel : INotifyPropertyChanged
             Notify(nameof(HasPendingOutputOrJsonEdit));
             Notify(nameof(CanApplyOutputEdits));
             Notify(nameof(CanDiscardOutputEdits));
+            NotifyComparisonState();
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -491,9 +502,40 @@ public class MainViewModel : INotifyPropertyChanged
             _isProcessingBusy = value;
             Notify();
             Notify(nameof(IsProcessingActionEnabled));
+            NotifyComparisonState();
             CommandManager.InvalidateRequerySuggested();
         }
     }
+    public bool IsComparisonBusy
+    {
+        get => _isComparisonBusy;
+        private set
+        {
+            if (EqualityComparer<bool>.Default.Equals(_isComparisonBusy, value)) return;
+            _isComparisonBusy = value;
+            Notify();
+            NotifyComparisonState();
+        }
+    }
+    public bool CanCompareInputOutput =>
+        !IsProcessingBusy
+        && !IsComparisonBusy
+        && !HasPendingOutputOrJsonEdit
+        && _comparisonSnapshot != null
+        && _comparisonInputRevision == _inputRevision
+        && !string.IsNullOrWhiteSpace(_comparisonSnapshot.InputText)
+        && !string.IsNullOrWhiteSpace(_comparisonSnapshot.OutputText)
+        && string.Equals(InputText, _comparisonSnapshot.InputText, StringComparison.Ordinal)
+        && string.Equals(_lastValidOutputText, _comparisonSnapshot.OutputText, StringComparison.Ordinal);
+    public string ComparisonActionTooltip => CanCompareInputOutput
+        ? "Compara semanticamente a entrada processada com a saída organizada."
+        : _comparisonSnapshot != null
+          && (_comparisonInputRevision != _inputRevision
+              || !string.Equals(InputText, _comparisonSnapshot.InputText, StringComparison.Ordinal)
+              || !string.Equals(_lastValidOutputText, _comparisonSnapshot.OutputText, StringComparison.Ordinal)
+              || HasPendingOutputOrJsonEdit)
+            ? "A entrada ou a saída foi alterada. Gere uma nova comparação."
+            : "Gere uma saída para comparar com a entrada original.";
     public string SizeSummary { get => _sizeSummary; set => Set(ref _sizeSummary, value); }
     public bool OutputDirEnabled => !UseDefaultOutputDir;
     public bool DefaultListNameEnabled => !UseDefaultListName;
@@ -657,6 +699,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand AppendFromLinkCommand { get; }
     public ICommand ProcessCommand { get; }
     public ICommand QuickProcessCommand { get; }
+    public ICommand CompareInputOutputCommand { get; }
     public ICommand CopyOutputCommand { get; }
     public ICommand SaveOutputCommand { get; }
     public ICommand AdvancedSaveCommand { get; }
@@ -732,6 +775,7 @@ public class MainViewModel : INotifyPropertyChanged
         AppendFromLinkCommand = new AsyncRelayCommand(() => ExtractFromLinkAsync(ExtractedListDestination.CurrentList), () => !IsExtractingFromLink);
         ProcessCommand = new RelayCommand(AnalyzeAndProcessWithPreview, () => !IsProcessingBusy);
         QuickProcessCommand = new RelayCommand(() => ProcessAndPreview(), () => !IsProcessingBusy);
+        CompareInputOutputCommand = new AsyncRelayCommand(CompareInputOutputAsync, () => CanCompareInputOutput);
         CopyOutputCommand = new RelayCommand(CopyOutput);
         SaveOutputCommand = new RelayCommand(SaveOutput);
         AdvancedSaveCommand = new RelayCommand(AdvancedSave);
@@ -2036,7 +2080,7 @@ public class MainViewModel : INotifyPropertyChanged
             }
 
             var result = _processingPreviewService.ExecuteConfirmed(preview);
-            HandleProcessingWorkflowResult(result);
+            HandleProcessingWorkflowResult(result, preview.Snapshot.Request);
         }
         catch (Exception ex)
         {
@@ -2062,16 +2106,17 @@ public class MainViewModel : INotifyPropertyChanged
             if (!EnsureNoPendingOutputOrJsonEdits())
                 return;
 
-            var result = _processingWorkflowService.Execute(new ProcessingWorkflowRequest(
+            var request = new ProcessingWorkflowRequest(
                 InputText,
                 EditorSeparator,
                 _sizeCfg,
                 LabelToCaseMode(EditorCaseLabel),
                 LabelToSortMode(EditorSortLabel),
                 BuildJsonPieceMappingOptions(),
-                consumeTrialCredit));
+                consumeTrialCredit);
+            var result = _processingWorkflowService.Execute(request);
 
-            HandleProcessingWorkflowResult(result);
+            HandleProcessingWorkflowResult(result, request);
         }
         catch (Exception ex)
         {
@@ -2149,7 +2194,9 @@ public class MainViewModel : INotifyPropertyChanged
         return true;
     }
 
-    private void HandleProcessingWorkflowResult(ProcessingWorkflowResult result)
+    private void HandleProcessingWorkflowResult(
+        ProcessingWorkflowResult result,
+        ProcessingWorkflowRequest request)
     {
         if (result.Status == ProcessingWorkflowStatus.EmptyInput)
         {
@@ -2198,11 +2245,94 @@ public class MainViewModel : INotifyPropertyChanged
         _lastJson = result.JsonPreview;
 
         SetGeneratedTexts(result.OutputText, result.JsonPreview);
+        CaptureComparisonSnapshot(request, result);
         SelectedOutputSection = "list";
         ClearValidationHighlights();
 
         StatusText = $"Processado: {result.Rows.Count} linha(s) | Ordenação: {EditorSortLabel} | Separador: {CoreProcessor.SeparatorLabel(EditorSeparator)!.Replace("\"", "'")}{_licenseService.ProcessingStatusSuffix}";
         TriggerForgeEffect();
+    }
+
+    private void CaptureComparisonSnapshot(
+        ProcessingWorkflowRequest request,
+        ProcessingWorkflowResult result)
+    {
+        try
+        {
+            _comparisonSnapshot = _listComparisonService.CreateSnapshot(
+                request,
+                result,
+                ActiveWorkProfileDisplayName,
+                AdvancedListEnabled);
+            _comparisonInputRevision = _inputRevision;
+            NotifyComparisonState();
+        }
+        catch (Exception ex)
+        {
+            _comparisonSnapshot = null;
+            _comparisonInputRevision = -1;
+            NotifyComparisonState();
+            AppLogger.Error("ListComparison", "Falha ao capturar o estado da comparação.", ex);
+        }
+    }
+
+    private async Task CompareInputOutputAsync()
+    {
+        var snapshot = _comparisonSnapshot;
+        if (!CanCompareInputOutput || snapshot == null)
+        {
+            StatusText = _comparisonSnapshot == null
+                ? "Não há dados suficientes para comparação."
+                : "A entrada ou a saída foi alterada. Gere uma nova comparação.";
+            return;
+        }
+
+        try
+        {
+            IsComparisonBusy = true;
+            StatusText = "Comparando entrada e saída...";
+            var result = await Task.Run(() => _listComparisonService.Compare(snapshot));
+
+            if (!ReferenceEquals(snapshot, _comparisonSnapshot) || !CanCompareInputOutput)
+            {
+                StatusText = "A entrada ou a saída foi alterada. Gere uma nova comparação.";
+                return;
+            }
+
+            var owner = Application.Current?.MainWindow;
+            if (owner == null)
+            {
+                StatusText = "Não foi possível abrir a comparação.";
+                return;
+            }
+
+            var comparisonViewModel = new ComparisonViewModel(result, EditorFontSize);
+            ListForge.UI.Views.ComparisonWindow.ShowDialog(owner, comparisonViewModel);
+            StatusText = result.Summary.HasCriticalDifferences
+                ? "Comparação concluída com diferenças para revisão."
+                : "Comparação concluída. Nenhuma diferença crítica foi encontrada.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("ListComparison", "Falha ao comparar entrada e saída.", ex);
+            StatusText = "Não foi possível comparar a entrada e a saída.";
+            MessageBox.Show(
+                "Não foi possível comparar a entrada e a saída. Consulte os logs para obter detalhes técnicos.",
+                ConfigManager.AppName,
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsComparisonBusy = false;
+        }
+    }
+
+    private void NotifyComparisonState()
+    {
+        Notify(nameof(CanCompareInputOutput));
+        Notify(nameof(ComparisonActionTooltip));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void TriggerForgeEffect()
@@ -2260,6 +2390,10 @@ public class MainViewModel : INotifyPropertyChanged
             var sourceTypeAfterApply = HasPendingJsonEdit
                 ? ProcessingHistorySourceTypes.EditedJson
                 : ProcessingHistorySourceTypes.EditedOutput;
+            var existingComparisonSnapshot = _comparisonSnapshot;
+            var canUpdateComparisonSnapshot = existingComparisonSnapshot != null
+                && _comparisonInputRevision == _inputRevision
+                && string.Equals(InputText, existingComparisonSnapshot.InputText, StringComparison.Ordinal);
             var input = HasPendingJsonEdit
                 ? CoreProcessor.ExtractListTextFromJsonData(JObject.Parse(JsonText), EditorSeparator, includeHeader: true)
                 : OutputText;
@@ -2300,6 +2434,12 @@ public class MainViewModel : INotifyPropertyChanged
             _lastOrders = result.Orders;
             _lastJson = result.JsonPreview;
             SetGeneratedTexts(result.OutputText, result.JsonPreview);
+            _comparisonSnapshot = canUpdateComparisonSnapshot
+                ? _listComparisonService.UpdateOutput(existingComparisonSnapshot!, result, outputWasManuallyEdited: true)
+                : null;
+            if (_comparisonSnapshot == null)
+                _comparisonInputRevision = -1;
+            NotifyComparisonState();
             _currentFile = null;
             _currentSourceType = sourceTypeAfterApply;
             CurrentFileLabel = sourceTypeAfterApply == ProcessingHistorySourceTypes.EditedJson
@@ -2722,6 +2862,9 @@ public class MainViewModel : INotifyPropertyChanged
         _rows = [];
         _lastOrders = [];
         _lastJson = "";
+        _comparisonSnapshot = null;
+        _comparisonInputRevision = -1;
+        NotifyComparisonState();
         _currentFile = null;
         _currentSourceType = ProcessingHistorySourceTypes.PastedText;
         CurrentFileLabel = "Arquivo atual: (nova lista)";

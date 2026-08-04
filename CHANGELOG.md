@@ -4,6 +4,21 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.40] - 2026-08-03
+
+### Adicionado
+
+- Modo **Comparar entrada e saída** para conferir semanticamente a entrada processada e a Lista organizada sem depender da posição textual das linhas.
+- Resumo com registros correspondentes, reorganizados, transformados, alterados, possivelmente ausentes, adicionados, incertos e duplicidades por ocorrência.
+- Visualização lado a lado com numeração de linhas, layout compacto por abas, filtros, navegação entre diferenças e detalhamento campo a campo.
+- Identificadores temporários de origem preservados durante parsing e ordenação, com correspondência semântica segura para saídas editadas manualmente.
+- Testes automatizados para ordenação, capitalização, quantidades, tipos de peça, Meião, duplicidades, incerteza, edição manual, Trial e listas com 1.000 registros.
+
+### Segurança e privacidade
+
+- A comparação existe somente na sessão e não persiste entrada, saída, pares comparados, diferenças ou dados pessoais.
+- Abrir, filtrar, recalcular, navegar ou copiar a comparação não consome crédito Trial e não altera a lista, o histórico, as configurações ou o pacote de suporte.
+
 ## [2.1.39] - 2026-08-03
 
 ### Adicionado

@@ -1,0 +1,199 @@
+<Window x:Class="ListForge.UI.Views.ComparisonWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctrl="clr-namespace:ListForge.UI.Controls"
+        Title="Comparação entre entrada e saída"
+        Width="1260"
+        Height="820"
+        MinWidth="760"
+        MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Style="{StaticResource AppWindowStyle}">
+  <Window.Resources>
+    <Style x:Key="ComparisonMetric" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource PanelAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="3"/>
+      <Setter Property="Padding" Value="10,7"/>
+      <Setter Property="Margin" Value="0,0,6,6"/>
+    </Style>
+    <Style x:Key="ComparisonGridText" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style TargetType="DataGridColumnHeader">
+      <Setter Property="Background" Value="{StaticResource PanelAlt}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="0,0,1,1"/>
+      <Setter Property="Padding" Value="8,6"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style TargetType="DataGridRow">
+      <Setter Property="Background" Value="{StaticResource PanelBg}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    </Style>
+    <Style TargetType="DataGridCell">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="Padding" Value="6,4"/>
+    </Style>
+  </Window.Resources>
+
+  <Grid Background="{StaticResource AppBg}" Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="2*"/>
+      <RowDefinition Height="1.45*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,8">
+      <StackPanel>
+        <DockPanel Margin="0,0,0,8">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+            <TextBlock Text="Perfil: " Foreground="{StaticResource TextMutedBrush}"/>
+            <TextBlock Text="{Binding ActiveWorkProfileName}" Margin="0,0,14,0"/>
+            <TextBlock Text="Ordenação: " Foreground="{StaticResource TextMutedBrush}"/>
+            <TextBlock Text="{Binding SortModeDisplay}" Margin="0,0,14,0"/>
+            <TextBlock Text="Lista: " Foreground="{StaticResource TextMutedBrush}"/>
+            <TextBlock Text="{Binding AdvancedListDisplay}"/>
+          </StackPanel>
+          <TextBlock Text="Resumo da comparação" FontSize="16" FontWeight="Bold"/>
+        </DockPanel>
+        <WrapPanel>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Entrada: "/><Run Text="{Binding Summary.InputRecords}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Saída: "/><Run Text="{Binding Summary.OutputRecords}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Correspondentes: "/><Run Text="{Binding Summary.Matching}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Reorganizados: "/><Run Text="{Binding Summary.Reordered}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Transformados: "/><Run Text="{Binding Summary.Transformed}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Alterados: "/><Run Text="{Binding Summary.Changed}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Ausentes: "/><Run Text="{Binding Summary.PossiblyMissing}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Adicionados: "/><Run Text="{Binding Summary.Added}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Incertos: "/><Run Text="{Binding Summary.Uncertain}" FontWeight="Bold"/></TextBlock></Border>
+          <Border Style="{StaticResource ComparisonMetric}"><TextBlock><Run Text="Duplicidades entrada/saída: "/><Run Text="{Binding Summary.InputDuplicates}" FontWeight="Bold"/><Run Text=" / "/><Run Text="{Binding Summary.OutputDuplicates}" FontWeight="Bold"/></TextBlock></Border>
+        </WrapPanel>
+        <Border x:Name="ComparisonStatusBorder" CornerRadius="3" Padding="10,7" Margin="0,2,0,0">
+          <TextBlock Text="{Binding Summary.StatusMessage}" FontWeight="SemiBold"/>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <DockPanel Grid.Row="1" Margin="0,0,0,8">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="Diferença anterior" Command="{Binding PreviousDifferenceCommand}" Style="{StaticResource StdButton}" Margin="0,0,5,0"/>
+        <Button Content="Próxima diferença" Command="{Binding NextDifferenceCommand}" Style="{StaticResource StdButton}"/>
+      </StackPanel>
+      <TextBlock Text="Filtro" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <ComboBox Width="250"
+                ItemsSource="{Binding Filters}"
+                SelectedItem="{Binding SelectedFilter, Mode=TwoWay}"
+                Margin="0,0,12,0"/>
+      <TextBlock Text="{Binding FilterStatusText}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+    </DockPanel>
+
+    <Grid Grid.Row="2" Margin="0,0,0,8">
+      <Grid x:Name="WideComparisonGrid">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="10"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Style="{StaticResource Card}">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="Entrada original" FontWeight="Bold" Margin="10,8"/>
+            <ctrl:LineNumberedTextBox x:Name="WideInputText" Text="{Binding InputText, Mode=OneWay}" IsReadOnly="True" FontSize="{Binding EditorFontSize}"/>
+          </DockPanel>
+        </Border>
+        <Border Grid.Column="2" Style="{StaticResource Card}">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="Saída organizada" FontWeight="Bold" Margin="10,8"/>
+            <ctrl:LineNumberedTextBox x:Name="WideOutputText" Text="{Binding OutputText, Mode=OneWay}" IsReadOnly="True" FontSize="{Binding EditorFontSize}"/>
+          </DockPanel>
+        </Border>
+      </Grid>
+
+      <TabControl x:Name="CompactComparisonTabs" Visibility="Collapsed">
+        <TabItem Header="Entrada original">
+          <ctrl:LineNumberedTextBox x:Name="CompactInputText" Text="{Binding InputText, Mode=OneWay}" IsReadOnly="True" FontSize="{Binding EditorFontSize}"/>
+        </TabItem>
+        <TabItem Header="Saída organizada">
+          <ctrl:LineNumberedTextBox x:Name="CompactOutputText" Text="{Binding OutputText, Mode=OneWay}" IsReadOnly="True" FontSize="{Binding EditorFontSize}"/>
+        </TabItem>
+      </TabControl>
+    </Grid>
+
+    <Grid Grid.Row="3">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.35*"/>
+        <ColumnDefinition Width="10"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Style="{StaticResource Card}">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="Diferenças detectadas" FontWeight="Bold" Margin="10,8"/>
+          <DataGrid x:Name="ComparisonItemsGrid"
+                    ItemsSource="{Binding FilteredItems}"
+                    SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                    SelectionChanged="ComparisonItemsGrid_SelectionChanged"
+                    AutoGenerateColumns="False"
+                    IsReadOnly="True"
+                    HeadersVisibility="Column"
+                    GridLinesVisibility="Horizontal"
+                    Background="{StaticResource PanelBg}"
+                    BorderThickness="0"
+                    EnableRowVirtualization="True"
+                    VirtualizingPanel.IsVirtualizing="True"
+                    VirtualizingPanel.VirtualizationMode="Recycling">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Estado" Binding="{Binding Indicator}" Width="78" ElementStyle="{StaticResource ComparisonGridText}"/>
+              <DataGridTextColumn Header="Entrada" Binding="{Binding InputLineDisplay}" Width="62" ElementStyle="{StaticResource ComparisonGridText}"/>
+              <DataGridTextColumn Header="Saída" Binding="{Binding OutputLineDisplay}" Width="58" ElementStyle="{StaticResource ComparisonGridText}"/>
+              <DataGridTextColumn Header="Categoria" Binding="{Binding CategoryLabel}" Width="155" ElementStyle="{StaticResource ComparisonGridText}"/>
+              <DataGridTextColumn Header="Resumo" Binding="{Binding Summary}" Width="*" ElementStyle="{StaticResource ComparisonGridText}"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+
+      <Border Grid.Column="2" Style="{StaticResource Card}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Margin="10,8">
+            <TextBlock Text="Detalhamento por campos" FontWeight="Bold"/>
+            <TextBlock Text="{Binding SelectedDetailsTitle}" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0"/>
+            <TextBlock Text="{Binding SelectedDetailsText}" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding SelectedFieldDifferences}"
+                    AutoGenerateColumns="False"
+                    IsReadOnly="True"
+                    HeadersVisibility="Column"
+                    GridLinesVisibility="Horizontal"
+                    Background="{StaticResource PanelBg}"
+                    BorderThickness="0"
+                    EnableRowVirtualization="True">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Campo" Binding="{Binding FieldName}" Width="125" ElementStyle="{StaticResource ComparisonGridText}"/>
+              <DataGridTextColumn Header="Entrada" Binding="{Binding InputValue}" Width="*" ElementStyle="{StaticResource ComparisonGridText}"/>
+              <DataGridTextColumn Header="Saída" Binding="{Binding OutputValue}" Width="*" ElementStyle="{StaticResource ComparisonGridText}"/>
+              <DataGridTextColumn Header="Motivo" Binding="{Binding Reason}" Width="150" ElementStyle="{StaticResource ComparisonGridText}"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <DockPanel Grid.Row="4" Margin="0,10,0,0">
+      <TextBlock Text="{Binding OutputOriginDisplay}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="Copiar relatório" Click="CopyReport_Click" Style="{StaticResource StdButton}" Margin="0,0,6,0" ToolTip="Copia o resumo e as diferenças para a área de transferência."/>
+        <Button Content="Fechar" Click="Close_Click" Style="{StaticResource AccentButton}"/>
+      </StackPanel>
+    </DockPanel>
+  </Grid>
+</Window>

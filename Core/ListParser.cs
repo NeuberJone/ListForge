@@ -174,7 +174,14 @@ public static class ListParser
             try
             {
                 var row = ParseLine(line, inputSeparator, sizeConfig, headerContext);
-                if (row != null) parsed.Add(row);
+                if (row != null)
+                {
+                    parsed.Add(row with
+                    {
+                        SourceId = $"source-{i + 1}-{parsed.Count + 1}",
+                        SourceLineNumber = i + 1,
+                    });
+                }
             }
             catch (ArgumentException ex)
             {

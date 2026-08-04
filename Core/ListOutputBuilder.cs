@@ -76,7 +76,14 @@ public static class ListOutputBuilder
 
                 if (sizes.Count > 0)
                     exploded.Add(new RowFragment(
-                        new ParsedRow(row.Name, row.Number, sizes, row.S2, row.S3),
+                        new ParsedRow(
+                            row.Name,
+                            row.Number,
+                            sizes,
+                            row.S2,
+                            row.S3,
+                            SourceId: row.SourceId,
+                            SourceLineNumber: row.SourceLineNumber),
                         group,
                         [],
                         pieceFields));
@@ -84,7 +91,18 @@ public static class ListOutputBuilder
         }
 
         if (exploded.Count == 0 && socks.Count > 0)
-            exploded.Add(new RowFragment(new ParsedRow(row.Name, row.Number, [], row.S2, row.S3), "", socks, []));
+            exploded.Add(new RowFragment(
+                new ParsedRow(
+                    row.Name,
+                    row.Number,
+                    [],
+                    row.S2,
+                    row.S3,
+                    SourceId: row.SourceId,
+                    SourceLineNumber: row.SourceLineNumber),
+                "",
+                socks,
+                []));
         else if (socks.Count > 0)
             exploded[0] = exploded[0] with { Socks = socks };
 
