@@ -68,11 +68,9 @@ public class UpdateServiceTests
     }
 
     [Fact]
-    public async Task CheckForUpdates_InvalidTag_ReturnsControlledError()
+    public void CheckForUpdates_InvalidTag_ReturnsControlledError()
     {
-        using var service = ServiceWithJson(ReleaseJson("release-latest", "ListForge-Setup-2.1.29.exe"));
-
-        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
+        var result = GitHubUpdateService.ParseRelease(ReleaseJson("release-latest", "ListForge-Setup-2.1.29.exe"));
 
         Assert.False(result.Success);
         Assert.Equal("InvalidTag", result.ErrorCode);
@@ -87,7 +85,7 @@ public class UpdateServiceTests
         var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
 
         Assert.False(result.Success);
-        Assert.Equal("InvalidUpdateApiUrl", result.ErrorCode);
+        Assert.Equal("AllUpdateSourcesFailed", result.ErrorCode);
     }
 
     [Fact]
@@ -99,7 +97,7 @@ public class UpdateServiceTests
         var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
 
         Assert.False(result.Success);
-        Assert.Equal("HttpError", result.ErrorCode);
+        Assert.Equal("AllUpdateSourcesFailed", result.ErrorCode);
         Assert.DoesNotContain("Forbidden", result.UserMessage);
     }
 
@@ -112,15 +110,13 @@ public class UpdateServiceTests
         var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
 
         Assert.False(result.Success);
-        Assert.Equal("Timeout", result.ErrorCode);
+        Assert.Equal("AllUpdateSourcesFailed", result.ErrorCode);
     }
 
     [Fact]
-    public async Task CheckForUpdates_InvalidJson_ReturnsControlledError()
+    public void CheckForUpdates_InvalidJson_ReturnsControlledError()
     {
-        using var service = ServiceWithJson("{ invalid json");
-
-        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
+        var result = GitHubUpdateService.ParseRelease("{ invalid json");
 
         Assert.False(result.Success);
         Assert.Equal("InvalidJson", result.ErrorCode);
@@ -129,61 +125,51 @@ public class UpdateServiceTests
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]
-    public async Task CheckForUpdates_DraftOrPrerelease_IsIgnored(bool draft, bool prerelease)
+    public void CheckForUpdates_DraftOrPrerelease_IsIgnored(bool draft, bool prerelease)
     {
-        using var service = ServiceWithJson(ReleaseJson("v2.1.29", "ListForge-Setup-2.1.29.exe", draft: draft, prerelease: prerelease));
-
-        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
+        var result = GitHubUpdateService.ParseRelease(ReleaseJson("v2.1.29", "ListForge-Setup-2.1.29.exe", draft: draft, prerelease: prerelease));
 
         Assert.False(result.Success);
         Assert.Equal("ReleaseNotStable", result.ErrorCode);
     }
 
     [Fact]
-    public async Task CheckForUpdates_AssetFromAnotherVersion_IsRejected()
+    public void CheckForUpdates_AssetFromAnotherVersion_IsRejected()
     {
-        using var service = ServiceWithJson(ReleaseJson("v2.1.29", "ListForge-Setup-2.1.28.exe"));
-
-        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
+        var result = GitHubUpdateService.ParseRelease(ReleaseJson("v2.1.29", "ListForge-Setup-2.1.28.exe"));
 
         Assert.False(result.Success);
         Assert.Equal("InstallerAssetMissing", result.ErrorCode);
     }
 
     [Fact]
-    public async Task CheckForUpdates_MissingInstaller_IsRejected()
+    public void CheckForUpdates_MissingInstaller_IsRejected()
     {
-        using var service = ServiceWithJson(ReleaseJson("v2.1.29", "ListForge-v2.1.29.exe"));
-
-        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
+        var result = GitHubUpdateService.ParseRelease(ReleaseJson("v2.1.29", "ListForge-v2.1.29.exe"));
 
         Assert.False(result.Success);
         Assert.Equal("InstallerAssetMissing", result.ErrorCode);
     }
 
     [Fact]
-    public async Task CheckForUpdates_NonHttpsInstallerUrl_IsRejected()
+    public void CheckForUpdates_NonHttpsInstallerUrl_IsRejected()
     {
-        using var service = ServiceWithJson(ReleaseJson("v2.1.29", "ListForge-Setup-2.1.29.exe", downloadUrl: "http://example.com/ListForge-Setup-2.1.29.exe"));
-
-        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
+        var result = GitHubUpdateService.ParseRelease(ReleaseJson("v2.1.29", "ListForge-Setup-2.1.29.exe", downloadUrl: "http://example.com/ListForge-Setup-2.1.29.exe"));
 
         Assert.False(result.Success);
-        Assert.Equal("InstallerUrlNotHttps", result.ErrorCode);
+        Assert.Equal("InstallerAssetInvalid", result.ErrorCode);
     }
 
     [Fact]
-    public async Task CheckForUpdates_NonHttpsChecksumUrl_IsRejected()
+    public void CheckForUpdates_NonHttpsChecksumUrl_IsRejected()
     {
-        using var service = ServiceWithJson(ReleaseJson(
+        var result = GitHubUpdateService.ParseRelease(ReleaseJson(
             "v2.1.29",
             "ListForge-Setup-2.1.29.exe",
             checksumUrl: "http://example.com/SHA256SUMS.txt"));
 
-        var result = await service.CheckForUpdatesAsync(new Version(2, 1, 28));
-
         Assert.False(result.Success);
-        Assert.Equal("ChecksumsUrlNotHttps", result.ErrorCode);
+        Assert.Equal("ChecksumsInvalid", result.ErrorCode);
     }
 
     private static GitHubUpdateService ServiceWithJson(string json)
@@ -332,7 +318,7 @@ public class UpdateInstallerServiceTests
         var result = await service.DownloadAndValidateInstallerAsync(Release(new string('B', 64), bytes.Length));
 
         Assert.False(result.Success);
-        Assert.Equal("InstallerHashMismatch", result.ErrorCode);
+        Assert.Equal("AssetHashMismatch", result.ErrorCode);
         Assert.Empty(Directory.GetFiles(env.Root, "*.partial", SearchOption.AllDirectories));
         Assert.Empty(Directory.GetFiles(env.Root, "*.exe", SearchOption.AllDirectories));
     }
@@ -567,6 +553,8 @@ public class UpdateInstallerServiceTests
         }
 
         public bool OpenUrl(string url) => true;
+
+        public bool OpenFolder(string folderPath) => true;
     }
 
     private sealed class MapHandler : HttpMessageHandler

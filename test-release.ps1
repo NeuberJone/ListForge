@@ -118,9 +118,22 @@ if (-not $SkipUpdateManifest) {
         throw "update.json aponta para versao '$($json.version)', esperado '$Version'."
     }
 
-    $jsonText = Get-Content -LiteralPath $updateManifest -Raw
-    if ($jsonText -notmatch [regex]::Escape("ListForge-Setup-$Version.exe")) {
-        throw "update.json nao referencia ListForge-Setup-$Version.exe."
+    foreach ($manifestAsset in @(
+        @{ Section = "installer"; Name = "ListForge-Setup-$Version.exe" },
+        @{ Section = "portable"; Name = "ListForge-v$Version.exe" },
+        @{ Section = "trial"; Name = "ListForge-Trial-v$Version.exe" }
+    )) {
+        $entry = $json.($manifestAsset.Section)
+        $assetPath = Join-Path $releaseRoot $manifestAsset.Name
+        if ($null -eq $entry -or $entry.name -ne $manifestAsset.Name) {
+            throw "update.json nao referencia $($manifestAsset.Name) na secao $($manifestAsset.Section)."
+        }
+
+        $actualHash = (Get-FileHash -LiteralPath $assetPath -Algorithm SHA256).Hash.ToUpperInvariant()
+        $actualSize = (Get-Item -LiteralPath $assetPath).Length
+        if ($entry.sha256.ToUpperInvariant() -ne $actualHash -or [long]$entry.size -ne $actualSize) {
+            throw "Hash ou tamanho divergente no update.json para $($manifestAsset.Name)."
+        }
     }
 
     Write-Host "OK  update.json"

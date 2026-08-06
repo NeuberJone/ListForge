@@ -325,16 +325,32 @@ if (-not [string]::IsNullOrWhiteSpace($ReleaseBaseUrl)) {
     $publicBaseUrl = $ReleaseBaseUrl.Trim().TrimEnd('/')
     $installerName = "ListForge-Setup-$Version.exe"
     $installerPath = Join-Path $releaseDir $installerName
+    $portableName = "ListForge-v$Version.exe"
+    $portablePath = Join-Path $releaseDir $portableName
+    $trialName = "ListForge-Trial-v$Version.exe"
+    $trialPath = Join-Path $releaseDir $trialName
     $manifest = [ordered]@{
         version = $Version
         tagName = "v$Version"
-        releaseUrl = $publicBaseUrl
+        releaseUrl = "https://github.com/NeuberJone/ListForge/releases/tag/v$Version"
         notes = "ListForge $Version"
         installer = [ordered]@{
             name = $installerName
             url = "$publicBaseUrl/$installerName"
             size = (Get-Item -LiteralPath $installerPath).Length
             sha256 = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToUpperInvariant()
+        }
+        portable = [ordered]@{
+            name = $portableName
+            url = "$publicBaseUrl/$portableName"
+            size = (Get-Item -LiteralPath $portablePath).Length
+            sha256 = (Get-FileHash -LiteralPath $portablePath -Algorithm SHA256).Hash.ToUpperInvariant()
+        }
+        trial = [ordered]@{
+            name = $trialName
+            url = "$publicBaseUrl/$trialName"
+            size = (Get-Item -LiteralPath $trialPath).Length
+            sha256 = (Get-FileHash -LiteralPath $trialPath -Algorithm SHA256).Hash.ToUpperInvariant()
         }
         checksums = [ordered]@{
             name = "SHA256SUMS.txt"

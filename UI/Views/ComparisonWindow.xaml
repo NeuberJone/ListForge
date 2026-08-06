@@ -188,12 +188,19 @@
       </Border>
     </Grid>
 
-    <DockPanel Grid.Row="4" Margin="0,10,0,0">
-      <TextBlock Text="{Binding OutputOriginDisplay}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+    <Grid Grid.Row="4" Margin="0,10,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <StackPanel Grid.Column="0" Margin="0,0,12,0">
+        <TextBlock Text="{Binding OutputOriginDisplay}" Foreground="{StaticResource TextMutedBrush}"/>
+        <TextBlock Text="{Binding PrivacyNotice}" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
         <Button Content="Copiar relatório" Click="CopyReport_Click" Style="{StaticResource StdButton}" Margin="0,0,6,0" ToolTip="Copia o resumo e as diferenças para a área de transferência."/>
         <Button Content="Fechar" Click="Close_Click" Style="{StaticResource AccentButton}"/>
       </StackPanel>
-    </DockPanel>
+    </Grid>
   </Grid>
 </Window>

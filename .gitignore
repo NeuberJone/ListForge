@@ -20,6 +20,7 @@ crash.log
 .vs/
 .vscode/
 .idea/
+.wrangler/
 *.user
 *.suo
 *.userosscache

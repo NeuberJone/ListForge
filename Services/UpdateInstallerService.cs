@@ -6,16 +6,32 @@ using ListForge.Models;
 
 namespace ListForge.Services;
 
-public sealed class UpdateInstallerService : IDisposable
+public interface IUpdatePackageService
+{
+    Task<OperationResult<PreparedUpdatePackage>> DownloadAndValidateAsync(
+        UpdateReleaseInfo release,
+        DistributionInfo distribution,
+        IProgress<UpdateDownloadProgressInfo>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    OperationResult ValidatePreparedPackage(PreparedUpdatePackage package);
+    OperationResult StartInstaller(PreparedUpdatePackage package);
+    OperationResult OpenReleasePage(UpdateReleaseInfo release);
+    OperationResult OpenDownloadFolder(PreparedUpdatePackage package);
+}
+
+public sealed class UpdateInstallerService : IUpdatePackageService, IDisposable
 {
     public const string InstallerArguments = "/CLOSEAPPLICATIONS /NORESTART";
+    public static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan PartialFileRetention = TimeSpan.FromDays(7);
 
     private readonly HttpClient _httpClient;
     private readonly IUpdateProcessLauncher _processLauncher;
     private readonly string _updatesRoot;
 
     public UpdateInstallerService()
-        : this(new HttpClient { Timeout = TimeSpan.FromMinutes(5) }, new UpdateProcessLauncher())
+        : this(new HttpClient { Timeout = DownloadTimeout }, new UpdateProcessLauncher())
     {
     }
 
@@ -26,41 +42,59 @@ public sealed class UpdateInstallerService : IDisposable
     {
         _httpClient = httpClient;
         _processLauncher = processLauncher;
-        _updatesRoot = string.IsNullOrWhiteSpace(updatesRoot)
+        _updatesRoot = Path.GetFullPath(string.IsNullOrWhiteSpace(updatesRoot)
             ? ResolveDefaultUpdatesRoot()
-            : updatesRoot;
+            : updatesRoot);
         EnsureDefaultHeaders(_httpClient);
+        CleanupOldPartialFiles();
     }
 
-    public async Task<OperationResult<PreparedUpdateInstaller>> DownloadAndValidateInstallerAsync(
+    public async Task<OperationResult<PreparedUpdatePackage>> DownloadAndValidateAsync(
         UpdateReleaseInfo release,
-        IProgress<double>? progress = null,
+        DistributionInfo distribution,
+        IProgress<UpdateDownloadProgressInfo>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var versionText = GitHubUpdateService.ToThreePartVersion(release.Version);
-        var expectedName = $"ListForge-Setup-{versionText}.exe";
-        if (!string.Equals(release.InstallerAsset.Name, expectedName, StringComparison.OrdinalIgnoreCase))
+        var asset = release.GetAssetFor(distribution.Kind);
+        if (asset == null)
         {
-            return OperationResult<PreparedUpdateInstaller>.Fail(
-                "A Release encontrada não possui o instalador esperado para esta versão.",
-                $"Asset recebido: {release.InstallerAsset.Name}; esperado: {expectedName}",
-                errorCode: "InstallerAssetMismatch");
+            return OperationResult<PreparedUpdatePackage>.Fail(
+                distribution.IsTrial
+                    ? "A edição Trial deve ser atualizada manualmente pela página da versão."
+                    : "A edição portátil deve ser substituída manualmente pela página da versão.",
+                $"Manifesto sem asset para {distribution.Kind}.",
+                errorCode: "DistributionAssetMissing");
         }
 
-        if (!IsHttps(release.InstallerAsset.DownloadUrl))
+        var expectedName = ExpectedAssetName(release.Version, distribution.Kind);
+        if (string.IsNullOrWhiteSpace(expectedName)
+            || !string.Equals(asset.Name, expectedName, StringComparison.OrdinalIgnoreCase))
         {
-            return OperationResult<PreparedUpdateInstaller>.Fail(
-                "O instalador da Release possui um endereço inválido.",
-                $"URL do instalador não é HTTPS: {release.InstallerAsset.DownloadUrl}",
-                errorCode: "InstallerUrlNotHttps");
+            return OperationResult<PreparedUpdatePackage>.Fail(
+                "A versão encontrada não possui o arquivo esperado para esta edição.",
+                $"Asset recebido: {asset.Name}; esperado: {expectedName ?? "(nenhum)"}.",
+                errorCode: "AssetNameMismatch");
         }
+
+        if (!IsHttps(asset.DownloadUrl) || asset.SizeBytes <= 0)
+        {
+            return OperationResult<PreparedUpdatePackage>.Fail(
+                "O arquivo da atualização possui informações inválidas.",
+                $"URL ou tamanho inválido para {asset.Name}.",
+                errorCode: "AssetInvalid");
+        }
+
+        var versionText = GitHubUpdateService.ToThreePartVersion(release.Version);
+        var versionDir = Path.Combine(_updatesRoot, $"v{versionText}");
+        var finalPath = Path.Combine(versionDir, expectedName);
+        var partialPath = finalPath + ".partial";
 
         try
         {
-            var expectedHashResult = await ResolveExpectedHashAsync(release, cancellationToken).ConfigureAwait(false);
+            var expectedHashResult = await ResolveExpectedHashAsync(release, asset, cancellationToken).ConfigureAwait(false);
             if (!expectedHashResult.Success || string.IsNullOrWhiteSpace(expectedHashResult.Value))
             {
-                return OperationResult<PreparedUpdateInstaller>.Fail(
+                return OperationResult<PreparedUpdatePackage>.Fail(
                     expectedHashResult.UserMessage,
                     expectedHashResult.TechnicalMessage,
                     expectedHashResult.Exception,
@@ -68,72 +102,142 @@ public sealed class UpdateInstallerService : IDisposable
             }
 
             var expectedHash = expectedHashResult.Value;
-            var versionDir = Path.Combine(_updatesRoot, $"v{versionText}");
             Directory.CreateDirectory(versionDir);
-
-            var installerPath = Path.Combine(versionDir, expectedName);
-            var partialPath = installerPath + ".partial";
             DeleteIfExists(partialPath);
 
-            if (File.Exists(installerPath))
+            var package = new PreparedUpdatePackage(
+                finalPath,
+                release,
+                asset,
+                distribution.Kind,
+                expectedHash);
+
+            if (File.Exists(finalPath))
             {
-                var existingHash = ComputeSha256(installerPath);
-                if (string.Equals(existingHash, expectedHash, StringComparison.OrdinalIgnoreCase))
+                var existingValidation = ValidatePreparedPackage(package);
+                if (existingValidation.Success)
                 {
-                    progress?.Report(100);
-                    return OperationResult<PreparedUpdateInstaller>.Ok(
-                        new PreparedUpdateInstaller(installerPath, release),
-                        "Instalador já baixado e validado.");
+                    progress?.Report(new UpdateDownloadProgressInfo(asset.SizeBytes, asset.SizeBytes));
+                    AppLogger.Info("Update", $"Arquivo de atualização existente reutilizado: {asset.Name}.");
+                    return OperationResult<PreparedUpdatePackage>.Ok(
+                        package,
+                        "A atualização já está baixada e pronta.");
                 }
 
-                DeleteIfExists(installerPath);
+                AppLogger.Warning("Update", $"Arquivo de atualização existente rejeitado: {existingValidation.TechnicalMessage}");
+                DeleteIfExists(finalPath);
             }
 
-            await DownloadFileAsync(release.InstallerAsset, partialPath, progress, cancellationToken).ConfigureAwait(false);
+            AppLogger.Info("Update", $"Iniciando download do asset {asset.Name}.");
+            await DownloadFileAsync(asset, partialPath, progress, cancellationToken).ConfigureAwait(false);
 
-            var downloaded = new FileInfo(partialPath);
-            if (release.InstallerAsset.SizeBytes > 0 && downloaded.Length != release.InstallerAsset.SizeBytes)
+            var partialInfo = new FileInfo(partialPath);
+            if (partialInfo.Length != asset.SizeBytes)
             {
                 DeleteIfExists(partialPath);
-                return OperationResult<PreparedUpdateInstaller>.Fail(
-                    "O download da atualização foi concluído com tamanho inesperado.",
-                    $"Tamanho esperado: {release.InstallerAsset.SizeBytes}; obtido: {downloaded.Length}",
-                    errorCode: "InstallerSizeMismatch");
+                return OperationResult<PreparedUpdatePackage>.Fail(
+                    "O arquivo baixado não corresponde à versão oficial publicada.",
+                    $"Tamanho esperado: {asset.SizeBytes}; obtido: {partialInfo.Length}.",
+                    errorCode: "AssetSizeMismatch");
             }
 
             var actualHash = ComputeSha256(partialPath);
             if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
             {
                 DeleteIfExists(partialPath);
-                return OperationResult<PreparedUpdateInstaller>.Fail(
-                    "A validação de integridade da atualização falhou. O instalador não será executado.",
-                    $"SHA-256 esperado: {expectedHash}; obtido: {actualHash}",
-                    errorCode: "InstallerHashMismatch");
+                return OperationResult<PreparedUpdatePackage>.Fail(
+                    "O arquivo baixado não passou na verificação de integridade.",
+                    $"SHA-256 divergente para {asset.Name}.",
+                    errorCode: "AssetHashMismatch");
             }
 
-            File.Move(partialPath, installerPath);
-            progress?.Report(100);
-            return OperationResult<PreparedUpdateInstaller>.Ok(
-                new PreparedUpdateInstaller(installerPath, release),
-                "Atualização baixada e validada.");
+            File.Move(partialPath, finalPath);
+            progress?.Report(new UpdateDownloadProgressInfo(asset.SizeBytes, asset.SizeBytes));
+            AppLogger.Info("Update", $"Download e SHA-256 validados para {asset.Name}.");
+            return OperationResult<PreparedUpdatePackage>.Ok(
+                package,
+                distribution.CanRunInstallerUpdate
+                    ? "Atualização baixada e validada."
+                    : "Atualização baixada e validada. Abra a pasta para substituir esta edição manualmente.");
         }
         catch (OperationCanceledException ex)
         {
-            DeleteIfExists(Path.Combine(_updatesRoot, $"v{versionText}", expectedName + ".partial"));
-            return OperationResult<PreparedUpdateInstaller>.Fail(
+            DeleteIfExists(partialPath);
+            AppLogger.Info("Update", $"Download cancelado para {asset.Name}.");
+            return OperationResult<PreparedUpdatePackage>.Fail(
                 "Download da atualização cancelado.",
-                "Download da atualização cancelado.",
+                "Download cancelado pelo usuário.",
                 ex,
                 "DownloadCanceled");
         }
         catch (Exception ex)
         {
-            return OperationResult<PreparedUpdateInstaller>.Fail(
-                "Não foi possível baixar a atualização agora.",
-                "Falha ao baixar ou validar instalador.",
+            DeleteIfExists(partialPath);
+            return OperationResult<PreparedUpdatePackage>.Fail(
+                "Não foi possível baixar a atualização.",
+                $"Falha ao baixar ou validar {asset.Name}.",
                 ex,
                 "UpdateDownloadFailed");
         }
+    }
+
+    public OperationResult ValidatePreparedPackage(PreparedUpdatePackage package)
+    {
+        try
+        {
+            if (!IsPathInsideUpdatesRoot(package.FilePath)
+                || package.FilePath.EndsWith(".partial", StringComparison.OrdinalIgnoreCase)
+                || !File.Exists(package.FilePath)
+                || !string.Equals(Path.GetFileName(package.FilePath), package.Asset.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return OperationResult.Fail(
+                    "O arquivo da atualização não está pronto.",
+                    "Arquivo ausente, parcial, fora do cache ou com nome divergente.",
+                    errorCode: "UpdateFileNotReady");
+            }
+
+            var fileInfo = new FileInfo(package.FilePath);
+            if (fileInfo.Length != package.Asset.SizeBytes)
+            {
+                return OperationResult.Fail(
+                    "O arquivo baixado não corresponde à versão oficial publicada.",
+                    $"Tamanho esperado: {package.Asset.SizeBytes}; obtido: {fileInfo.Length}.",
+                    errorCode: "AssetSizeMismatch");
+            }
+
+            var hash = ComputeSha256(package.FilePath);
+            return string.Equals(hash, package.ExpectedSha256, StringComparison.OrdinalIgnoreCase)
+                ? OperationResult.Ok("Arquivo validado.")
+                : OperationResult.Fail(
+                    "O arquivo baixado não passou na verificação de integridade.",
+                    $"SHA-256 divergente para {package.Asset.Name}.",
+                    errorCode: "AssetHashMismatch");
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Fail(
+                "Não foi possível validar o arquivo da atualização.",
+                "Falha ao validar o pacote preparado.",
+                ex,
+                "UpdateValidationFailed");
+        }
+    }
+
+    public OperationResult StartInstaller(PreparedUpdatePackage package)
+    {
+        if (package.DistributionKind != DistributionKind.Installed)
+        {
+            return OperationResult.Fail(
+                "Esta edição não instala atualizações automaticamente.",
+                $"Tentativa de instalar pacote para {package.DistributionKind}.",
+                errorCode: "InstallerNotAllowed");
+        }
+
+        var validation = ValidatePreparedPackage(package);
+        if (!validation.Success)
+            return validation;
+
+        return StartInstaller(package.FilePath);
     }
 
     public OperationResult StartInstaller(string installerPath)
@@ -144,7 +248,7 @@ public sealed class UpdateInstallerService : IDisposable
             {
                 return OperationResult.Fail(
                     "O instalador da atualização não está pronto para execução.",
-                    $"Instalador ausente ou parcial: {installerPath}",
+                    "Instalador ausente ou parcial.",
                     errorCode: "InstallerNotReady");
             }
 
@@ -152,19 +256,19 @@ public sealed class UpdateInstallerService : IDisposable
             if (!started)
             {
                 return OperationResult.Fail(
-                    $"Não foi possível iniciar o instalador.\n\nArquivo salvo em:\n{installerPath}",
-                    "Process.Start retornou null para o instalador.",
+                    "Não foi possível iniciar o instalador. O ListForge continuará aberto.",
+                    "Process.Start não confirmou a inicialização do instalador.",
                     errorCode: "InstallerStartFailed");
             }
 
-            AppLogger.Info("Update", $"Instalador iniciado para atualização: {installerPath}");
+            AppLogger.Info("Update", "Instalador da atualização iniciado com confirmação do processo.");
             return OperationResult.Ok("Instalador iniciado.");
         }
         catch (Exception ex)
         {
-            AppLogger.Error("Update", "Falha ao iniciar instalador de atualização.", ex, installerPath);
+            AppLogger.Error("Update", "Falha ao iniciar instalador de atualização.", ex);
             return OperationResult.Fail(
-                $"Não foi possível iniciar o instalador.\n\nArquivo salvo em:\n{installerPath}",
+                "Não foi possível iniciar o instalador. O ListForge continuará aberto.",
                 "Exceção ao iniciar instalador.",
                 ex,
                 "InstallerStartFailed");
@@ -173,35 +277,63 @@ public sealed class UpdateInstallerService : IDisposable
 
     public OperationResult OpenReleasePage(UpdateReleaseInfo release)
     {
+        var url = IsHttps(release.HtmlUrl) ? release.HtmlUrl : GitHubUpdateService.GitHubReleasesUrl;
+        return OpenUrl(url, "página da versão");
+    }
+
+    public OperationResult OpenDownloadFolder(PreparedUpdatePackage package)
+    {
+        var validation = ValidatePreparedPackage(package);
+        if (!validation.Success)
+            return validation;
+
         try
         {
-            if (string.IsNullOrWhiteSpace(release.HtmlUrl) || !IsHttps(release.HtmlUrl))
-            {
-                return OperationResult.Fail(
-                    "A página da Release não está disponível.",
-                    $"URL da Release inválida: {release.HtmlUrl}",
-                    errorCode: "ReleasePageInvalid");
-            }
-
-            return _processLauncher.OpenUrl(release.HtmlUrl)
-                ? OperationResult.Ok("Página da Release aberta.")
+            var folder = Path.GetDirectoryName(package.FilePath);
+            return !string.IsNullOrWhiteSpace(folder) && _processLauncher.OpenFolder(folder)
+                ? OperationResult.Ok("Pasta da atualização aberta.")
                 : OperationResult.Fail(
-                    "Não foi possível abrir a página da Release.",
-                    "Process.Start retornou null ao abrir URL.",
-                    errorCode: "ReleasePageOpenFailed");
+                    "Não foi possível abrir a pasta da atualização.",
+                    "Process.Start não confirmou a abertura da pasta.",
+                    errorCode: "UpdateFolderOpenFailed");
         }
         catch (Exception ex)
         {
-            AppLogger.Error("Update", "Falha ao abrir página da Release.", ex);
             return OperationResult.Fail(
-                "Não foi possível abrir a página da Release.",
-                "Exceção ao abrir página da Release.",
+                "Não foi possível abrir a pasta da atualização.",
+                "Exceção ao abrir a pasta do pacote.",
                 ex,
-                "ReleasePageOpenFailed");
+                "UpdateFolderOpenFailed");
         }
     }
 
-    internal static string? ParseChecksumFile(string content, string installerName)
+    public async Task<OperationResult<PreparedUpdateInstaller>> DownloadAndValidateInstallerAsync(
+        UpdateReleaseInfo release,
+        IProgress<double>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var adapter = progress == null
+            ? null
+            : new Progress<UpdateDownloadProgressInfo>(value => progress.Report(value.Percentage));
+        var result = await DownloadAndValidateAsync(
+            release,
+            DistributionInfoService.FromKind(DistributionKind.Installed),
+            adapter,
+            cancellationToken).ConfigureAwait(false);
+
+        return result.Success && result.Value != null
+            ? OperationResult<PreparedUpdateInstaller>.Ok(
+                new PreparedUpdateInstaller(result.Value.FilePath, release),
+                result.UserMessage,
+                result.TechnicalMessage)
+            : OperationResult<PreparedUpdateInstaller>.Fail(
+                result.UserMessage,
+                result.TechnicalMessage,
+                result.Exception,
+                result.ErrorCode);
+    }
+
+    internal static string? ParseChecksumFile(string content, string assetName)
     {
         using var reader = new StringReader(content);
         string? line;
@@ -215,7 +347,7 @@ public sealed class UpdateInstallerService : IDisposable
             var path = parts[^1].Trim().Replace('\\', '/');
             if (hash.Length == 64
                 && hash.All(Uri.IsHexDigit)
-                && string.Equals(Path.GetFileName(path), installerName, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(Path.GetFileName(path), assetName, StringComparison.OrdinalIgnoreCase))
             {
                 return hash.ToUpperInvariant();
             }
@@ -227,39 +359,33 @@ public sealed class UpdateInstallerService : IDisposable
     internal static string ComputeSha256(string path)
     {
         using var stream = File.OpenRead(path);
-        var hash = SHA256.HashData(stream);
-        return Convert.ToHexString(hash);
+        return Convert.ToHexString(SHA256.HashData(stream));
     }
 
     private async Task<OperationResult<string>> ResolveExpectedHashAsync(
         UpdateReleaseInfo release,
+        UpdateAssetInfo asset,
         CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(release.InstallerAsset.Sha256))
-            return OperationResult<string>.Ok(release.InstallerAsset.Sha256);
+        if (!string.IsNullOrWhiteSpace(asset.Sha256))
+            return OperationResult<string>.Ok(asset.Sha256);
 
-        if (release.ChecksumsAsset == null)
+        if (release.ChecksumsAsset == null || !IsHttps(release.ChecksumsAsset.DownloadUrl))
         {
             return OperationResult<string>.Fail(
-                "A Release não possui informações de integridade para validar o instalador.",
-                "Nenhum digest SHA-256 e nenhum SHA256SUMS.txt foram encontrados.",
+                "A versão não possui informações de integridade suficientes.",
+                $"SHA-256 e checksum ausentes para {asset.Name}.",
                 errorCode: "ChecksumMissing");
         }
 
-        if (!IsHttps(release.ChecksumsAsset.DownloadUrl))
-        {
-            return OperationResult<string>.Fail(
-                "O arquivo de verificação da Release possui um endereço inválido.",
-                $"URL do checksum não é HTTPS: {release.ChecksumsAsset.DownloadUrl}",
-                errorCode: "ChecksumsUrlNotHttps");
-        }
-
-        var content = await _httpClient.GetStringAsync(release.ChecksumsAsset.DownloadUrl, cancellationToken).ConfigureAwait(false);
-        var hash = ParseChecksumFile(content, release.InstallerAsset.Name);
+        var content = await _httpClient
+            .GetStringAsync(release.ChecksumsAsset.DownloadUrl, cancellationToken)
+            .ConfigureAwait(false);
+        var hash = ParseChecksumFile(content, asset.Name);
         return string.IsNullOrWhiteSpace(hash)
             ? OperationResult<string>.Fail(
-                "O arquivo de verificação não contém o hash do instalador esperado.",
-                $"SHA256SUMS.txt não contém {release.InstallerAsset.Name}.",
+                "O arquivo de verificação não contém o hash esperado.",
+                $"SHA256SUMS.txt não contém {asset.Name}.",
                 errorCode: "ChecksumEntryMissing")
             : OperationResult<string>.Ok(hash);
     }
@@ -267,16 +393,16 @@ public sealed class UpdateInstallerService : IDisposable
     private async Task DownloadFileAsync(
         UpdateAssetInfo asset,
         string partialPath,
-        IProgress<double>? progress,
+        IProgress<UpdateDownloadProgressInfo>? progress,
         CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        using var response = await _httpClient
+            .GetAsync(asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var totalBytes = asset.SizeBytes > 0
-            ? asset.SizeBytes
-            : response.Content.Headers.ContentLength.GetValueOrDefault();
-
+        var headerLength = response.Content.Headers.ContentLength.GetValueOrDefault();
+        var totalBytes = asset.SizeBytes > 0 ? asset.SizeBytes : headerLength;
         await using var remote = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         await using var local = new FileStream(partialPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
 
@@ -287,18 +413,75 @@ public sealed class UpdateInstallerService : IDisposable
         {
             await local.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
             totalRead += read;
-            if (totalBytes > 0)
-                progress?.Report(Math.Clamp(totalRead * 100d / totalBytes, 0, 99));
+            progress?.Report(new UpdateDownloadProgressInfo(totalRead, totalBytes));
         }
+    }
+
+    private OperationResult OpenUrl(string url, string description)
+    {
+        try
+        {
+            return IsHttps(url) && _processLauncher.OpenUrl(url)
+                ? OperationResult.Ok($"{description} aberta.")
+                : OperationResult.Fail(
+                    $"Não foi possível abrir a {description}.",
+                    $"URL inválida ou processo não iniciado para {description}.",
+                    errorCode: "ReleasePageOpenFailed");
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Fail(
+                $"Não foi possível abrir a {description}.",
+                $"Exceção ao abrir {description}.",
+                ex,
+                "ReleasePageOpenFailed");
+        }
+    }
+
+    private void CleanupOldPartialFiles()
+    {
+        try
+        {
+            if (!Directory.Exists(_updatesRoot) || !IsPathInsideUpdatesRoot(_updatesRoot))
+                return;
+
+            var threshold = DateTime.UtcNow - PartialFileRetention;
+            foreach (var path in Directory.EnumerateFiles(_updatesRoot, "*.partial", SearchOption.AllDirectories))
+            {
+                if (File.GetLastWriteTimeUtc(path) < threshold && IsPathInsideUpdatesRoot(path))
+                    DeleteIfExists(path);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning("Update", "Não foi possível concluir a limpeza de downloads parciais antigos.", ex);
+        }
+    }
+
+    private bool IsPathInsideUpdatesRoot(string path)
+    {
+        var root = _updatesRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var candidate = Path.GetFullPath(path);
+        return string.Equals(candidate.TrimEnd(Path.DirectorySeparatorChar), _updatesRoot.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase)
+            || candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ExpectedAssetName(Version version, DistributionKind distributionKind)
+    {
+        var versionText = GitHubUpdateService.ToThreePartVersion(version);
+        return distributionKind switch
+        {
+            DistributionKind.Installed => $"ListForge-Setup-{versionText}.exe",
+            DistributionKind.PortableOneFile => $"ListForge-v{versionText}.exe",
+            DistributionKind.TrialPortableOneFile => $"ListForge-Trial-v{versionText}.exe",
+            _ => null,
+        };
     }
 
     private static string ResolveDefaultUpdatesRoot()
     {
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var root = string.IsNullOrWhiteSpace(localAppData)
-            ? Path.GetTempPath()
-            : localAppData;
-
+        var root = string.IsNullOrWhiteSpace(localAppData) ? Path.GetTempPath() : localAppData;
         return Path.Combine(root, ConfigManager.AppName, "updates");
     }
 
@@ -315,7 +498,7 @@ public sealed class UpdateInstallerService : IDisposable
         }
         catch
         {
-            // A failed cleanup should not hide the original operation result.
+            // Cleanup failures are logged by the caller when they affect the operation.
         }
     }
 

@@ -136,6 +136,36 @@ public class ListComparisonServiceTests
     }
 
     [Fact]
+    public void AdditionalDuplicate_IsReportedAsSingleAddedOccurrence()
+    {
+        var snapshot = CreateProcessedSnapshot("JOÃO,10,M");
+        var edited = Process("JOÃO,10,M\nJOÃO,10,M");
+        var service = new ListComparisonService();
+
+        var comparison = service.Compare(service.UpdateOutput(snapshot, edited, true));
+
+        Assert.Equal(1, comparison.Summary.Matching);
+        Assert.Equal(0, comparison.Summary.PossiblyMissing);
+        Assert.Equal(1, comparison.Summary.Added);
+        Assert.Equal(1, comparison.Summary.OutputDuplicates);
+    }
+
+    [Fact]
+    public void NormalizedMatching_DoesNotHideManualTextChanges()
+    {
+        var snapshot = CreateProcessedSnapshot("JOÃO  SILVA,10,G");
+        var edited = Process("joao silva,10,G");
+        var service = new ListComparisonService();
+
+        var item = Assert.Single(service.Compare(service.UpdateOutput(snapshot, edited, true)).Items);
+
+        Assert.Equal(ComparisonCategory.Changed, item.Category);
+        Assert.Equal("JOÃO  SILVA,10,G", item.InputDisplay);
+        Assert.Equal("joao silva,10,G", item.OutputDisplay);
+        Assert.Contains(item.FieldDifferences, difference => difference.FieldName == "Nome" && !difference.IsExpected);
+    }
+
+    [Fact]
     public void AmbiguousCandidates_AreNotPairedArbitrarily()
     {
         var snapshot = CreateProcessedSnapshot("JOÃO,10,G\nJOÃO,10,M");
@@ -158,6 +188,28 @@ public class ListComparisonServiceTests
 
         Assert.Equal(0, comparison.Summary.Problems);
         Assert.Contains(comparison.Items, item => item.InputDisplay.Contains("JUVENIL"));
+    }
+
+    [Fact]
+    public void SnapshotCapturesProcessingSettingsUsingIndependentCopies()
+    {
+        var mapping = new JsonPieceMappingOptions(true, [PieceTypeMapper.Tanktop, PieceTypeMapper.Pants]);
+        var request = Request(
+            "ANA,10,G,M",
+            ListSortMode.Descending,
+            "upper",
+            mapping,
+            consumeTrialCredit: false);
+        var result = new ProcessingWorkflowService(new FakeCompleteLicenseService()).Execute(request);
+        var snapshot = new ListComparisonService().CreateSnapshot(request, result, "Equipe", advancedListEnabled: true);
+
+        Assert.Equal("upper", snapshot.CaseMode);
+        Assert.Equal(ListSortMode.Descending, snapshot.SortMode);
+        Assert.True(snapshot.AdvancedListEnabled);
+        Assert.Equal("Equipe", snapshot.ActiveWorkProfileName);
+        Assert.Equal(mapping.NormalizedOrder, snapshot.JsonPieceMapping.NormalizedOrder);
+        Assert.NotSame(request.SizeConfig, snapshot.SizeConfig);
+        Assert.NotSame(mapping.NormalizedOrder, snapshot.JsonPieceMapping.NormalizedOrder);
     }
 
     [Fact]

@@ -39,6 +39,7 @@ public sealed class ComparisonViewModel : INotifyPropertyChanged
     public string OutputOriginDisplay => Result.Snapshot.OutputWasManuallyEdited
         ? "Saída com edição manual aplicada"
         : "Saída gerada pelo processamento";
+    public string PrivacyNotice => "O relatório pode conter dados da lista. Compartilhe-o somente quando necessário.";
 
     public ObservableCollection<ComparisonFilterOption> Filters { get; } = [];
     public ObservableCollection<ComparisonItem> FilteredItems { get; } = [];
@@ -86,6 +87,8 @@ public sealed class ComparisonViewModel : INotifyPropertyChanged
         var lines = new List<string>
         {
             "Comparação entre entrada e saída",
+            PrivacyNotice,
+            "",
             $"Entrada: {summary.InputRecords} registro(s)",
             $"Saída: {summary.OutputRecords} registro(s)",
             $"Correspondentes: {summary.Matching}",
@@ -169,7 +172,6 @@ public sealed class ComparisonViewModel : INotifyPropertyChanged
             SelectedFilter = Filters.First(filter => filter.Category == null);
 
         SelectedItem = target;
-        SelectionRequested?.Invoke(target);
     }
 
     private void RefreshSelectedDifferences()

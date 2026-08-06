@@ -6,6 +6,7 @@ public interface IUpdateProcessLauncher
 {
     bool StartInstaller(string installerPath, string arguments);
     bool OpenUrl(string url);
+    bool OpenFolder(string folderPath);
 }
 
 public sealed class UpdateProcessLauncher : IUpdateProcessLauncher
@@ -26,6 +27,17 @@ public sealed class UpdateProcessLauncher : IUpdateProcessLauncher
         var startInfo = new ProcessStartInfo(url)
         {
             UseShellExecute = true,
+        };
+
+        return Process.Start(startInfo) != null;
+    }
+
+    public bool OpenFolder(string folderPath)
+    {
+        var startInfo = new ProcessStartInfo("explorer.exe")
+        {
+            UseShellExecute = true,
+            Arguments = $"\"{folderPath}\"",
         };
 
         return Process.Start(startInfo) != null;

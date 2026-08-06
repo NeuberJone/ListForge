@@ -115,6 +115,30 @@ public class ComparisonViewModelTests
         Assert.Null(vm.SelectedFilter?.Category);
     }
 
+    [Fact]
+    public void ClipboardReportIncludesPrivacyNoticeAndReviewDetails()
+    {
+        var service = new ListComparisonService();
+        var request = new ProcessingWorkflowRequest(
+            "ANA,10,G",
+            ",",
+            SizeConfig.Default(),
+            "original",
+            ListSortMode.Original,
+            JsonPieceMappingOptions.Disabled,
+            ConsumeTrialCredit: false);
+        var workflow = new ProcessingWorkflowService(new CompleteLicenseService());
+        var snapshot = service.CreateSnapshot(request, workflow.Execute(request), "Padrão", false);
+        var edited = workflow.Execute(request with { InputText = "ANA,10,M" });
+        var viewModel = new ComparisonViewModel(service.Compare(service.UpdateOutput(snapshot, edited, true)), 13);
+
+        var report = viewModel.BuildClipboardReport();
+
+        Assert.Contains(viewModel.PrivacyNotice, report);
+        Assert.Contains("Manga Curta", report);
+        Assert.Contains("Diferenças para revisão", report);
+    }
+
     private sealed class ComparisonTestEnvironment : IDisposable
     {
         private readonly string _root;

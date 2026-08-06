@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.40-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.41-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -23,7 +23,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 * Mantém histórico local dos últimos processamentos com arquivo de saída gerado.
 * Mantém configurações por usuário e backups automáticos.
 * Possui versão completa e build Trial com limite de processamentos.
-* Verifica atualizações por manifest HTTPS público, com download validado por SHA-256.
+* Verifica atualizações por manifesto HTTPS público com fallback para GitHub e download validado por tamanho e SHA-256.
 * Inclui testes automatizados e testes de integração para proteger regras críticas do núcleo e do fluxo principal.
 * Registra logs internos diários para suporte e diagnóstico.
 * Possui tela Sobre com versão, edição, caminhos e informações de suporte.
@@ -121,7 +121,7 @@ O ListForge resolve esse processo com uma ferramenta única para:
 * Logs internos diários para diagnóstico técnico.
 * Configurações persistentes por usuário.
 * Temas visuais selecionáveis.
-* Verificação manual e automática de atualizações na distribuição instalável.
+* Verificação manual e automática de atualizações nas edições instalada, portátil e Trial.
 * Versão Trial com limite de processamentos concluídos com sucesso.
 
 ## Importação de arquivos
@@ -219,7 +219,7 @@ Duplicidades legítimas são comparadas por ocorrência: duas entradas iguais ex
 
 A comparação usa um snapshot único da entrada efetivamente processada, da saída e das configurações aplicadas. Se a entrada for alterada depois, execute o processamento novamente. Edições aplicadas à saída ou ao JSON são marcadas como manuais e comparadas contra a entrada processada.
 
-O recurso é somente de sessão: não grava conteúdo, pares comparados, diferenças, nomes, números ou tamanhos no histórico, nas configurações ou no pacote de suporte. Comparar, filtrar, navegar e copiar o relatório não altera a lista nem consome crédito Trial.
+O recurso é somente de sessão: não grava conteúdo, pares comparados, diferenças, nomes, números ou tamanhos no histórico, nas configurações ou no pacote de suporte. Comparar, filtrar, navegar e copiar o relatório não altera a lista nem consome crédito Trial. Como o relatório copiado pode conter dados da lista, o comparador exibe um aviso para que ele seja compartilhado somente quando necessário.
 
 ## Suporte a quantidades por tamanho
 
@@ -271,9 +271,9 @@ A suíte inclui:
 * testes unitários do processamento, tamanhos, ordenação, importação, logs, busca/substituição, Trial/licença e serviços internos;
 * testes de integração do fluxo principal sem abrir a UI WPF;
 * testes da prévia de impacto, cobrindo análise sem consumo Trial e confirmação com consumo apenas após sucesso;
-* testes do comparador semântico, cobrindo ordenação, transformações esperadas, ausências, adições, campos alterados, duplicidades, incerteza, peças, Meião e Trial;
+* testes do comparador semântico, cobrindo ordenação, transformações esperadas, ausências, adições, campos alterados, duplicidades, normalização sem ocultar mudanças, snapshot de configurações, aviso de privacidade, incerteza, peças, Meião e Trial;
 * testes de entradas grandes com 1.000 linhas, cobrindo validação, processamento, ordenação, expansão de quantidades e JSON;
-* testes do atualizador com HTTP simulado, validação de assets, hashes, downloads parciais, cancelamento, tipo de distribuição e script do instalador.
+* testes do atualizador com HTTP simulado, fallback entre manifesto configurado, servidor oficial e GitHub, validação de assets, hashes, downloads parciais, retry, cancelamento e tratamento das distribuições instalada, portátil e Trial.
 
 Para rodar os testes na raiz do projeto:
 
@@ -397,17 +397,21 @@ Antes da geração, o ListForge avisa que logs podem conter caminhos de arquivos
 
 ## Atualizações do aplicativo
 
-A tela Sobre possui a seção **Atualizações**, com versão instalada, tipo de distribuição, opção **Verificar atualizações ao iniciar**, botão **Verificar agora**, botão **Baixar agora** quando uma atualização foi encontrada, status da última verificação e progresso de download.
+A tela Sobre concentra o fluxo oficial de atualização. Ela mostra versão instalada, tipo de distribuição, estado atual, horário da última verificação da sessão, versão encontrada, fonte utilizada, resumo das notas e ações disponíveis em cada etapa.
 
-Quando a verificação automática encontra uma nova versão, o status permanece visível na tela Sobre e o usuário pode baixar depois pelo botão **Baixar agora**, sem precisar verificar novamente. Se a última verificação concluiu que o ListForge já está na versão mais recente, o status mostra que o aplicativo está atualizado em vez de exibir apenas o aviso de intervalo de 24 horas.
+As etapas são separadas: **Verificar atualizações**, **Baixar atualização** e, somente na edição instalada, **Instalar atualização**. Depois que uma versão é encontrada, suas informações permanecem disponíveis durante a sessão; navegar por outras telas não exige uma nova verificação. Falhas de download preservam a versão encontrada e habilitam **Tentar baixar novamente**.
 
-A verificação usa um manifest HTTPS público (`update.json`) com a versão mais recente, URL do instalador e SHA-256 esperado. O endereço padrão aponta para o repositório público de releases do ListForge e pode ser ajustado pela variável de ambiente `LISTFORGE_UPDATE_API_URL` quando houver necessidade de teste ou ambiente controlado.
+A verificação automática ocorre depois da abertura da janela, não inicia downloads e não mostra mensagens modais em falhas. A verificação manual atualiza o status da seção e permite tentar novamente. Quando não há atualização, o estado mostra **O ListForge está atualizado**.
 
-Na distribuição completa instalável, o ListForge pode verificar, baixar, validar e iniciar o instalador da nova versão. A validação exige SHA-256 informado pela Release ou pelo arquivo `SHA256SUMS.txt`; se a integridade não puder ser confirmada, o instalador não é executado. O download é feito primeiro como arquivo parcial e só fica pronto para execução depois da validação.
+A fonte principal é o manifesto HTTPS público `update.json`. A variável de ambiente `LISTFORGE_UPDATE_API_URL` permite testar outro manifesto sem alterar o código. Quando essa URL falha, o ListForge tenta o servidor oficial `https://pub-62303cd1120248b08beb3454fe0c6316.r2.dev/update.json` e, por último, a Release estável oficial no GitHub. URLs repetidas não são consultadas duas vezes; drafts e prereleases são ignoradas.
 
-Nas versões portáteis e Trial, o ListForge não inicia instalador automaticamente. Quando existe uma versão nova, ele informa a disponibilidade e pode abrir a página da Release para o usuário baixar manualmente. Em desenvolvimento, a verificação automática não inicia instalador.
+O download usa `%LOCALAPPDATA%\ListForge\updates\vX.Y.Z`, grava primeiro um arquivo `.partial`, mostra percentual e quantidade transferida, permite cancelamento e só cria o arquivo final depois de conferir nome, tamanho e SHA-256. Um arquivo já baixado é reutilizado apenas quando passa novamente por essas validações. Arquivos parciais antigos são removidos somente dentro do cache de atualizações.
 
-O instalador usa atualização no mesmo local da instalação existente, sem criar uma instalação paralela por versão. A verificação de atualização não altera créditos Trial e não participa do processamento das listas.
+Na edição completa instalada, o instalador é validado novamente ao clicar em **Instalar atualização** e o ListForge só fecha depois que o processo é iniciado. O Inno Setup mantém a mesma identidade e pasta da instalação anterior. Não há instalação silenciosa.
+
+As edições portátil e Trial usam seus próprios assets opcionais do manifesto. O arquivo correspondente é baixado e validado, e a interface oferece **Abrir pasta** para substituição manual; o instalador da edição completa não é executado. Se o asset adequado não existir em um manifesto antigo, a página oficial da versão continua disponível.
+
+Verificar, baixar, cancelar, validar, abrir a pasta ou iniciar a atualização não consome créditos Trial. A versão completa continua independente do controle Trial.
 
 ## Tamanho da fonte dos editores
 
@@ -631,6 +635,7 @@ ListForge/
 │  ├─ OperationResultTests.cs
 │  ├─ OutputExportServiceTests.cs
 │  ├─ ProcessingHistoryServiceTests.cs
+│  ├─ ResilientUpdateTests.cs
 │  ├─ SupportPackageServiceTests.cs
 │  ├─ TextSearchHelperTests.cs
 │  ├─ TrialManagerTests.cs
@@ -692,7 +697,7 @@ O projeto segue uma organização simples baseada em WPF e MVVM:
 * `docs/SMOKE_TEST.md` descreve o roteiro manual de smoke test antes de publicar uma release.
 * `TestAssets/Samples` contém listas de exemplo para validar fluxo principal, erro de entrada, Lista avançada, JSON, dados completos e volume manual.
 * `Services` contém serviços extraídos do ViewModel para importação, exportação, processamento, licença, suporte, perfis de trabalho, informações da tela Sobre e abertura de pastas.
-* `Services/GitHubUpdateService.cs`, `Services/UpdateInstallerService.cs`, `Services/UpdateProcessLauncher.cs` e `Services/DistributionInfoService.cs` concentram consulta de atualização por manifest/GitHub, validação de instalador, abertura segura de processos e identificação da distribuição atual.
+* `Services/GitHubUpdateService.cs`, `Services/UpdateInstallerService.cs`, `Services/UpdateProcessLauncher.cs` e `Services/DistributionInfoService.cs` concentram descoberta por manifesto/GitHub, fallback de fontes, download por distribuição, validação SHA-256, abertura segura de processos/pastas e identificação da edição atual.
 * `Services/ILicenseService.cs` e `Services/LocalTrialLicenseService.cs` separam a lógica de licença/Trial do fluxo principal, preservando o comportamento local atual.
 * `Services/WorkProfileService.cs` gerencia criação, validação, aplicação e persistência dos Perfis de trabalho.
 * `Services/ProcessingHistoryService.cs` registra metadados seguros dos últimos processamentos salvos, sem armazenar conteúdo completo de entrada, saída ou JSON.
@@ -856,19 +861,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.40\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.41\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.40\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.41\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.40\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.41\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -877,16 +882,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.40\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.41\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.40\Installer
+bin\Release\dist\2.1.41\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.40\SHA256SUMS.txt
+bin\Release\dist\2.1.41\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -894,7 +899,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.40\Release
+bin\Release\dist\2.1.41\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:
@@ -906,7 +911,7 @@ Essa pasta contém os arquivos planos para anexar no GitHub Release:
 * `RELEASE_NOTES_X.Y.Z.txt`;
 * `update.json`, quando uma URL pública for informada ao script de release.
 
-Para que a verificação de atualização instalada funcione sem depender da API do GitHub, publique também o `update.json` em uma URL HTTPS acessível. O instalador deve manter o nome exato `ListForge-Setup-X.Y.Z.exe`, com SHA-256 correspondente no manifest ou em `SHA256SUMS.txt`.
+Para que a verificação funcione sem depender da API do GitHub, publique também o `update.json` em uma URL HTTPS acessível. O manifesto inclui o instalador e, de forma retrocompatível, os assets `portable` e `trial`, todos com nome, tamanho, URL HTTPS e SHA-256. Manifests antigos contendo apenas `installer` continuam válidos para a edição instalada.
 
 ## Publicação de release no GitHub
 
@@ -948,6 +953,30 @@ Em seguida, crie a Release no GitHub usando essa mesma tag `vX.Y.Z`. A Release d
 * `Release\update.json`, quando houver manifest público de atualização.
 
 Se usar um servidor próprio ou R2 para atualização automática, publique também os arquivos necessários dessa pasta na URL configurada pelo aplicativo, mantendo os mesmos nomes usados no manifest.
+
+### Publicação automatizada no Cloudflare R2
+
+O script `publish-r2-release.ps1` valida os arquivos e hashes da pasta `Release`, confere a autenticação local do Wrangler e mostra o plano de publicação sem alterar o bucket:
+
+```powershell
+.\publish-r2-release.ps1 -Version X.Y.Z
+```
+
+Para enviar os artefatos ao bucket `listforge-releases`, execute explicitamente:
+
+```powershell
+.\publish-r2-release.ps1 -Version X.Y.Z -Publish
+```
+
+O script envia primeiro os executáveis, notas e checksums. O `update.json` é publicado por último para que o aplicativo só anuncie a versão quando os demais arquivos já estiverem disponíveis. A publicação é validada pela URL pública configurada no script.
+
+Para remover os arquivos versionados da versão anterior somente depois que a nova publicação for validada:
+
+```powershell
+.\publish-r2-release.ps1 -Version X.Y.Z -Publish -RemovePreviousVersion
+```
+
+Esse modo não esvazia nem exclui o bucket e não remove objetos desconhecidos. `SHA256SUMS.txt` e `update.json` são substituídos pela versão atual. A autenticação permanece no perfil local do Wrangler; tokens e credenciais não são armazenados no projeto.
 
 O script auxiliar abaixo valida os artefatos locais, preserva `RELEASE_NOTES_X.Y.Z.txt` quando ele já estiver preenchido, inclui `update.json` quando existir e mostra os comandos de tag/publicação sem criar uma Release automaticamente:
 

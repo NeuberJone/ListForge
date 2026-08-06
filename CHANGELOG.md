@@ -4,6 +4,33 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.41] - 2026-08-04
+
+### Adicionado
+
+- Modo **Comparar entrada e saída** para conferir semanticamente registros preservados, reorganizados, transformados, alterados, possivelmente ausentes, adicionados e incertos.
+- Comparação lado a lado com resumo, filtros, navegação entre diferenças, detalhamento por campos e suporte a duplicidades, Lista avançada e Meião.
+- Snapshot de sessão com identificadores temporários de origem, invalidação após alterações e integração com processamento normal, Processar rápido, saída editada e JSON aplicado.
+- Aviso de privacidade no relatório copiado e testes adicionais para normalização, duplicidades adicionais e captura independente das configurações de processamento.
+- Script `publish-r2-release.ps1` para validar e publicar os artefatos oficiais no bucket `listforge-releases` usando a autenticação local do Wrangler.
+- Modo de simulação que confere versão, arquivos obrigatórios, manifesto e hashes sem enviar nem remover objetos.
+- Validação pública da versão e do tamanho dos executáveis depois do upload.
+- Fluxo resiliente de atualização com estados claros para verificar, baixar, validar e instalar, mantendo a versão encontrada disponível durante a sessão.
+- Fallback automático do manifesto configurado para o servidor oficial e, quando necessário, para a Release estável no GitHub.
+- Progresso com percentual e quantidade transferida, cancelamento seguro, reutilização de download válido e tentativa novamente sem repetir a descoberta da versão.
+- Download separado para as edições instalada, portátil e Trial, sem executar o instalador completo nas edições portáteis.
+- Campos retrocompatíveis `portable` e `trial` no `update.json`, com nome, URL HTTPS, tamanho e SHA-256 próprios.
+- Testes de atualização ampliados para fallback, manifesto antigo, versões semânticas, distribuição, retry, download existente, integridade e bloqueio de execução inadequada.
+
+### Alterado
+
+- O `update.json` passa a ser enviado por último, evitando anunciar uma atualização antes que os demais arquivos estejam disponíveis.
+- A remoção opcional da versão anterior ocorre somente depois que a nova publicação foi validada e não afeta objetos desconhecidos no bucket.
+- Documentado o fluxo completo de build, GitHub Release e publicação no Cloudflare R2 sem armazenar tokens ou credenciais no projeto.
+- A verificação automática passou a falhar silenciosamente, sem bloquear a abertura, enquanto a verificação manual mantém mensagens amigáveis na tela Sobre.
+- O instalador agora é iniciado somente por ação separada e depois de uma nova validação do arquivo; o aplicativo fecha apenas após a inicialização ser confirmada.
+- A build e os validadores de release agora conferem os três assets publicados no manifesto: instalador, portátil e Trial.
+
 ## [2.1.40] - 2026-08-03
 
 ### Adicionado

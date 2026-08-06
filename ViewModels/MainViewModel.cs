@@ -41,8 +41,8 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly ProcessingHistoryService _processingHistoryService = new();
     private readonly ListComparisonService _listComparisonService = new();
     private readonly DistributionInfoService _distributionInfoService = new();
-    private readonly GitHubUpdateService _githubUpdateService = new();
-    private readonly UpdateInstallerService _updateInstallerService = new();
+    private readonly IUpdateDiscoveryService _githubUpdateService;
+    private readonly IUpdatePackageService _updateInstallerService;
     private bool _isLoadingConfig;
     private bool _isRefreshingAdvancedJsonPieceSlots;
     private bool _isApplyingWorkProfile;
@@ -51,6 +51,9 @@ public class MainViewModel : INotifyPropertyChanged
     private DistributionInfo _distributionInfo;
     private CancellationTokenSource? _updateCancellation;
     private DateTimeOffset? _lastManualUpdateCheckUtc;
+    private DateTimeOffset? _lastUpdateCheckSessionUtc;
+    private PreparedUpdatePackage? _preparedUpdatePackage;
+    private bool _lastUpdateFailureWasDownload;
 
     // ---------------------------------------------------------------
     // INotifyPropertyChanged
@@ -295,7 +298,10 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isUpdateBusy;
     private bool _isExtractingFromLink;
     private double _updateDownloadProgress;
-    private string _updateStatusText = "Nenhuma verificação executada.";
+    private long _updateDownloadedBytes;
+    private long _updateTotalBytes;
+    private UpdateStatus _updateStatus = UpdateStatus.Idle;
+    private string _updateStatusText = "Nenhuma verificação foi realizada nesta sessão.";
     private UpdateReleaseInfo? _availableUpdateRelease;
     private string _sizeSummary = "";
 
@@ -547,6 +553,15 @@ public class MainViewModel : INotifyPropertyChanged
     public bool ShowAdvancedSaveButton => ShowAdvancedEditorOptions;
     public string InstalledVersion => _aboutService.Version;
     public string DistributionDisplayName => _distributionInfo.DisplayName;
+    public UpdateStatus CurrentUpdateStatus
+    {
+        get => _updateStatus;
+        private set
+        {
+            Set(ref _updateStatus, value);
+            NotifyUpdateStateProperties();
+        }
+    }
     public bool IsUpdateBusy
     {
         get => _isUpdateBusy;
@@ -567,8 +582,49 @@ public class MainViewModel : INotifyPropertyChanged
             CommandManager.InvalidateRequerySuggested();
         }
     }
-    public bool IsUpdateProgressVisible => IsUpdateBusy && UpdateDownloadProgress > 0;
+    public bool IsUpdateProgressVisible => CurrentUpdateStatus == UpdateStatus.Downloading;
+    public bool IsCheckingUpdateVisible => CurrentUpdateStatus == UpdateStatus.Checking;
     public bool HasAvailableUpdate => AvailableUpdateRelease != null;
+    public bool HasDownloadableUpdate => AvailableUpdateRelease?.GetAssetFor(_distributionInfo.Kind) != null;
+    public bool IsCheckUpdateActionVisible => CurrentUpdateStatus is not UpdateStatus.Checking
+        and not UpdateStatus.Downloading
+        and not UpdateStatus.Installing;
+    public bool IsDownloadUpdateActionVisible => HasDownloadableUpdate
+        && (CurrentUpdateStatus is UpdateStatus.UpdateAvailable or UpdateStatus.Failed);
+    public bool IsCancelUpdateActionVisible => CurrentUpdateStatus == UpdateStatus.Downloading;
+    public bool IsInstallUpdateActionVisible => _preparedUpdatePackage != null
+        && _distributionInfo.CanRunInstallerUpdate
+        && CurrentUpdateStatus == UpdateStatus.ReadyToInstall;
+    public bool IsOpenUpdateFolderActionVisible => _preparedUpdatePackage != null
+        && !_distributionInfo.CanRunInstallerUpdate
+        && CurrentUpdateStatus == UpdateStatus.Downloaded;
+    public bool IsReleasePageActionVisible => HasAvailableUpdate;
+    public string CheckUpdatesActionText => (CurrentUpdateStatus is UpdateStatus.Offline or UpdateStatus.Failed)
+        && !_lastUpdateFailureWasDownload
+            ? "Tentar novamente"
+            : "Verificar atualizações";
+    public string DownloadUpdateActionText => CurrentUpdateStatus == UpdateStatus.Failed && _lastUpdateFailureWasDownload
+        ? "Tentar baixar novamente"
+        : "Baixar atualização";
+    public string AvailableUpdateVersionText => AvailableUpdateRelease == null
+        ? "Não identificada"
+        : GitHubUpdateService.ToThreePartVersion(AvailableUpdateRelease.Version);
+    public string AvailableUpdateNotesText => AvailableUpdateRelease == null
+        ? ""
+        : SummarizeReleaseNotes(AvailableUpdateRelease.Notes);
+    public string UpdateSourceText => AvailableUpdateRelease?.Source switch
+    {
+        UpdateSource.ConfiguredManifest => "Manifesto configurado",
+        UpdateSource.OfficialManifest => "Servidor oficial",
+        UpdateSource.GitHub => "GitHub Releases (fonte alternativa)",
+        _ => "Não identificada",
+    };
+    public string LastUpdateCheckSessionText => _lastUpdateCheckSessionUtc.HasValue
+        ? _lastUpdateCheckSessionUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+        : "Nenhuma nesta sessão";
+    public string UpdateDownloadDetails => _updateTotalBytes > 0
+        ? $"{FormatBytes(_updateDownloadedBytes)} de {FormatBytes(_updateTotalBytes)} ({UpdateDownloadProgress:0}%)"
+        : CurrentUpdateStatus == UpdateStatus.Downloading ? "Preparando download..." : "";
     public UpdateReleaseInfo? AvailableUpdateRelease
     {
         get => _availableUpdateRelease;
@@ -576,6 +632,11 @@ public class MainViewModel : INotifyPropertyChanged
         {
             Set(ref _availableUpdateRelease, value);
             Notify(nameof(HasAvailableUpdate));
+            Notify(nameof(HasDownloadableUpdate));
+            Notify(nameof(AvailableUpdateVersionText));
+            Notify(nameof(AvailableUpdateNotesText));
+            Notify(nameof(UpdateSourceText));
+            NotifyUpdateStateProperties();
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -586,6 +647,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             Set(ref _updateDownloadProgress, Math.Clamp(value, 0, 100));
             Notify(nameof(IsUpdateProgressVisible));
+            Notify(nameof(UpdateDownloadDetails));
         }
     }
     public string UpdateStatusText { get => _updateStatusText; private set => Set(ref _updateStatusText, value); }
@@ -733,6 +795,9 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand CheckUpdatesCommand { get; }
     public ICommand DownloadAvailableUpdateCommand { get; }
     public ICommand CancelUpdateDownloadCommand { get; }
+    public ICommand InstallAvailableUpdateCommand { get; }
+    public ICommand OpenDownloadedUpdateFolderCommand { get; }
+    public ICommand OpenUpdateReleasePageCommand { get; }
     public ICommand CreateWorkProfileCommand { get; }
     public ICommand SaveWorkProfileCommand { get; }
     public ICommand DiscardWorkProfileChangesCommand { get; }
@@ -752,11 +817,21 @@ public class MainViewModel : INotifyPropertyChanged
     // Constructor
     // ---------------------------------------------------------------
     public MainViewModel()
+        : this(null, null, null)
     {
+    }
+
+    internal MainViewModel(
+        IUpdateDiscoveryService? updateDiscoveryService,
+        IUpdatePackageService? updatePackageService,
+        DistributionInfo? distributionInfo)
+    {
+        _githubUpdateService = updateDiscoveryService ?? new GitHubUpdateService();
+        _updateInstallerService = updatePackageService ?? new UpdateInstallerService();
         _aboutService = new AboutService(_licenseService);
         _processingWorkflowService = new ProcessingWorkflowService(_licenseService);
         _processingPreviewService = new ProcessingPreviewService(_processingWorkflowService);
-        _distributionInfo = _distributionInfoService.GetCurrentDistribution();
+        _distributionInfo = distributionInfo ?? _distributionInfoService.GetCurrentDistribution();
         _cfg = ConfigManager.LoadConfig();
         _sizeCfg = ConfigManager.LoadSizeConfig();
         EnsureWorkProfiles(saveIfChanged: true);
@@ -807,8 +882,11 @@ public class MainViewModel : INotifyPropertyChanged
         PickOutputFolderCommand = new RelayCommand(PickOutputFolder);
         ApplyThemeCommand = new RelayCommand(() => RequestThemeChange?.Invoke(ThemeName));
         CheckUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesAsync(isAutomatic: false), () => !IsUpdateBusy);
-        DownloadAvailableUpdateCommand = new AsyncRelayCommand(DownloadAvailableUpdateAsync, () => !IsUpdateBusy && HasAvailableUpdate);
-        CancelUpdateDownloadCommand = new RelayCommand(CancelUpdateDownload, () => IsUpdateBusy);
+        DownloadAvailableUpdateCommand = new AsyncRelayCommand(DownloadAvailableUpdateAsync, () => !IsUpdateBusy && HasDownloadableUpdate);
+        CancelUpdateDownloadCommand = new RelayCommand(CancelUpdateDownload, () => CurrentUpdateStatus == UpdateStatus.Downloading);
+        InstallAvailableUpdateCommand = new AsyncRelayCommand(InstallPreparedUpdateAsync, () => IsInstallUpdateActionVisible);
+        OpenDownloadedUpdateFolderCommand = new RelayCommand(OpenDownloadedUpdateFolder, () => IsOpenUpdateFolderActionVisible);
+        OpenUpdateReleasePageCommand = new RelayCommand(OpenUpdateReleasePage, () => IsReleasePageActionVisible);
         CreateWorkProfileCommand = new RelayCommand(CreateWorkProfile);
         SaveWorkProfileCommand = new RelayCommand(SaveActiveWorkProfile, () => SelectedWorkProfile != null && HasUnsavedWorkProfileChanges);
         DiscardWorkProfileChangesCommand = new RelayCommand(DiscardWorkProfileChanges, () => SelectedWorkProfile != null && HasUnsavedWorkProfileChanges);
@@ -833,21 +911,28 @@ public class MainViewModel : INotifyPropertyChanged
 
     public Task CheckForUpdatesOnStartupAsync()
     {
-        if (!CheckUpdatesOnStartup || !_distributionInfo.CanRunInstallerUpdate)
+        if (!CheckUpdatesOnStartup || _distributionInfo.IsDevelopment)
             return Task.CompletedTask;
 
         if (!UpdateCheckPolicy.ShouldRunAutomaticCheck(_cfg.LastUpdateCheckUtc, DateTimeOffset.UtcNow))
         {
-            UpdateStatusText = HasAvailableUpdate
-                ? BuildStoredUpdateStatus(AvailableUpdateRelease!)
-                : "O ListForge está atualizado.";
+            if (HasAvailableUpdate)
+            {
+                CurrentUpdateStatus = UpdateStatus.UpdateAvailable;
+                UpdateStatusText = BuildStoredUpdateStatus(AvailableUpdateRelease!);
+            }
+            else
+            {
+                CurrentUpdateStatus = UpdateStatus.UpToDate;
+                UpdateStatusText = "O ListForge está atualizado.";
+            }
             return Task.CompletedTask;
         }
 
         return CheckForUpdatesAsync(isAutomatic: true);
     }
 
-    private async Task CheckForUpdatesAsync(bool isAutomatic)
+    internal async Task CheckForUpdatesAsync(bool isAutomatic)
     {
         if (IsUpdateBusy)
             return;
@@ -877,141 +962,186 @@ public class MainViewModel : INotifyPropertyChanged
                 ConfigManager.ConfigPath);
         }
 
+        _updateCancellation?.Dispose();
         _updateCancellation = new CancellationTokenSource();
         IsUpdateBusy = true;
-        UpdateDownloadProgress = 0;
+        ResetUpdateProgress();
+        CurrentUpdateStatus = UpdateStatus.Checking;
         UpdateStatusText = "Verificando atualizações...";
+        _lastUpdateFailureWasDownload = false;
+        AppLogger.Info("Update", isAutomatic
+            ? "Verificação automática iniciada."
+            : "Verificação manual iniciada.");
 
         try
         {
             var currentVersion = ResolveCurrentVersion();
             var checkResult = await _githubUpdateService
-                .CheckForUpdatesAsync(currentVersion, _updateCancellation.Token)
+                .CheckForUpdatesAsync(currentVersion, _distributionInfo, _updateCancellation.Token)
                 .ConfigureAwait(true);
+            _lastUpdateCheckSessionUtc = DateTimeOffset.UtcNow;
+            Notify(nameof(LastUpdateCheckSessionText));
 
             if (!checkResult.Success || checkResult.Value == null)
             {
                 LogUpdateFailure(checkResult.TechnicalMessage, checkResult.Exception);
                 UpdateStatusText = isAutomatic
                     ? "Não foi possível verificar atualizações automaticamente."
-                    : checkResult.UserMessage;
-
-                if (!isAutomatic)
-                    MessageBox.Show(checkResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    : "Não foi possível verificar se existe uma nova versão. Tente novamente.";
+                CurrentUpdateStatus = string.Equals(checkResult.ErrorCode, "AllUpdateSourcesFailed", StringComparison.Ordinal)
+                    ? UpdateStatus.Offline
+                    : UpdateStatus.Failed;
                 return;
             }
 
             var info = checkResult.Value;
             SaveUpdateCheckInfo(info);
+            _preparedUpdatePackage = null;
 
             if (info.Availability != UpdateAvailability.UpdateAvailable || info.Release == null)
             {
                 AvailableUpdateRelease = null;
                 UpdateStatusText = info.UserMessage;
-                if (!isAutomatic)
-                    MessageBox.Show(info.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+                CurrentUpdateStatus = UpdateStatus.UpToDate;
                 return;
             }
 
             AvailableUpdateRelease = info.Release;
+            CurrentUpdateStatus = UpdateStatus.UpdateAvailable;
             UpdateStatusText = BuildStoredUpdateStatus(info.Release);
-
-            if (!isAutomatic)
-                MessageBox.Show(BuildUpdateAvailableMessage(info.Release), ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (OperationCanceledException)
+        {
+            CurrentUpdateStatus = HasAvailableUpdate ? UpdateStatus.UpdateAvailable : UpdateStatus.Idle;
+            UpdateStatusText = "Verificação de atualização cancelada.";
         }
         finally
         {
             IsUpdateBusy = false;
-            UpdateDownloadProgress = 0;
             _updateCancellation.Dispose();
             _updateCancellation = null;
         }
     }
 
-    private async Task DownloadAvailableUpdateAsync()
+    internal async Task DownloadAvailableUpdateAsync()
     {
         if (AvailableUpdateRelease == null || IsUpdateBusy)
             return;
 
+        _updateCancellation?.Dispose();
         _updateCancellation = new CancellationTokenSource();
         IsUpdateBusy = true;
-        UpdateDownloadProgress = 0;
+        ResetUpdateProgress();
+        CurrentUpdateStatus = UpdateStatus.Downloading;
+        UpdateStatusText = "Baixando atualização...";
+        _lastUpdateFailureWasDownload = false;
 
         try
         {
-            await HandleAvailableUpdateAsync(AvailableUpdateRelease).ConfigureAwait(true);
+            var progress = new Progress<UpdateDownloadProgressInfo>(UpdateDownloadProgressState);
+            var downloadResult = await _updateInstallerService
+                .DownloadAndValidateAsync(
+                    AvailableUpdateRelease,
+                    _distributionInfo,
+                    progress,
+                    _updateCancellation.Token)
+                .ConfigureAwait(true);
+
+            if (!downloadResult.Success || downloadResult.Value == null)
+            {
+                LogUpdateFailure(downloadResult.TechnicalMessage, downloadResult.Exception);
+                if (string.Equals(downloadResult.ErrorCode, "DownloadCanceled", StringComparison.Ordinal))
+                {
+                    CurrentUpdateStatus = UpdateStatus.UpdateAvailable;
+                    UpdateStatusText = "Download cancelado. A atualização continua disponível.";
+                    return;
+                }
+
+                _lastUpdateFailureWasDownload = true;
+                CurrentUpdateStatus = UpdateStatus.Failed;
+                UpdateStatusText = downloadResult.UserMessage;
+                return;
+            }
+
+            _preparedUpdatePackage = downloadResult.Value;
+            CurrentUpdateStatus = _distributionInfo.CanRunInstallerUpdate
+                ? UpdateStatus.ReadyToInstall
+                : UpdateStatus.Downloaded;
+            UpdateStatusText = _distributionInfo.CanRunInstallerUpdate
+                ? "Atualização baixada e validada. Pronta para instalação."
+                : "Atualização baixada e validada. Abra a pasta para substituir esta edição manualmente.";
         }
         finally
         {
             IsUpdateBusy = false;
-            UpdateDownloadProgress = 0;
             _updateCancellation.Dispose();
             _updateCancellation = null;
         }
     }
 
-    private async Task HandleAvailableUpdateAsync(UpdateReleaseInfo release)
+    internal async Task InstallPreparedUpdateAsync()
     {
-        var message = BuildUpdateAvailableMessage(release);
-        if (!_distributionInfo.CanRunInstallerUpdate)
-        {
-            var portableMessage = message
-                + "\n\nEsta edição em execução é "
-                + _distributionInfo.DisplayName
-                + ". O ListForge não iniciará o instalador para evitar criar outra instalação no computador."
-                + "\n\nDeseja abrir a página da Release?";
-
-            if (MessageBox.Show(portableMessage, ConfigManager.AppName, MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-            {
-                var openResult = _updateInstallerService.OpenReleasePage(release);
-                if (!openResult.Success)
-                    MessageBox.Show(openResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+        if (_preparedUpdatePackage == null || IsUpdateBusy || !_distributionInfo.CanRunInstallerUpdate)
             return;
-        }
 
-        if (MessageBox.Show(
-                message + "\n\nDeseja baixar e instalar a atualização agora?",
-                ConfigManager.AppName,
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information) != MessageBoxResult.Yes)
-        {
-            UpdateStatusText = "Atualização adiada.";
-            return;
-        }
-
-        UpdateStatusText = "Baixando atualização...";
-        var progress = new Progress<double>(value => UpdateDownloadProgress = value);
-        var downloadResult = await _updateInstallerService
-            .DownloadAndValidateInstallerAsync(release, progress, _updateCancellation?.Token ?? CancellationToken.None)
-            .ConfigureAwait(true);
-
-        if (!downloadResult.Success || downloadResult.Value == null)
-        {
-            LogUpdateFailure(downloadResult.TechnicalMessage, downloadResult.Exception);
-            UpdateStatusText = downloadResult.UserMessage;
-            MessageBox.Show(downloadResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        UpdateStatusText = "Instalador validado. Iniciando atualização...";
-        var startResult = _updateInstallerService.StartInstaller(downloadResult.Value.InstallerPath);
+        IsUpdateBusy = true;
+        CurrentUpdateStatus = UpdateStatus.Installing;
+        UpdateStatusText = "Validando e iniciando o instalador...";
+        var startResult = await Task.Run(() => _updateInstallerService.StartInstaller(_preparedUpdatePackage));
         if (!startResult.Success)
         {
             LogUpdateFailure(startResult.TechnicalMessage, startResult.Exception);
-            UpdateStatusText = "Não foi possível iniciar o instalador.";
-            MessageBox.Show(startResult.UserMessage, ConfigManager.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+            CurrentUpdateStatus = UpdateStatus.ReadyToInstall;
+            UpdateStatusText = startResult.UserMessage;
+            IsUpdateBusy = false;
             return;
         }
 
+        CurrentUpdateStatus = UpdateStatus.Installing;
         UpdateStatusText = "Instalador iniciado. O ListForge será fechado.";
+        IsUpdateBusy = false;
         RequestShutdown?.Invoke();
+    }
+
+    private void OpenDownloadedUpdateFolder()
+    {
+        if (_preparedUpdatePackage == null)
+            return;
+
+        var result = _updateInstallerService.OpenDownloadFolder(_preparedUpdatePackage);
+        if (!result.Success)
+        {
+            LogUpdateFailure(result.TechnicalMessage, result.Exception);
+            UpdateStatusText = result.UserMessage;
+        }
+    }
+
+    private void OpenUpdateReleasePage()
+    {
+        if (AvailableUpdateRelease == null)
+            return;
+
+        var result = _updateInstallerService.OpenReleasePage(AvailableUpdateRelease);
+        if (!result.Success)
+        {
+            LogUpdateFailure(result.TechnicalMessage, result.Exception);
+            UpdateStatusText = result.UserMessage;
+        }
     }
 
     private string BuildStoredUpdateStatus(UpdateReleaseInfo release)
     {
         var newVersion = GitHubUpdateService.ToThreePartVersion(release.Version);
-        return $"Atualização disponível: ListForge {newVersion}. Use Baixar agora para atualizar.";
+        var sourceMessage = release.Source == UpdateSource.GitHub
+            ? " O servidor principal não respondeu; a verificação foi concluída por uma fonte alternativa."
+            : "";
+        var asset = release.GetAssetFor(_distributionInfo.Kind);
+        var actionMessage = asset != null
+            ? " Use Baixar atualização para continuar."
+            : _distributionInfo.IsTrial
+                ? " A atualização Trial deve ser baixada manualmente pela página da versão."
+                : " A edição portátil deve ser substituída manualmente pela página da versão.";
+        return $"Uma nova versão está disponível: {newVersion}.{actionMessage}{sourceMessage}";
     }
 
     private void SaveUpdateCheckInfo(UpdateCheckInfo info)
@@ -1047,6 +1177,26 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.LastAvailableUpdateChecksumsUrl = release.ChecksumsAsset?.DownloadUrl ?? "";
         _cfg.LastAvailableUpdateChecksumsSizeBytes = release.ChecksumsAsset?.SizeBytes ?? 0;
         _cfg.LastAvailableUpdateChecksumsSha256 = release.ChecksumsAsset?.Sha256 ?? "";
+        SaveCachedAsset(release.PortableAsset, isTrial: false);
+        SaveCachedAsset(release.TrialAsset, isTrial: true);
+        _cfg.LastAvailableUpdateSource = release.Source.ToString();
+    }
+
+    private void SaveCachedAsset(UpdateAssetInfo? asset, bool isTrial)
+    {
+        if (isTrial)
+        {
+            _cfg.LastAvailableUpdateTrialName = asset?.Name ?? "";
+            _cfg.LastAvailableUpdateTrialUrl = asset?.DownloadUrl ?? "";
+            _cfg.LastAvailableUpdateTrialSizeBytes = asset?.SizeBytes ?? 0;
+            _cfg.LastAvailableUpdateTrialSha256 = asset?.Sha256 ?? "";
+            return;
+        }
+
+        _cfg.LastAvailableUpdatePortableName = asset?.Name ?? "";
+        _cfg.LastAvailableUpdatePortableUrl = asset?.DownloadUrl ?? "";
+        _cfg.LastAvailableUpdatePortableSizeBytes = asset?.SizeBytes ?? 0;
+        _cfg.LastAvailableUpdatePortableSha256 = asset?.Sha256 ?? "";
     }
 
     private void ClearAvailableUpdateCache()
@@ -1063,6 +1213,9 @@ public class MainViewModel : INotifyPropertyChanged
         _cfg.LastAvailableUpdateChecksumsUrl = "";
         _cfg.LastAvailableUpdateChecksumsSizeBytes = 0;
         _cfg.LastAvailableUpdateChecksumsSha256 = "";
+        SaveCachedAsset(null, isTrial: false);
+        SaveCachedAsset(null, isTrial: true);
+        _cfg.LastAvailableUpdateSource = "";
     }
 
     private void RestoreCachedUpdateState()
@@ -1072,6 +1225,7 @@ public class MainViewModel : INotifyPropertyChanged
             && IsNewerThanInstalled(release.Version))
         {
             AvailableUpdateRelease = release;
+            CurrentUpdateStatus = UpdateStatus.UpdateAvailable;
             UpdateStatusText = BuildStoredUpdateStatus(release);
             return;
         }
@@ -1080,6 +1234,7 @@ public class MainViewModel : INotifyPropertyChanged
             || string.Equals(_cfg.LastUpdateAvailability, nameof(UpdateAvailability.RemoteOlder), StringComparison.OrdinalIgnoreCase))
         {
             AvailableUpdateRelease = null;
+            CurrentUpdateStatus = UpdateStatus.UpToDate;
             UpdateStatusText = "O ListForge está atualizado.";
         }
     }
@@ -1117,8 +1272,28 @@ public class MainViewModel : INotifyPropertyChanged
             _cfg.LastAvailableUpdateReleaseUrl,
             _cfg.LastAvailableUpdateNotes,
             installer,
-            checksums);
+            checksums,
+            CreateCachedAsset(
+                _cfg.LastAvailableUpdatePortableName,
+                _cfg.LastAvailableUpdatePortableUrl,
+                _cfg.LastAvailableUpdatePortableSizeBytes,
+                _cfg.LastAvailableUpdatePortableSha256),
+            CreateCachedAsset(
+                _cfg.LastAvailableUpdateTrialName,
+                _cfg.LastAvailableUpdateTrialUrl,
+                _cfg.LastAvailableUpdateTrialSizeBytes,
+                _cfg.LastAvailableUpdateTrialSha256),
+            Enum.TryParse<UpdateSource>(_cfg.LastAvailableUpdateSource, ignoreCase: true, out var source)
+                ? source
+                : UpdateSource.OfficialManifest);
         return true;
+    }
+
+    private static UpdateAssetInfo? CreateCachedAsset(string name, string url, long size, string sha256)
+    {
+        return string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(url) || size <= 0
+            ? null
+            : new UpdateAssetInfo(name, url, size, string.IsNullOrWhiteSpace(sha256) ? null : sha256);
     }
 
     private bool IsNewerThanInstalled(Version version) =>
@@ -1133,36 +1308,68 @@ public class MainViewModel : INotifyPropertyChanged
         UpdateStatusText = "Cancelando atualização...";
     }
 
-    private string BuildUpdateAvailableMessage(UpdateReleaseInfo release)
+    private void UpdateDownloadProgressState(UpdateDownloadProgressInfo progress)
     {
-        var newVersion = GitHubUpdateService.ToThreePartVersion(release.Version);
-        var message =
-            "Uma nova versão do ListForge está disponível."
-            + $"\n\nVersão instalada: {InstalledVersion}"
-            + $"\nNova versão: {newVersion}";
+        _updateDownloadedBytes = Math.Max(0, progress.DownloadedBytes);
+        _updateTotalBytes = Math.Max(0, progress.TotalBytes);
+        UpdateDownloadProgress = progress.Percentage;
+        UpdateStatusText = $"Baixando atualização: {UpdateDownloadProgress:0}%.";
+        Notify(nameof(UpdateDownloadDetails));
+    }
 
-        var notes = SummarizeReleaseNotes(release.Notes);
-        if (!string.IsNullOrWhiteSpace(notes))
-            message += $"\n\nNotas da Release:\n{notes}";
+    private void ResetUpdateProgress()
+    {
+        _updateDownloadedBytes = 0;
+        _updateTotalBytes = 0;
+        UpdateDownloadProgress = 0;
+        Notify(nameof(UpdateDownloadDetails));
+    }
 
-        return message;
+    private void NotifyUpdateStateProperties()
+    {
+        Notify(nameof(IsUpdateProgressVisible));
+        Notify(nameof(IsCheckingUpdateVisible));
+        Notify(nameof(IsCheckUpdateActionVisible));
+        Notify(nameof(IsDownloadUpdateActionVisible));
+        Notify(nameof(IsCancelUpdateActionVisible));
+        Notify(nameof(IsInstallUpdateActionVisible));
+        Notify(nameof(IsOpenUpdateFolderActionVisible));
+        Notify(nameof(IsReleasePageActionVisible));
+        Notify(nameof(CheckUpdatesActionText));
+        Notify(nameof(DownloadUpdateActionText));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes <= 0)
+            return "0 B";
+
+        string[] units = ["B", "KB", "MB", "GB"];
+        var value = (double)bytes;
+        var unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return $"{value:0.##} {units[unit]}";
     }
 
     private static string SummarizeReleaseNotes(string notes)
     {
         if (string.IsNullOrWhiteSpace(notes))
-            return "";
+            return "Sem resumo disponível.";
 
         var lines = notes
             .Replace("\r\n", "\n")
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim().TrimStart('#', '-', '*', ' '))
             .Where(line => !string.IsNullOrWhiteSpace(line))
-            .Take(6)
-            .ToList();
-
-        var summary = string.Join("\n", lines);
-        return summary.Length <= 600 ? summary : summary[..600] + "...";
+            .Take(5);
+        var summary = string.Join(" ", lines);
+        return summary.Length <= 500 ? summary : summary[..500] + "...";
     }
 
     private Version ResolveCurrentVersion()

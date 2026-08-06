@@ -41,6 +41,15 @@ public sealed class AppConfig
     public string LastAvailableUpdateChecksumsUrl { get; set; } = "";
     public long LastAvailableUpdateChecksumsSizeBytes { get; set; }
     public string LastAvailableUpdateChecksumsSha256 { get; set; } = "";
+    public string LastAvailableUpdatePortableName { get; set; } = "";
+    public string LastAvailableUpdatePortableUrl { get; set; } = "";
+    public long LastAvailableUpdatePortableSizeBytes { get; set; }
+    public string LastAvailableUpdatePortableSha256 { get; set; } = "";
+    public string LastAvailableUpdateTrialName { get; set; } = "";
+    public string LastAvailableUpdateTrialUrl { get; set; } = "";
+    public long LastAvailableUpdateTrialSizeBytes { get; set; }
+    public string LastAvailableUpdateTrialSha256 { get; set; } = "";
+    public string LastAvailableUpdateSource { get; set; } = "";
     [JsonIgnore]
     public string LastOpenedFile { get; set; } = "";
 }

@@ -3,6 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource AppBg}">
 
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+  </UserControl.Resources>
+
   <Grid Margin="20,14,20,24">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
@@ -72,40 +76,92 @@
               <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
               </Grid.RowDefinitions>
 
-              <TextBlock Grid.Row="0" Grid.Column="0" Text="Distribui&#x00E7;&#x00E3;o" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,8"/>
-              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DistributionDisplayName}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Vers&#x00E3;o instalada" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,8"/>
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InstalledVersion}" Margin="0,0,0,8"/>
 
-              <TextBlock Grid.Row="1" Grid.Column="0" Text="Status" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,0"/>
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding UpdateStatusText}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Distribui&#x00E7;&#x00E3;o" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,8"/>
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DistributionDisplayName}" Margin="0,0,0,8"/>
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Status" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,8"/>
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding UpdateStatusText}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="&#x00DA;ltima verifica&#x00E7;&#x00E3;o" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,8"/>
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LastUpdateCheckSessionText}" Margin="0,0,0,8"/>
+
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="Vers&#x00E3;o dispon&#x00ED;vel" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,8"
+                         Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BoolToVisibility}}"/>
+              <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding AvailableUpdateVersionText}" Margin="0,0,0,8"
+                         Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BoolToVisibility}}"/>
+
+              <TextBlock Grid.Row="5" Grid.Column="0" Text="Fonte" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,14,0"
+                         Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BoolToVisibility}}"/>
+              <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding UpdateSourceText}"
+                         Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BoolToVisibility}}"/>
             </Grid>
+
+            <TextBlock Text="{Binding AvailableUpdateNotesText}"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,10,0,0"
+                       Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BoolToVisibility}}"/>
 
             <CheckBox Content="Verificar atualiza&#x00E7;&#x00F5;es ao iniciar"
                       IsChecked="{Binding CheckUpdatesOnStartup, Mode=TwoWay}"
                       Margin="0,12,0,0"/>
 
             <WrapPanel Margin="0,12,0,0">
-              <Button Content="Verificar agora"
+              <Button Content="{Binding CheckUpdatesActionText}"
                       Command="{Binding CheckUpdatesCommand}"
                       Style="{StaticResource AccentButton}"
-                      Margin="0,0,8,0"/>
-              <Button x:Name="BtnDownloadAvailableUpdate"
-                      Content="Baixar agora"
+                      Margin="0,0,8,8"
+                      Visibility="{Binding IsCheckUpdateActionVisible, Converter={StaticResource BoolToVisibility}}"/>
+              <Button Content="{Binding DownloadUpdateActionText}"
                       Command="{Binding DownloadAvailableUpdateCommand}"
                       Style="{StaticResource AccentButton}"
-                      Margin="0,0,8,0"
-                      Visibility="Collapsed"/>
+                      Margin="0,0,8,8"
+                      Visibility="{Binding IsDownloadUpdateActionVisible, Converter={StaticResource BoolToVisibility}}"/>
               <Button Content="Cancelar download"
                       Command="{Binding CancelUpdateDownloadCommand}"
-                      Style="{StaticResource StdButton}"/>
+                      Style="{StaticResource StdButton}"
+                      Margin="0,0,8,8"
+                      Visibility="{Binding IsCancelUpdateActionVisible, Converter={StaticResource BoolToVisibility}}"/>
+              <Button Content="Instalar atualiza&#x00E7;&#x00E3;o"
+                      Command="{Binding InstallAvailableUpdateCommand}"
+                      Style="{StaticResource AccentButton}"
+                      Margin="0,0,8,8"
+                      Visibility="{Binding IsInstallUpdateActionVisible, Converter={StaticResource BoolToVisibility}}"/>
+              <Button Content="Abrir pasta"
+                      Command="{Binding OpenDownloadedUpdateFolderCommand}"
+                      Style="{StaticResource StdButton}"
+                      Margin="0,0,8,8"
+                      Visibility="{Binding IsOpenUpdateFolderActionVisible, Converter={StaticResource BoolToVisibility}}"/>
+              <Button Content="Ver notas da vers&#x00E3;o"
+                      Command="{Binding OpenUpdateReleasePageCommand}"
+                      Style="{StaticResource StdButton}"
+                      Margin="0,0,8,8"
+                      Visibility="{Binding IsReleasePageActionVisible, Converter={StaticResource BoolToVisibility}}"/>
             </WrapPanel>
 
+            <ProgressBar IsIndeterminate="True"
+                         Height="4"
+                         Margin="0,2,0,0"
+                         Visibility="{Binding IsCheckingUpdateVisible, Converter={StaticResource BoolToVisibility}}"/>
             <ProgressBar Minimum="0"
                          Maximum="100"
                          Value="{Binding UpdateDownloadProgress, Mode=OneWay}"
                          Height="8"
-                         Margin="0,10,0,0"/>
+                         Margin="0,2,0,0"
+                         Visibility="{Binding IsUpdateProgressVisible, Converter={StaticResource BoolToVisibility}}"/>
+            <TextBlock Text="{Binding UpdateDownloadDetails}"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       Margin="0,6,0,0"
+                       Visibility="{Binding IsUpdateProgressVisible, Converter={StaticResource BoolToVisibility}}"/>
           </StackPanel>
         </Border>
 
