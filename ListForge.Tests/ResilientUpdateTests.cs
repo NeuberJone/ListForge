@@ -150,6 +150,15 @@ public sealed class ResilientUpdateDiscoveryTests
     }
 
     [Fact]
+    public void Manifest_WithUtf8Bom_IsParsed()
+    {
+        var result = GitHubUpdateService.ParseRelease("\uFEFF" + ManifestJson("2.1.42"));
+
+        Assert.True(result.Success);
+        Assert.Equal(new Version(2, 1, 42), result.Value!.Version);
+    }
+
+    [Fact]
     public void Manifest_WithInvalidSize_IsRejected()
     {
         var json = ManifestJson("2.1.42").Replace("\"size\": 10", "\"size\": 0", StringComparison.Ordinal);

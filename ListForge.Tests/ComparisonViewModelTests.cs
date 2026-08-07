@@ -24,6 +24,23 @@ public class ComparisonViewModelTests
     }
 
     [Fact]
+    public async Task MainViewModel_CompareCommandRequestsComparisonWindow()
+    {
+        using var env = ComparisonTestEnvironment.Create();
+        var vm = new MainViewModel { InputText = "ANA,10,G\nBIA,11,M" };
+        vm.QuickProcessCommand.Execute(null);
+        var requested = new TaskCompletionSource<ComparisonViewModel>(TaskCreationOptions.RunContinuationsAsynchronously);
+        vm.RequestComparison += comparison => requested.TrySetResult(comparison);
+
+        vm.CompareInputOutputCommand.Execute(null);
+
+        var comparisonViewModel = await requested.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, comparisonViewModel.Summary.InputRecords);
+        Assert.Equal(2, comparisonViewModel.Summary.OutputRecords);
+        Assert.False(comparisonViewModel.Summary.HasCriticalDifferences);
+    }
+
+    [Fact]
     public void MainViewModel_InputChangeInvalidatesComparisonUntilNextProcessing()
     {
         using var env = ComparisonTestEnvironment.Create();

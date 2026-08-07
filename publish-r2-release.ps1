@@ -8,7 +8,10 @@ param(
 
     [switch]$Publish,
 
-    [switch]$RemovePreviousVersion
+    [switch]$RemovePreviousVersion,
+
+    [Alias("PreviousVersion")]
+    [string]$CleanupVersion
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,7 +81,20 @@ function Get-RemoteManifest {
     $manifestUri = "$PublicBaseUrl/update.json?ts=$cacheBuster"
 
     try {
-        return Invoke-RestMethod -Uri $manifestUri -Method Get -TimeoutSec 30
+        $response = Invoke-WebRequest -Uri $manifestUri -Method Get -UseBasicParsing -TimeoutSec 30
+        $json = [string]$response.Content
+
+        if ($json.Length -gt 0 -and [int]$json[0] -eq 0xFEFF) {
+            $json = $json.Substring(1)
+        }
+        elseif ($json.Length -ge 3 -and
+            [int]$json[0] -eq 0xEF -and
+            [int]$json[1] -eq 0xBB -and
+            [int]$json[2] -eq 0xBF) {
+            $json = $json.Substring(3)
+        }
+
+        return $json | ConvertFrom-Json
     }
     catch {
         if ($Required) {
@@ -96,23 +112,39 @@ function Assert-PublicAsset {
         [long]$ExpectedLength
     )
 
-    $encodedName = [Uri]::EscapeDataString($Name)
-    $cacheBuster = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-    $assetUri = "$PublicBaseUrl/$encodedName?ts=$cacheBuster"
-    $response = Invoke-WebRequest -Uri $assetUri -Method Head -UseBasicParsing -TimeoutSec 30
+    $lastError = "resposta publica indisponivel"
+    for ($attempt = 1; $attempt -le 18; $attempt++) {
+        $encodedName = [Uri]::EscapeDataString($Name)
+        $assetUri = "$PublicBaseUrl/$encodedName"
 
-    if ($response.StatusCode -ne 200) {
-        throw "O arquivo publicado nao retornou HTTP 200: $assetUri"
+        try {
+            $response = Invoke-WebRequest -Uri $assetUri -Method Head -UseBasicParsing -TimeoutSec 30
+            $contentLength = $response.Headers["Content-Length"]
+            if ($response.StatusCode -eq 200 -and
+                ([string]::IsNullOrWhiteSpace($contentLength) -or [long]$contentLength -eq $ExpectedLength)) {
+                return
+            }
+
+            $lastError = "HTTP $($response.StatusCode); tamanho remoto: $contentLength"
+        }
+        catch {
+            $lastError = $_.Exception.Message
+        }
+
+        if ($attempt -lt 18) {
+            Start-Sleep -Seconds 5
+        }
     }
 
-    $contentLength = $response.Headers["Content-Length"]
-    if (-not [string]::IsNullOrWhiteSpace($contentLength) -and [long]$contentLength -ne $ExpectedLength) {
-        throw "Tamanho remoto divergente para ${Name}. Esperado: $ExpectedLength; remoto: $contentLength"
-    }
+    throw "Nao foi possivel validar o arquivo publico $Name. Esperado: $ExpectedLength bytes. Ultimo erro: $lastError"
 }
 
 if ($Version -notmatch '^\d+\.\d+\.\d+$') {
     throw "Versao invalida. Use o formato X.Y.Z, por exemplo: 2.1.40"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($CleanupVersion) -and $CleanupVersion -notmatch '^\d+\.\d+\.\d+$') {
+    throw "PreviousVersion invalida. Use o formato X.Y.Z, por exemplo: 2.1.40"
 }
 
 $publicUri = $null
@@ -202,23 +234,57 @@ Invoke-Wrangler -Arguments @("--version") -Display "npx.cmd wrangler --version"
 Invoke-Wrangler -Arguments @("whoami") -Display "npx.cmd wrangler whoami"
 
 $previousManifest = Get-RemoteManifest
-$previousVersion = if ($null -ne $previousManifest) { [string]$previousManifest.version } else { "" }
+$publishedVersion = if ($null -ne $previousManifest) { [string]$previousManifest.version } else { "" }
+$versionToClean = if (-not [string]::IsNullOrWhiteSpace($CleanupVersion)) { $CleanupVersion } else { $publishedVersion }
+$cleanupAssetNames = @()
+
+if ($RemovePreviousVersion) {
+    if ([string]::IsNullOrWhiteSpace($versionToClean)) {
+        throw "A versao anterior nao foi identificada. Informe -PreviousVersion X.Y.Z para limpar antes da publicacao."
+    }
+
+    if ($versionToClean -notmatch '^\d+\.\d+\.\d+$') {
+        throw "A versao anterior '$versionToClean' e invalida; a publicacao foi interrompida antes da limpeza."
+    }
+
+    $cleanupAssetNames = @(
+        "update.json",
+        "SHA256SUMS.txt",
+        "ListForge-Setup-$versionToClean.exe",
+        "ListForge-v$versionToClean.exe",
+        "ListForge-Trial-v$versionToClean.exe",
+        "RELEASE_NOTES_$versionToClean.txt"
+    )
+}
 
 Write-Step "Plano de publicacao"
 Write-Host "Bucket: $Bucket"
 Write-Host "Pasta local: $releaseDir"
 Write-Host "URL publica: $PublicBaseUrl"
 Write-Host "Versao local: $Version"
-Write-Host "Versao publicada: $(if ([string]::IsNullOrWhiteSpace($previousVersion)) { '(nao identificada)' } else { $previousVersion })"
+Write-Host "Versao publicada: $(if ([string]::IsNullOrWhiteSpace($publishedVersion)) { '(nao identificada)' } else { $publishedVersion })"
 Write-Host ""
 $assetNames | ForEach-Object { Write-Host " - $_" }
+
+if ($RemovePreviousVersion) {
+    Write-Host ""
+    Write-Host "Arquivos oficiais que serao removidos antes do envio (versao $versionToClean):" -ForegroundColor Yellow
+    $cleanupAssetNames | ForEach-Object { Write-Host " - $_" }
+}
 
 if (-not $Publish) {
     Write-Host ""
     Write-Host "Simulacao concluida. Nenhum arquivo foi enviado ou removido." -ForegroundColor Yellow
     Write-Host "Para publicar: .\publish-r2-release.ps1 -Version $Version -Publish"
-    Write-Host "Para publicar e remover a versao anterior: .\publish-r2-release.ps1 -Version $Version -Publish -RemovePreviousVersion"
+    Write-Host "Para limpar os arquivos oficiais anteriores e publicar: .\publish-r2-release.ps1 -Version $Version -Publish -RemovePreviousVersion"
     return
+}
+
+if ($RemovePreviousVersion) {
+    Write-Step "Limpando arquivos oficiais antes da publicacao"
+    foreach ($name in $cleanupAssetNames) {
+        Invoke-Wrangler -Arguments @("r2", "object", "delete", "$Bucket/$name", "--remote") -Display "wrangler r2 object delete $Bucket/$name --remote"
+    }
 }
 
 Write-Step "Enviando nova versao"
@@ -284,36 +350,6 @@ foreach ($name in $hashedAssets) {
 }
 
 Write-Host "Versao $Version publicada e validada no R2." -ForegroundColor Green
-
-if ($RemovePreviousVersion) {
-    if ([string]::IsNullOrWhiteSpace($previousVersion)) {
-        Write-Host "A versao anterior nao foi identificada; nenhum arquivo antigo foi removido." -ForegroundColor Yellow
-    }
-    elseif ($previousVersion -eq $Version) {
-        Write-Host "A versao publicada anteriormente ja era $Version; nenhum arquivo versionado foi removido." -ForegroundColor Yellow
-    }
-    elseif ($previousVersion -notmatch '^\d+\.\d+\.\d+$') {
-        Write-Host "Versao anterior invalida no manifest; nenhum arquivo antigo foi removido." -ForegroundColor Yellow
-    }
-    else {
-        Write-Step "Removendo arquivos versionados da versao anterior"
-        $oldAssetNames = @(
-            "ListForge-Setup-$previousVersion.exe",
-            "ListForge-v$previousVersion.exe",
-            "ListForge-Trial-v$previousVersion.exe",
-            "RELEASE_NOTES_$previousVersion.txt"
-        )
-
-        foreach ($name in $oldAssetNames) {
-            try {
-                Invoke-Wrangler -Arguments @("r2", "object", "delete", "$Bucket/$name", "--remote") -Display "wrangler r2 object delete $Bucket/$name --remote"
-            }
-            catch {
-                Write-Host "Nao foi possivel remover $name. O objeto pode nao existir." -ForegroundColor Yellow
-            }
-        }
-    }
-}
 
 Write-Host ""
 Write-Host "Publicacao R2 concluida." -ForegroundColor Green

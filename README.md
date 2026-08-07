@@ -970,13 +970,15 @@ Para enviar os artefatos ao bucket `listforge-releases`, execute explicitamente:
 
 O script envia primeiro os executáveis, notas e checksums. O `update.json` é publicado por último para que o aplicativo só anuncie a versão quando os demais arquivos já estiverem disponíveis. A publicação é validada pela URL pública configurada no script.
 
-Para remover os arquivos versionados da versão anterior somente depois que a nova publicação for validada:
+Para limpar os arquivos oficiais da versão publicada antes de enviar a nova versão:
 
 ```powershell
 .\publish-r2-release.ps1 -Version X.Y.Z -Publish -RemovePreviousVersion
 ```
 
-Esse modo não esvazia nem exclui o bucket e não remove objetos desconhecidos. `SHA256SUMS.txt` e `update.json` são substituídos pela versão atual. A autenticação permanece no perfil local do Wrangler; tokens e credenciais não são armazenados no projeto.
+Nesse modo, o script identifica a versão atual pelo manifesto público, remove primeiro `update.json`, `SHA256SUMS.txt`, os três executáveis versionados e as notas dessa versão, e então publica a nova release. Se o manifesto não permitir identificar a versão anterior, informe-a explicitamente com `-PreviousVersion X.Y.Z`; sem essa informação, o script interrompe antes de excluir ou enviar qualquer arquivo.
+
+A limpeza preserva o bucket e objetos com nomes desconhecidos, mas deixa a atualização temporariamente indisponível durante o envio. A autenticação permanece no perfil local do Wrangler; tokens e credenciais não são armazenados no projeto.
 
 O script auxiliar abaixo valida os artefatos locais, preserva `RELEASE_NOTES_X.Y.Z.txt` quando ele já estiver preenchido, inclui `update.json` quando existir e mostra os comandos de tag/publicação sem criar uma Release automaticamente:
 

@@ -25,11 +25,17 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 ### Alterado
 
 - O `update.json` passa a ser enviado por último, evitando anunciar uma atualização antes que os demais arquivos estejam disponíveis.
-- A remoção opcional da versão anterior ocorre somente depois que a nova publicação foi validada e não afeta objetos desconhecidos no bucket.
+- A limpeza opcional do R2 ocorre antes do envio, removendo somente o manifesto, checksums e arquivos oficiais da versão identificada, sem afetar objetos desconhecidos no bucket.
 - Documentado o fluxo completo de build, GitHub Release e publicação no Cloudflare R2 sem armazenar tokens ou credenciais no projeto.
 - A verificação automática passou a falhar silenciosamente, sem bloquear a abertura, enquanto a verificação manual mantém mensagens amigáveis na tela Sobre.
 - O instalador agora é iniciado somente por ação separada e depois de uma nova validação do arquivo; o aplicativo fecha apenas após a inicialização ser confirmada.
 - A build e os validadores de release agora conferem os três assets publicados no manifesto: instalador, portátil e Trial.
+- O manifesto público agora é gravado em UTF-8 sem BOM, sua validação trata corretamente respostas do PowerShell 5.1 e confere os assets versionados pela URL pública estável do R2.
+
+### Corrigido
+
+- O botão **Comparar entrada e saída** agora abre corretamente a janela depois que o processamento sem alterações pendentes é concluído.
+- Com o Modo Forja ativo, os botões de processamento agora exibem **Forjar** e **Forja expressa** imediatamente.
 
 ## [2.1.40] - 2026-08-03
 

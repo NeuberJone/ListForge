@@ -435,6 +435,7 @@ public class MainViewModel : INotifyPropertyChanged
             _forgeModeEnabled = value;
             Notify();
             Notify(nameof(ProcessButtonText));
+            Notify(nameof(QuickProcessButtonText));
             NotifyForgeState();
             SaveForgeSettings();
         }
@@ -496,8 +497,8 @@ public class MainViewModel : INotifyPropertyChanged
     public string ForgeTemperatureText => ForgeModeEnabled
         ? (_forgeIsHot ? "Temperatura: aço vivo" : "Temperatura: brasa baixa")
         : "Modo Forja desativado";
-    public string ProcessButtonText => "Processar";
-    public string QuickProcessButtonText => "Processar rápido";
+    public string ProcessButtonText => ForgeModeEnabled ? "Forjar" : "Processar";
+    public string QuickProcessButtonText => ForgeModeEnabled ? "Forja expressa" : "Processar rápido";
     public bool IsProcessingActionEnabled => !IsProcessingBusy;
     public bool IsProcessingBusy
     {
@@ -526,13 +527,15 @@ public class MainViewModel : INotifyPropertyChanged
     public bool CanCompareInputOutput =>
         !IsProcessingBusy
         && !IsComparisonBusy
+        && IsComparisonSnapshotCurrent(_comparisonSnapshot);
+    private bool IsComparisonSnapshotCurrent(ComparisonSnapshot? snapshot) =>
+        snapshot != null
         && !HasPendingOutputOrJsonEdit
-        && _comparisonSnapshot != null
         && _comparisonInputRevision == _inputRevision
-        && !string.IsNullOrWhiteSpace(_comparisonSnapshot.InputText)
-        && !string.IsNullOrWhiteSpace(_comparisonSnapshot.OutputText)
-        && string.Equals(InputText, _comparisonSnapshot.InputText, StringComparison.Ordinal)
-        && string.Equals(_lastValidOutputText, _comparisonSnapshot.OutputText, StringComparison.Ordinal);
+        && !string.IsNullOrWhiteSpace(snapshot.InputText)
+        && !string.IsNullOrWhiteSpace(snapshot.OutputText)
+        && string.Equals(InputText, snapshot.InputText, StringComparison.Ordinal)
+        && string.Equals(_lastValidOutputText, snapshot.OutputText, StringComparison.Ordinal);
     public string ComparisonActionTooltip => CanCompareInputOutput
         ? "Compara semanticamente a entrada processada com a saída organizada."
         : _comparisonSnapshot != null
@@ -903,6 +906,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public event Action<string>? RequestThemeChange;
     public event Action? RequestShutdown;
+    public event Action<ComparisonViewModel>? RequestComparison;
 
     public void RefreshAboutInfo()
     {
@@ -2500,21 +2504,21 @@ public class MainViewModel : INotifyPropertyChanged
             StatusText = "Comparando entrada e saída...";
             var result = await Task.Run(() => _listComparisonService.Compare(snapshot));
 
-            if (!ReferenceEquals(snapshot, _comparisonSnapshot) || !CanCompareInputOutput)
+            if (!ReferenceEquals(snapshot, _comparisonSnapshot) || !IsComparisonSnapshotCurrent(snapshot))
             {
                 StatusText = "A entrada ou a saída foi alterada. Gere uma nova comparação.";
                 return;
             }
 
-            var owner = Application.Current?.MainWindow;
-            if (owner == null)
+            var comparisonRequested = RequestComparison;
+            if (comparisonRequested == null)
             {
                 StatusText = "Não foi possível abrir a comparação.";
                 return;
             }
 
             var comparisonViewModel = new ComparisonViewModel(result, EditorFontSize);
-            ListForge.UI.Views.ComparisonWindow.ShowDialog(owner, comparisonViewModel);
+            comparisonRequested(comparisonViewModel);
             StatusText = result.Summary.HasCriticalDifferences
                 ? "Comparação concluída com diferenças para revisão."
                 : "Comparação concluída. Nenhuma diferença crítica foi encontrada.";

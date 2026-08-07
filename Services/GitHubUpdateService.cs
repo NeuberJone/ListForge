@@ -190,7 +190,7 @@ public sealed class GitHubUpdateService : IUpdateDiscoveryService, IDisposable
     {
         try
         {
-            var root = JObject.Parse(json);
+            var root = JObject.Parse(json.TrimStart('\uFEFF'));
             return root["assets"] == null && root["tag_name"] == null
                 ? ParseManifest(root)
                 : ParseGitHubRelease(root);

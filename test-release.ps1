@@ -113,7 +113,15 @@ foreach ($name in $expectedNames) {
 
 if (-not $SkipUpdateManifest) {
     Write-Step "Conferindo update.json"
-    $json = Get-Content -LiteralPath $updateManifest -Raw | ConvertFrom-Json
+    $manifestBytes = [System.IO.File]::ReadAllBytes($updateManifest)
+    if ($manifestBytes.Length -ge 3 -and
+        $manifestBytes[0] -eq 0xEF -and
+        $manifestBytes[1] -eq 0xBB -and
+        $manifestBytes[2] -eq 0xBF) {
+        throw "update.json contem BOM UTF-8. Gere o manifesto em UTF-8 sem BOM."
+    }
+
+    $json = [System.Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json
     if ([string]$json.version -ne $Version) {
         throw "update.json aponta para versao '$($json.version)', esperado '$Version'."
     }

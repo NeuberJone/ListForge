@@ -36,6 +36,7 @@ public partial class MainWindow : Window
         _vm.RequestThemeChange += themeName => ApplyTheme(themeName);
         _vm.RequestScrollToLine += lineNo => EditorViewControl.ScrollToLine(lineNo);
         _vm.RequestShutdown += Close;
+        _vm.RequestComparison += ShowComparison;
         _vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(_vm.AdvancedListEnabled)
@@ -101,6 +102,19 @@ public partial class MainWindow : Window
     private void NavSettings_Click(object sender, RoutedEventArgs e) => ShowScreen("settings");
     private void NavManual_Click(object sender, RoutedEventArgs e) => ShowScreen("manual");
     private void NavAbout_Click(object sender, RoutedEventArgs e) => ShowScreen("about");
+
+    private void ShowComparison(ComparisonViewModel viewModel)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => ShowComparison(viewModel));
+            return;
+        }
+
+        AppLogger.Info("ListComparison", "Abrindo janela de comparação.");
+        ComparisonWindow.ShowDialog(this, viewModel);
+        AppLogger.Info("ListComparison", "Janela de comparação fechada.");
+    }
 
     // ---------------------------------------------------------------
     // Theme
