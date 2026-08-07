@@ -97,14 +97,35 @@ public static class JsonOrderBuilder
 
             foreach (var piece in pieces)
             {
-                if (PieceTypeMapper.JsonFields.Contains(piece.PieceField))
-                    order[piece.PieceField] = SizeHelper.FormatSizeForJson(piece.Quantity, piece.Size);
+                var targetPieceField = ResolveAvailablePieceField(order, piece.PieceField, pieceOrder);
+                if (PieceTypeMapper.JsonFields.Contains(targetPieceField))
+                    order[targetPieceField] = SizeHelper.FormatSizeForJson(piece.Quantity, piece.Size);
             }
 
             orders.Add(order);
         }
 
         return orders;
+    }
+
+    private static string ResolveAvailablePieceField(
+        IReadOnlyDictionary<string, string> order,
+        string preferredField,
+        IReadOnlyList<string> pieceOrder)
+    {
+        bool IsAvailable(string field) =>
+            PieceTypeMapper.JsonFields.Contains(field)
+            && (!order.TryGetValue(field, out var value) || string.IsNullOrEmpty(value));
+
+        if (IsAvailable(preferredField))
+            return preferredField;
+
+        return pieceOrder
+            .Concat(PieceTypeMapper.JsonFields)
+            .Select(PieceTypeMapper.NormalizeKey)
+            .Distinct()
+            .FirstOrDefault(IsAvailable)
+            ?? preferredField;
     }
 
     private static int PieceFieldIndex(string? pieceField)

@@ -4,6 +4,17 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.42] - 2026-08-07
+
+### Corrigido
+
+- Linhas com múltiplos tamanhos do mesmo gênero e número no final agora são organizadas em colunas distintas sem falhar durante o processamento.
+- Quando duas peças disputam a mesma coluna inferida, a saída textual preserva os dois tamanhos e o JSON usa o próximo tipo de peça disponível em vez de sobrescrever o primeiro.
+
+### Testes
+
+- Adicionada cobertura de regressão para listas como `Freitas,G,G,17`, incluindo Lista organizada e campos `ShortSleeve` e `LongSleeve` no JSON.
+
 ## [2.1.41] - 2026-08-04
 
 ### Adicionado

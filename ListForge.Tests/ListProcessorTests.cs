@@ -183,6 +183,32 @@ public class ListProcessorTests
     }
 
     [Fact]
+    public void BuildOutputAndJson_OrganizeSameGroupSizesWhenNumberIsLast()
+    {
+        var input = string.Join('\n',
+            "Rigby,M,8",
+            "Freitas,G,G,17",
+            "Breno,GG,XGG,7",
+            "Diddy,G,G,19",
+            "Musuel,M,G,47");
+        var rows = ListProcessor.ProcessText(input, ",", Config);
+
+        var output = ListProcessor.BuildOutput(rows, Config);
+        var orders = ListProcessor.BuildOrdersFromOrderlist(rows, Config);
+
+        Assert.Equal(
+            "Rigby,8,M\nFreitas,17,G,G\nBreno,7,GG,XGG\nDiddy,19,G,G\nMusuel,47,M,G",
+            output);
+        Assert.Equal(5, orders.Count);
+        Assert.Equal("1-G", orders[1]["ShortSleeve"]);
+        Assert.Equal("1-G", orders[1]["LongSleeve"]);
+        Assert.Equal("1-GG", orders[2]["ShortSleeve"]);
+        Assert.Equal("1-XGG", orders[2]["LongSleeve"]);
+        Assert.Equal("1-M", orders[4]["ShortSleeve"]);
+        Assert.Equal("1-G", orders[4]["LongSleeve"]);
+    }
+
+    [Fact]
     public void BuildOutput_KeepsSockInTextButJsonDoesNotExportSocksField()
     {
         var rows = ListProcessor.ProcessText("JOANA,10,M,JUVENIL", ",", Config);

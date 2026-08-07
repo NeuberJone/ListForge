@@ -119,7 +119,7 @@ public static class ListOutputBuilder
                 .Select(PieceFieldIndex)
                 .DefaultIfEmpty(-1)
                 .Max();
-            var width = maxPieceIndex >= 0 ? maxPieceIndex + 1 : fragment.Row.Tams.Count;
+            var width = System.Math.Max(fragment.Row.Tams.Count, maxPieceIndex + 1);
             widths[fragment.Group] = System.Math.Max(widths[fragment.Group], width);
         }
         return widths;
@@ -194,7 +194,7 @@ public static class ListOutputBuilder
                             nextFreeColumn = targetIndex + 1;
                         }
 
-                        groupSizes.AddRange(Enumerable.Repeat("", widths[group] - groupSizes.Count));
+                        groupSizes.AddRange(Enumerable.Repeat("", System.Math.Max(0, widths[group] - groupSizes.Count)));
                         apparelCols.AddRange(groupSizes);
                     }
                     else
