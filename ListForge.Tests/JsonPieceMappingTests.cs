@@ -143,6 +143,16 @@ public class JsonPieceMappingTests
     }
 
     [Fact]
+    public void EstimateRequiredSlots_DoesNotCountSockAsPiecePosition()
+    {
+        var service = new JsonPieceMappingService();
+
+        var slots = service.EstimateRequiredSlots("PEDRO MARIANO,G,99,ADULTO,G", ",", Config);
+
+        Assert.Equal(2, slots);
+    }
+
+    [Fact]
     public void EnabledAdvancedMapping_UsesEmptyColumnPosition()
     {
         var rows = ListProcessor.ProcessText(",,G\n,,,P", ",", Config);

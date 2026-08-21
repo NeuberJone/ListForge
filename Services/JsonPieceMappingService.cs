@@ -75,14 +75,21 @@ public sealed class JsonPieceMappingService
 
             var count = 0;
             var sequentialCount = 0;
+            var precedingSockColumns = 0;
             var parts = line.Split(sep).Select(part => part.Trim()).ToList();
             for (var i = 0; i < parts.Count; i++)
             {
+                if (IsSockSize(parts[i], sizeConfig))
+                {
+                    precedingSockColumns++;
+                    continue;
+                }
+
                 if (!IsApparelSize(parts[i], sizeConfig))
                     continue;
 
                 sequentialCount++;
-                var columnPosition = i >= 2 ? i - 1 : sequentialCount;
+                var columnPosition = i >= 2 ? i - 1 - precedingSockColumns : sequentialCount;
                 count = System.Math.Max(count, columnPosition);
             }
 
@@ -104,6 +111,22 @@ public sealed class JsonPieceMappingService
         {
             var (_, size) = SizeHelper.ParseQtyAndSize(token, sizeConfig);
             return SizeHelper.SizeGroupOf(size, sizeConfig) != SizeHelper.GroupSock;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsSockSize(string token, SizeConfig sizeConfig)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        try
+        {
+            var (_, size) = SizeHelper.ParseQtyAndSize(token, sizeConfig);
+            return SizeHelper.SizeGroupOf(size, sizeConfig) == SizeHelper.GroupSock;
         }
         catch
         {

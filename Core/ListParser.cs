@@ -54,9 +54,9 @@ public static class ListParser
         catch { return SizeHelper.IsValidSize(text, config); }
     }
 
-    private static string InferPieceFieldFromColumn(int columnIndex)
+    private static string InferPieceFieldFromColumn(int columnIndex, int precedingSockColumns)
     {
-        var pieceIndex = columnIndex - 2;
+        var pieceIndex = columnIndex - 2 - precedingSockColumns;
         return pieceIndex >= 0 && pieceIndex < PieceTypeMapper.JsonFields.Count
             ? PieceTypeMapper.JsonFields[pieceIndex]
             : "";
@@ -120,6 +120,7 @@ public static class ListParser
         var tams = new List<string>();
         var pieceFields = new List<string>();
         var extras = new List<string>();
+        var precedingSockColumns = 0;
 
         for (var i = 0; i < parts.Count; i++)
         {
@@ -131,7 +132,11 @@ public static class ListParser
                 tams.Add(token);
                 pieceFields.Add(headerContext != null && i < headerContext.Fields.Count
                     ? headerContext.Fields[i]
-                    : InferPieceFieldFromColumn(i));
+                    : InferPieceFieldFromColumn(i, precedingSockColumns));
+
+                var (_, normalizedSize) = SizeHelper.ParseQtyAndSize(token, sizeConfig);
+                if (SizeHelper.SizeGroupOf(normalizedSize, sizeConfig) == SizeHelper.GroupSock)
+                    precedingSockColumns++;
                 continue;
             }
             if (IsNumber(token) && string.IsNullOrEmpty(number)) { number = token; continue; }

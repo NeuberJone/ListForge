@@ -4,6 +4,16 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.43] - 2026-08-20
+
+### Corrigido
+
+- O meião deixa de ocupar uma posição de tipo de peça ao processar listas, evitando a criação de uma coluna de peça vazia adicional na Lista organizada e nos seletores da Lista avançada.
+
+### Testes
+
+- Adicionada cobertura de regressão para linhas com meião entre dois tamanhos de peças, validando a saída organizada, o JSON e a quantidade de posições avançadas.
+
 ## [2.1.42] - 2026-08-07
 
 ### Corrigido

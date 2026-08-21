@@ -222,6 +222,20 @@ public class ListProcessorTests
     }
 
     [Fact]
+    public void BuildOutput_SockBetweenApparelSizesDoesNotCreateExtraPieceColumn()
+    {
+        var rows = ListProcessor.ProcessText("PEDRO MARIANO,G,99,ADULTO,G", ",", Config);
+
+        var output = ListProcessor.BuildOutput(rows, Config);
+        var order = Assert.Single(ListProcessor.BuildOrdersFromOrderlist(rows, Config));
+
+        Assert.Equal("PEDRO MARIANO,99,G,G,ADULTO", output);
+        Assert.Equal("1-G", order["ShortSleeve"]);
+        Assert.Equal("1-G", order["LongSleeve"]);
+        Assert.Equal("", order["Short"]);
+    }
+
+    [Fact]
     public void BuildOrders_UsesQuantitySizeFormatForImplicitQuantityInJsonOnly()
     {
         var rows = ListProcessor.ProcessText("MANEL,,PP", ",", Config);
