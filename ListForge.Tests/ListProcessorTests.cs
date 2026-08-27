@@ -236,6 +236,21 @@ public class ListProcessorTests
     }
 
     [Fact]
+    public void BuildOutput_MixedAgeGroupsAndSocksDoNotPadExtraPieceColumns()
+    {
+        var input = string.Join('\n',
+            "JOAO MENIN,10,10 A,JUVENIL,10A",
+            "MOREIRA,23,PP,ADULTO,PP");
+        var rows = ListProcessor.ProcessText(input, ",", Config);
+
+        var output = ListProcessor.BuildOutput(rows, Config, "upper");
+
+        Assert.Equal(
+            "JOAO MENIN,10,10A,10A,JUVENIL\nMOREIRA,23,PP,PP,ADULTO",
+            output);
+    }
+
+    [Fact]
     public void BuildOrders_UsesQuantitySizeFormatForImplicitQuantityInJsonOnly()
     {
         var rows = ListProcessor.ProcessText("MANEL,,PP", ",", Config);

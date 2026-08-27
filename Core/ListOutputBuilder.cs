@@ -150,8 +150,6 @@ public static class ListOutputBuilder
         if (allFragments.Count == 0) return "";
 
         var widths = GroupColumnWidths(allFragments);
-        var activeGroups = GroupRenderOrder.Where(g => widths[g] > 0).ToList();
-        var apparelWidth = activeGroups.Sum(g => widths[g]);
         var sockWidth = allFragments.Max(f => f.Socks.Count);
         var outLines = new List<string>();
 
@@ -203,8 +201,6 @@ public static class ListOutputBuilder
                     }
                 }
 
-                if (!hasS2 && !hasS3)
-                    apparelCols.AddRange(Enumerable.Repeat("", System.Math.Max(0, apparelWidth - apparelCols.Count)));
                 cols.AddRange(apparelCols);
 
                 if (sockWidth > 0)
