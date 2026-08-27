@@ -9,10 +9,12 @@ O formato segue uma estrutura simples inspirada em Keep a Changelog, com entrada
 ### Corrigido
 
 - O meião deixa de ocupar uma posição de tipo de peça ao processar listas, evitando a criação de uma coluna de peça vazia adicional na Lista organizada e nos seletores da Lista avançada.
+- Linhas com tamanhos de um único grupo deixam de receber colunas vazias pertencentes a outros grupos da lista, eliminando vírgulas adicionais antes do meião.
 
 ### Testes
 
 - Adicionada cobertura de regressão para linhas com meião entre dois tamanhos de peças, validando a saída organizada, o JSON e a quantidade de posições avançadas.
+- Adicionada cobertura de regressão com tamanhos adulto e infantil na mesma lista, validando a compactação independente de cada linha.
 
 ## [2.1.42] - 2026-08-07
 
