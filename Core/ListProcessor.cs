@@ -75,8 +75,13 @@ public static class ListProcessor
         JsonPieceMappingOptions? pieceMappingOptions = null) =>
         JsonOrderBuilder.BuildOrdersFromOrderlist(rows, sizeConfig, caseMode, pieceMappingOptions);
 
-    public static string BuildJsonPreview(List<Dictionary<string, string>> orders) =>
-        JsonOrderBuilder.BuildJsonPreview(orders);
+    public static string BuildJsonPreview(
+        List<Dictionary<string, string>> orders,
+        string project = "",
+        string title = "List",
+        string clientName = "",
+        int orderNumber = 0) =>
+        JsonOrderBuilder.BuildJsonPreview(orders, project, title, clientName, orderNumber);
 
     // ---------------------------------------------------------------
     // Export
@@ -84,6 +89,13 @@ public static class ListProcessor
     public static string ExportOutputText(string text, string outputDir, string baseName) =>
         ListOutputBuilder.ExportOutputText(text, outputDir, baseName);
 
-    public static string ExportJson(List<Dictionary<string, string>> orders, string outputDir, string baseName) =>
-        JsonOrderBuilder.ExportJson(orders, outputDir, baseName);
+    public static string ExportJson(
+        List<Dictionary<string, string>> orders,
+        string outputDir,
+        string baseName,
+        string project = "",
+        string title = "List",
+        string clientName = "",
+        int orderNumber = 0) =>
+        JsonOrderBuilder.ExportJson(orders, outputDir, baseName, project, title, clientName, orderNumber);
 }

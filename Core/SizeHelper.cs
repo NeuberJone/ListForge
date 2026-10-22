@@ -13,6 +13,12 @@ public static class SizeHelper
     public const string GroupChild = "child";
     public const string GroupSock = "sock";
 
+    public const string GenderMale = "MA";
+    public const string GenderFemale = "FE";
+    public const string GenderChild = "C";
+
+    public static readonly string[] GenderCodes = [GenderMale, GenderFemale, GenderChild];
+
     public static readonly string[] EditableGroupOrder =
         [GroupMale, GroupFemale, GroupChild, GroupSock];
 
@@ -153,9 +159,9 @@ public static class SizeHelper
         var group = SizeGroupOf(size, config);
         return group switch
         {
-            GroupChild => "C",
-            GroupFemale => "FE",
-            _ => "MA",
+            GroupChild => GenderChild,
+            GroupFemale => GenderFemale,
+            _ => GenderMale,
         };
     }
 

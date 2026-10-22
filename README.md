@@ -7,7 +7,7 @@ O projeto foi criado para reduzir retrabalho em operações que recebem listas e
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-2563EB?style=for-the-badge\&logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge\&logo=dotnet)
 ![WPF](https://img.shields.io/badge/UI-WPF-0F172A?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-2.1.43-16A34A?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.44-16A34A?style=for-the-badge)
 [![CI](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml/badge.svg)](https://github.com/NeuberJone/ListForge/actions/workflows/ci.yml)
 
 ---
@@ -449,7 +449,7 @@ O nome base é sanitizado para evitar caracteres inválidos em arquivos. Se já 
 
 ## Geração de JSON
 
-O ListForge gera uma prévia JSON com o objeto `orders`. A estrutura inclui campos como:
+O ListForge gera uma prévia JSON com o objeto `orders`. Cada pedido inclui os campos:
 
 * `Name`;
 * `Nickname`;
@@ -465,19 +465,44 @@ O ListForge gera uma prévia JSON com o objeto `orders`. A estrutura inclui camp
 
 O meião é mantido na lista organizada, mas não é exportado como campo `Socks` no JSON.
 
-Nos campos de peça do JSON, o tamanho sempre usa o formato `quantidade-tamanho`. Quando a entrada não traz quantidade explícita, o JSON usa quantidade `1`.
+Nos campos de peça do JSON, o tamanho sempre usa o formato `quantidade-tamanho-gênero`. Quando a entrada não traz quantidade explícita, o JSON usa quantidade `1`. O sufixo de gênero (`MA`, `FE` ou `C`) é o mesmo código já usado internamente pelo ListForge para masculino, feminino e infantil, determinado pelo cadastro de tamanhos configurado — nunca pelo nome da pessoa nem copiado automaticamente de outra peça do mesmo registro. Peças sem tamanho continuam como `""`. Se um valor já chegar com o sufixo de gênero (por exemplo, ao reaplicar um JSON exportado), o ListForge não o duplica.
 
 Exemplos:
 
 ```json
 {
-  "ShortSleeve": "1-PP",
-  "LongSleeve": "2-M",
-  "Tanktop": "3-P"
+  "ShortSleeve": "1-PP-MA",
+  "LongSleeve": "2-M-MA",
+  "Tanktop": "3-BLP-FE"
 }
 ```
 
 Essa regra vale somente para o JSON. A lista organizada mantém o formato textual do editor.
+
+Por compatibilidade com o formato observado no SISBolt, o campo `Gender` de cada pedido exportado é sempre `"MA"`, mesmo quando os sufixos das peças desse mesmo pedido terminam em `-FE` ou `-C`. Essa peculiaridade afeta somente o campo `Gender` do objeto exportado; o gênero real de cada peça (usado nas contagens e nos sufixos) não é alterado por isso.
+
+Uma mesma pessoa pode gerar mais de um pedido no JSON quando tem peças de gêneros diferentes, e entradas com o mesmo nome e número nunca são mescladas ou removidas — cada uma preserva sua própria combinação de peça, tamanho e gênero. Quantidades maiores que uma unidade continuam representadas de forma compacta (`quantidade-tamanho-gênero`) em vez de serem expandidas em pedidos repetidos.
+
+### Importação: compatibilidade com o formato antigo
+
+Ao importar um JSON (por link ou ao reaplicar uma Prévia JSON editada), o ListForge aceita tanto o formato antigo (`quantidade-tamanho`) quanto o novo (`quantidade-tamanho-gênero`): o sufixo de gênero, quando presente, é descartado na leitura. O gênero de cada peça é sempre recalculado a partir do cadastro de tamanhos durante o processamento, nunca lido do sufixo do JSON importado.
+
+### Metadados do documento JSON
+
+Além de `orders`, o documento JSON inclui:
+
+| Campo | Conteúdo | Padrão quando não informado |
+| --- | --- | --- |
+| `project` | Nome do projeto/contexto da exportação | `""` |
+| `title` | Título da lista | `"List"` |
+| `client_name` | Nome do cliente | `""` |
+| `order_number` | Número do pedido (inteiro) | `0` |
+| `orders_genders_count` | Soma de unidades de peça exportadas por gênero (`male`, `female`, `childish`) — conta peças, não pessoas ou pedidos; uma peça com quantidade 3 conta como 3 unidades | calculado |
+| `unique_name_chars` | Caracteres únicos de todos os `Name` exportados, sem espaços, com acentos e pontuação preservados, em ordem determinística | calculado |
+| `unique_nickname_chars` | Mesma regra, a partir de `Nickname` | calculado |
+| `unique_number_chars` | Mesma regra, a partir de `Number` | calculado |
+
+`project`, `title`, `client_name` e `order_number` não têm, hoje, um campo correspondente na interface do ListForge; os valores acima são os padrões usados quando o chamador não os informa explicitamente.
 
 No modo básico, os tamanhos de cada linha seguem a ordem padrão dos campos do JSON: o primeiro tamanho vai para `ShortSleeve`, o segundo para `LongSleeve`, depois `Short`, `Pants`, `Tanktop` e `Vest`. Tamanhos do mesmo gênero ficam no mesmo registro; gêneros diferentes continuam sendo separados quando necessário.
 
@@ -521,7 +546,7 @@ Resultado conceitual:
 
 Quando a opção está desativada, o ListForge mantém o comportamento padrão. A saída textual continua seguindo o fluxo normal; a ordem avançada altera apenas a montagem dos campos do JSON.
 
-O JSON é encapsulado com metadados básicos como `title`, `order_number`, `client_name`, `unique_name_chars` e `unique_nickname_chars`.
+O JSON é encapsulado com metadados básicos como `project`, `title`, `order_number`, `client_name`, `orders_genders_count`, `unique_name_chars`, `unique_nickname_chars` e `unique_number_chars` — ver [Metadados do documento JSON](#metadados-do-documento-json).
 
 ## Histórico de processamentos
 
@@ -861,19 +886,19 @@ Para gerar também o `update.json` da fonte pública de atualização, informe a
 Publicação instalável:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.43\ListForge-Installable
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=Installed -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.44\ListForge-Installable
 ```
 
 Publicação em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.43\ListForge-Portable-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=PortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.44\ListForge-Portable-OneFile
 ```
 
 Publicação Trial em arquivo único:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.43\ListForge-Trial-OneFile
+dotnet publish -c Release -r win-x64 --self-contained true -p:ListForgeDistribution=TrialPortableOneFile -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:DefineConstants=TRIAL_BUILD -p:DebugType=None -p:DebugSymbols=false -o bin\Release\dist\2.1.44\ListForge-Trial-OneFile
 ```
 
 Instalador:
@@ -882,16 +907,16 @@ Instalador:
 installer\ListForge.iss
 ```
 
-O script do Inno Setup usa a saída `bin\Release\dist\2.1.43\ListForge-Installable` e gera o instalador em:
+O script do Inno Setup usa a saída `bin\Release\dist\2.1.44\ListForge-Installable` e gera o instalador em:
 
 ```text
-bin\Release\dist\2.1.43\Installer
+bin\Release\dist\2.1.44\Installer
 ```
 
 Após confirmar os artefatos obrigatórios, o script gera:
 
 ```text
-bin\Release\dist\2.1.43\SHA256SUMS.txt
+bin\Release\dist\2.1.44\SHA256SUMS.txt
 ```
 
 Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminhos relativos à pasta da versão.
@@ -899,7 +924,7 @@ Esse arquivo lista os checksums SHA256 dos executáveis principais usando caminh
 O script também cria:
 
 ```text
-bin\Release\dist\2.1.43\Release
+bin\Release\dist\2.1.44\Release
 ```
 
 Essa pasta contém os arquivos planos para anexar no GitHub Release:

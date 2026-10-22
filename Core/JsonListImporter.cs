@@ -16,6 +16,28 @@ public static class JsonListImporter
     private static string NormalizeJsonImportValue(object? value) =>
         value == null ? "" : value.ToString()!.Replace("\r", "").Replace("\n", " ").Trim();
 
+    /// <summary>
+    /// Drops a trailing "-MA"/"-FE"/"-C" gender/age code from an imported piece value
+    /// ("quantidade-tamanho[-gênero]"), accepting both the older "quantidade-tamanho"
+    /// format and the newer one. The real gender is always recomputed downstream from the
+    /// size registry, never taken from this suffix, so it is safe to discard here.
+    /// </summary>
+    private static string StripGenderSuffix(string pieceValue)
+    {
+        if (string.IsNullOrEmpty(pieceValue))
+            return pieceValue;
+
+        foreach (var code in SizeHelper.GenderCodes)
+        {
+            var suffix = "-" + code;
+            if (pieceValue.Length > suffix.Length
+                && pieceValue.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                return pieceValue[..^suffix.Length];
+        }
+
+        return pieceValue;
+    }
+
     private static List<string> DecideEffectiveFields(List<Dictionary<string, object?>> orders)
     {
         var present = new HashSet<string>();
@@ -58,7 +80,13 @@ public static class JsonListImporter
 
         foreach (var entry in orders)
         {
-            var rowValues = fields.Select(f => NormalizeJsonImportValue(entry.GetValueOrDefault(f))).ToList();
+            var rowValues = fields
+                .Select(f =>
+                {
+                    var value = NormalizeJsonImportValue(entry.GetValueOrDefault(f));
+                    return PieceTypeMapper.JsonFields.Contains(f) ? StripGenderSuffix(value) : value;
+                })
+                .ToList();
             var expandedRows = new List<string>();
 
             bool expanded = false;

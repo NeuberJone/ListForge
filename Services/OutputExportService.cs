@@ -21,11 +21,19 @@ public sealed class OutputExportService
         }
     }
 
-    public OperationResult<string> SaveJson(List<Dictionary<string, string>> orders, string outputDirectory, string baseName)
+    public OperationResult<string> SaveJson(
+        List<Dictionary<string, string>> orders,
+        string outputDirectory,
+        string baseName,
+        string project = "",
+        string title = "List",
+        string clientName = "",
+        int orderNumber = 0)
     {
         try
         {
-            return OperationResult<string>.Ok(ListProcessor.ExportJson(orders, outputDirectory, baseName));
+            return OperationResult<string>.Ok(
+                ListProcessor.ExportJson(orders, outputDirectory, baseName, project, title, clientName, orderNumber));
         }
         catch (Exception ex)
         {

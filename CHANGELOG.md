@@ -4,6 +4,22 @@ Todas as mudanças relevantes do ListForge serão documentadas neste arquivo.
 
 O formato segue uma estrutura simples inspirada em Keep a Changelog, com entradas agrupadas por versão.
 
+## [2.1.44] - 2026-10-22
+
+### Adicionado
+
+- O JSON exportado passa a incluir `project`, `order_number`, `orders_genders_count` (unidades de peça por gênero) e `unique_number_chars`, além de calcular de fato `unique_name_chars` e `unique_nickname_chars`.
+- Cada campo de peça do JSON passa a trazer o gênero/faixa da peça no sufixo (`quantidade-tamanho-MA`, `-FE` ou `-C`), determinado pelo cadastro de tamanhos, sem alterar o formato da Lista organizada.
+- Por compatibilidade com o formato observado no SISBolt, o campo `Gender` de cada pedido exportado é sempre `"MA"`, mesmo quando as peças desse pedido têm sufixo `-FE` ou `-C`.
+
+### Corrigido
+
+- A importação de JSON aceita tanto peças no formato antigo (`quantidade-tamanho`) quanto no novo (`quantidade-tamanho-gênero`), descartando o sufixo de gênero e recalculando o gênero real a partir do cadastro de tamanhos.
+
+### Testes
+
+- Adicionada cobertura para peças masculinas, femininas e infantis, mesma pessoa com gêneros diferentes, múltiplos tipos de peça na mesma entrada, quantidades maiores que uma unidade, entradas repetidas, campos vazios, acentos/pontuação/zeros à esquerda, sufixo de gênero já presente, contagem por unidades e importação compatível com o formato antigo e o novo.
+
 ## [2.1.43] - 2026-08-20
 
 ### Corrigido
