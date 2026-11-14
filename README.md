@@ -1078,6 +1078,8 @@ Prévia JSON simplificada:
 
 ## Roadmap
 
+O planejamento completo, com prioridades de implantação e a nova funcionalidade de **abrir listas diretamente de arquivos JSON locais**, está em [docs/roadmap-master-prioritized.md](docs/roadmap-master-prioritized.md). Os itens abaixo são um resumo histórico e não substituem o roadmap mestre.
+
 * Logs internos para erros de leitura e OCR.
 * Prévia visual mais detalhada do JSON.
 * Modelos configuráveis de exportação.
